@@ -6,6 +6,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { CRMSidebar } from "@/components/CRMSidebar";
 import Index from "./pages/Index";
+import Contacts from "./pages/Contacts";
+import Deals from "./pages/Deals";
+import Communications from "./pages/Communications";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +25,10 @@ const App = () => (
             <main className="flex-1">
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/contacts" element={<Contacts />} />
+                <Route path="/deals" element={<Deals />} />
+                <Route path="/communications" element={<Communications />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>
           </div>
