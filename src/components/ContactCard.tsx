@@ -18,19 +18,19 @@ export function ContactCard({ contact }: ContactCardProps) {
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
-          <Link to={`/contacts/${contact.id}`} className="hover:text-crm-primary">
+          <Link to={`/contacts/${contact.id}`} className="hover:text-primary">
             {contact.name}
           </Link>
-          <span className="text-sm font-normal text-crm-muted">{contact.company}</span>
+          <span className="text-sm font-normal text-muted-foreground">{contact.company}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-crm-secondary">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Mail className="h-4 w-4" />
             <span>{contact.email}</span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-crm-secondary">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Phone className="h-4 w-4" />
             <span>{contact.phone}</span>
           </div>

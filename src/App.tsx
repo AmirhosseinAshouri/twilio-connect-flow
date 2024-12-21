@@ -1,41 +1,32 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { CRMSidebar } from "@/components/CRMSidebar";
-import Index from "./pages/Index";
-import Contacts from "./pages/Contacts";
-import Deals from "./pages/Deals";
-import Communications from "./pages/Communications";
-import Settings from "./pages/Settings";
+import Index from "@/pages/Index";
+import Contacts from "@/pages/Contacts";
+import ContactDetail from "@/pages/ContactDetail";
+import Deals from "@/pages/Deals";
+import Communications from "@/pages/Communications";
+import Settings from "@/pages/Settings";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+function App() {
+  return (
+    <Router>
+      <div className="flex h-screen">
+        <CRMSidebar />
+        <main className="flex-1 overflow-y-auto">
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/contacts" element={<Contacts />} />
+            <Route path="/contacts/:id" element={<ContactDetail />} />
+            <Route path="/deals" element={<Deals />} />
+            <Route path="/communications" element={<Communications />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </main>
+      </div>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SidebarProvider>
-          <div className="min-h-screen flex w-full">
-            <CRMSidebar />
-            <main className="flex-1">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/contacts" element={<Contacts />} />
-                <Route path="/deals" element={<Deals />} />
-                <Route path="/communications" element={<Communications />} />
-                <Route path="/settings" element={<Settings />} />
-              </Routes>
-            </main>
-          </div>
-        </SidebarProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </Router>
+  );
+}
 
 export default App;
