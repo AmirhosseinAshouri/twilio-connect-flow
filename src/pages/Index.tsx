@@ -42,9 +42,12 @@ const Index = () => {
   const { toast } = useToast();
 
   const handleAddContact = (values: ContactFormValues) => {
-    const newContact = {
+    const newContact: Contact = {
       id: (contacts.length + 1).toString(),
-      ...values,
+      name: values.name,
+      email: values.email,
+      phone: values.phone,
+      company: values.company,
     };
     setContacts([...contacts, newContact]);
     setOpen(false);
