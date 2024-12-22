@@ -4,6 +4,14 @@ import { Plus, DollarSign } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { DealForm } from "@/components/DealForm";
 
 type DealStage = "qualify" | "cold" | "warm" | "hot";
 
@@ -44,6 +52,7 @@ const stageColumns: { id: DealStage; title: string; color: string }[] = [
 
 const Deals = () => {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const { toast } = useToast();
 
   const onDragEnd = (result: any) => {
@@ -71,6 +80,15 @@ const Deals = () => {
     toast({
       title: "Deal Updated",
       description: `${deal.title} moved to ${destination.droppableId}`,
+    });
+  };
+
+  const handleUpdateDeal = (updatedDeal: Deal) => {
+    setDeals(deals.map((d) => (d.id === updatedDeal.id ? updatedDeal : d)));
+    setSelectedDeal(null);
+    toast({
+      title: "Deal Updated",
+      description: `${updatedDeal.title} has been updated successfully.`,
     });
   };
 
@@ -116,37 +134,56 @@ const Deals = () => {
                                 {...provided.dragHandleProps}
                                 className="mb-4"
                               >
-                                <Card className="hover:shadow-lg transition-shadow bg-white">
-                                  <CardHeader>
-                                    <CardTitle className="flex justify-between items-center">
-                                      <span className="text-lg">{deal.title}</span>
-                                      <span className="text-sm font-normal text-muted-foreground">
-                                        {deal.company}
-                                      </span>
-                                    </CardTitle>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-sm text-muted-foreground">
-                                          Value
-                                        </span>
-                                        <span className="font-medium flex items-center">
-                                          <DollarSign className="h-4 w-4 mr-1" />
-                                          {deal.value.toLocaleString()}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-sm text-muted-foreground">
-                                          Probability
-                                        </span>
-                                        <span className="font-medium">
-                                          {deal.probability}%
-                                        </span>
-                                      </div>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <div onClick={() => setSelectedDeal(deal)}>
+                                      <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
+                                        <CardHeader>
+                                          <CardTitle className="flex justify-between items-center">
+                                            <span className="text-lg">
+                                              {deal.title}
+                                            </span>
+                                            <span className="text-sm font-normal text-muted-foreground">
+                                              {deal.company}
+                                            </span>
+                                          </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                          <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-sm text-muted-foreground">
+                                                Value
+                                              </span>
+                                              <span className="font-medium flex items-center">
+                                                <DollarSign className="h-4 w-4 mr-1" />
+                                                {deal.value.toLocaleString()}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-sm text-muted-foreground">
+                                                Probability
+                                              </span>
+                                              <span className="font-medium">
+                                                {deal.probability}%
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </CardContent>
+                                      </Card>
                                     </div>
-                                  </CardContent>
-                                </Card>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>Edit Deal</DialogTitle>
+                                    </DialogHeader>
+                                    {selectedDeal && (
+                                      <DealForm
+                                        deal={selectedDeal}
+                                        onSubmit={handleUpdateDeal}
+                                      />
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
                               </div>
                             )}
                           </Draggable>
