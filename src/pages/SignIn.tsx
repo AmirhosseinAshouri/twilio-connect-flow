@@ -22,11 +22,12 @@ export default function SignIn() {
     // For demo purposes, using mock authentication
     if (email === "admin@example.com" && password === "password") {
       localStorage.setItem("user", JSON.stringify({ email, role: "admin" }));
-      navigate("/");
       toast({
         title: "Signed in successfully",
         description: "Welcome back!",
       });
+      // Redirect to dashboard
+      navigate("/");
     } else {
       toast({
         title: "Error",
