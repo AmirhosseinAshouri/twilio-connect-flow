@@ -22,8 +22,8 @@ import {
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
-  value: z.string().transform((val) => Number(val)),
-  probability: z.string().transform((val) => Number(val)),
+  value: z.coerce.number(),
+  probability: z.coerce.number(),
   stage: z.string(),
 });
 
