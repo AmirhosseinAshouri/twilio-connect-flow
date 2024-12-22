@@ -19,6 +19,8 @@ const formSchema = z.object({
   probability: z.string().transform((val) => Number(val)),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface DealFormProps {
   deal: {
     id: string;
@@ -32,7 +34,7 @@ interface DealFormProps {
 }
 
 export function DealForm({ deal, onSubmit }: DealFormProps) {
-  const form = useForm({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: deal.title,
@@ -42,7 +44,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     },
   });
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = (values: FormValues) => {
     onSubmit({
       ...deal,
       ...values,
