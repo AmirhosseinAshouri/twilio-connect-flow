@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
-      .select("*")
+      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .single();
 
     if (settingsError || !settings) {
@@ -27,11 +27,13 @@ export async function POST(request: Request) {
       settings.twilio_auth_token
     );
 
-    // Create call using Twilio
+    // Create call using Twilio with the correct TwiML URL
     const call = await client.calls.create({
-      url: 'http://demo.twilio.com/docs/voice.xml', // Temporary TwiML URL
+      url: 'https://crm-six-black.vercel.app/api/calls/twiml',
       to,
       from,
+      statusCallback: 'https://crm-six-black.vercel.app/api/calls/status',
+      statusCallbackEvent: ['completed'],
     });
 
     // Update call record with Twilio SID
