@@ -3,43 +3,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MessageSquare, ArrowLeft, Building2, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
-
-interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-}
-
-// Mock data - in a real app, this would come from an API or database
-const mockContacts: Contact[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "(555) 123-4567",
-    company: "Acme Inc",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    phone: "(555) 987-6543",
-    company: "Tech Corp",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    phone: "(555) 456-7890",
-    company: "Global Solutions",
-  },
-];
+import { useContact } from "@/hooks/useContact";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ErrorState";
 
 export default function ContactDetail() {
   const { id } = useParams();
-  const contact = mockContacts.find((c) => c.id === id);
+  const { contact, loading, error } = useContact(id || '');
+
+  if (loading) {
+    return (
+      <div className="p-8 bg-background min-h-screen">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-5 w-5" />
+            <Skeleton className="h-8 w-48" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <ErrorState message={error.message} />;
+  }
 
   if (!contact) {
     return (

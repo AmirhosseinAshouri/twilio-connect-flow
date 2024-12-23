@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -21,32 +21,32 @@ export function useContacts() {
     checkUser();
   }, [navigate]);
 
+  const fetchContacts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setContacts(data || []);
+    } catch (err) {
+      setError(err as Error);
+      toast({
+        title: "Error fetching contacts",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const { data, error } = await supabase
-          .from("contacts")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        setContacts(data || []);
-      } catch (err) {
-        setError(err as Error);
-        toast({
-          title: "Error fetching contacts",
-          description: (err as Error).message,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchContacts();
 
     const contactsSubscription = supabase
@@ -57,7 +57,7 @@ export function useContacts() {
     return () => {
       contactsSubscription.unsubscribe();
     };
-  }, [toast]);
+  }, [fetchContacts]);
 
   const addContact = async (values: Omit<Contact, "id" | "user_id" | "created_at">) => {
     try {

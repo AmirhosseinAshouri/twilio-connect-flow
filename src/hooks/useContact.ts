@@ -1,44 +1,44 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Contact } from "@/types/contact";
+import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { ErrorState } from "@/components/ErrorState";
 
 export function useContact(id: string) {
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchContact = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", id)
-        .single();
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error } = await supabase
+          .from("contacts")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-      if (error) {
+        if (error) throw error;
+
+        setContact(data);
+      } catch (err) {
+        setError(err as Error);
         toast({
           title: "Error fetching contact",
-          description: error.message,
+          description: (err as Error).message,
           variant: "destructive",
         });
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      setContact({
-        id: data.id,
-        name: data.full_name,
-        email: data.email,
-        phone: '',
-        company: '',
-        user_id: data.id,
-        created_at: data.created_at
-      });
-      setLoading(false);
     };
 
     fetchContact();
   }, [id, toast]);
 
-  return { contact, loading };
+  return { contact, loading, error };
 } 
