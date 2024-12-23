@@ -2,20 +2,12 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-
-export interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-  user_id: string;
-  created_at: string;
-}
+import { Contact } from "@/types/contact";
 
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -31,33 +23,28 @@ export function useContacts() {
 
   useEffect(() => {
     const fetchContacts = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error } = await supabase
+          .from("contacts")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (error) {
+        if (error) throw error;
+
+        setContacts(data || []);
+      } catch (err) {
+        setError(err as Error);
         toast({
           title: "Error fetching contacts",
-          description: error.message,
+          description: (err as Error).message,
           variant: "destructive",
         });
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      const mappedContacts = (data || []).map(profile => ({
-        id: profile.id,
-        name: profile.full_name,
-        email: profile.email,
-        phone: '',
-        company: '',
-        user_id: profile.id,
-        created_at: profile.created_at
-      }));
-
-      setContacts(mappedContacts);
-      setLoading(false);
     };
 
     fetchContacts();
@@ -73,35 +60,33 @@ export function useContacts() {
   }, [toast]);
 
   const addContact = async (values: Omit<Contact, "id" | "user_id" | "created_at">) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .insert([{
-        id: user.id,
-        full_name: values.name,
-        email: values.email
-      }])
-      .select()
-      .single();
+      const { data, error } = await supabase
+        .from("contacts")
+        .insert([{ ...values, user_id: user.id }])
+        .select()
+        .single();
 
-    if (error) {
+      if (error) throw error;
+
+      toast({
+        title: "Contact Added",
+        description: `${values.name} has been added successfully.`,
+      });
+
+      return data;
+    } catch (err) {
       toast({
         title: "Error adding contact",
-        description: error.message,
+        description: (err as Error).message,
         variant: "destructive",
       });
       return null;
     }
-
-    toast({
-      title: "Contact Added",
-      description: `${values.name} has been added successfully.`,
-    });
-
-    return data;
   };
 
-  return { contacts, loading, addContact };
+  return { contacts, loading, error, addContact };
 } 
