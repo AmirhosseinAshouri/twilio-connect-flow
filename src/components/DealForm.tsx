@@ -34,12 +34,19 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-// Mock contacts data - in a real app, this would come from your backend
-const contacts = [
+// Define the contact type for better type safety
+type Contact = {
+  id: string;
+  name: string;
+  company: string;
+};
+
+// Mock contacts data with proper typing
+const contacts: Contact[] = [
   { id: "1", name: "John Doe", company: "Acme Inc" },
   { id: "2", name: "Jane Smith", company: "Tech Corp" },
   { id: "3", name: "Mike Johnson", company: "Global Solutions" },
-] as const;
+];
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -88,6 +95,10 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     });
   };
 
+  const selectedContact = contacts.find(
+    (contact) => contact.id === form.watch("contactId")
+  );
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -106,9 +117,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
                       aria-expanded={open}
                       className="w-full justify-between"
                     >
-                      {field.value
-                        ? contacts.find((contact) => contact.id === field.value)?.name ?? "Select contact..."
-                        : "Select contact..."}
+                      {selectedContact?.name ?? "Select contact..."}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </FormControl>
@@ -118,7 +127,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
                     <CommandInput placeholder="Search contacts..." />
                     <CommandEmpty>No contact found.</CommandEmpty>
                     <CommandGroup>
-                      {contacts?.map((contact) => (
+                      {contacts.map((contact) => (
                         <CommandItem
                           key={contact.id}
                           value={contact.id}
@@ -131,7 +140,9 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              field.value === contact.id ? "opacity-100" : "opacity-0"
+                              field.value === contact.id
+                                ? "opacity-100"
+                                : "opacity-0"
                             )}
                           />
                           <div className="flex flex-col">
