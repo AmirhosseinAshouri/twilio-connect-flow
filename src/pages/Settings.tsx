@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useSettings, TwilioSettings } from "@/hooks/useSettings";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 interface User {
   id: string;
@@ -32,6 +35,18 @@ export default function Settings() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const { toast } = useToast();
+  const { settings, loading, error, updateSettings } = useSettings();
+  const [twilioConfig, setTwilioConfig] = useState<TwilioSettings>({
+    twilio_account_sid: settings?.twilio_account_sid || "",
+    twilio_auth_token: settings?.twilio_auth_token || "",
+    twilio_phone_number: settings?.twilio_phone_number || "",
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setTwilioConfig(settings);
+    }
+  }, [settings]);
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +63,11 @@ export default function Settings() {
       title: "User Added",
       description: `${newUserName} has been added successfully.`,
     });
+  };
+
+  const handleTwilioSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateSettings(twilioConfig);
   };
 
   return (
@@ -111,27 +131,61 @@ export default function Settings() {
           <CardHeader>
             <CardTitle>Twilio Integration</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="account-sid">Account SID</Label>
-              <Input id="account-sid" placeholder="Enter your Twilio Account SID" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="auth-token">Auth Token</Label>
-              <Input
-                id="auth-token"
-                type="password"
-                placeholder="Enter your Twilio Auth Token"
+          <CardContent>
+            {loading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            ) : error ? (
+              <ErrorState 
+                message={error.message} 
+                onRetry={() => window.location.reload()} 
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone-number">Twilio Phone Number</Label>
-              <Input
-                id="phone-number"
-                placeholder="Enter your Twilio Phone Number"
-              />
-            </div>
-            <Button>Save Twilio Settings</Button>
+            ) : (
+              <form onSubmit={handleTwilioSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="account-sid">Account SID</Label>
+                  <Input
+                    id="account-sid"
+                    value={twilioConfig.twilio_account_sid}
+                    onChange={(e) => setTwilioConfig({
+                      ...twilioConfig,
+                      twilio_account_sid: e.target.value
+                    })}
+                    placeholder="Enter your Twilio Account SID"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="auth-token">Auth Token</Label>
+                  <Input
+                    id="auth-token"
+                    type="password"
+                    value={twilioConfig.twilio_auth_token}
+                    onChange={(e) => setTwilioConfig({
+                      ...twilioConfig,
+                      twilio_auth_token: e.target.value
+                    })}
+                    placeholder="Enter your Twilio Auth Token"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone-number">Twilio Phone Number</Label>
+                  <Input
+                    id="phone-number"
+                    value={twilioConfig.twilio_phone_number}
+                    onChange={(e) => setTwilioConfig({
+                      ...twilioConfig,
+                      twilio_phone_number: e.target.value
+                    })}
+                    placeholder="Enter your Twilio Phone Number"
+                  />
+                </div>
+                <Button type="submit">Save Twilio Settings</Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
