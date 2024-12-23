@@ -19,7 +19,7 @@ export function useCalls() {
         
         const { data, error } = await supabase
           .from("calls")
-          .select("*")
+          .select("*, contacts(name)")
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -38,9 +38,19 @@ export function useCalls() {
     };
 
     fetchCalls();
+
+    // Subscribe to changes
+    const subscription = supabase
+      .channel('calls_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calls' }, fetchCalls)
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [toast]);
 
-  const createCall = async (contactPhone: string, notes: string) => {
+  const createCall = async (contactId: string, phone: string, notes: string) => {
     try {
       if (!settings) {
         throw new Error("Twilio settings not configured");
@@ -49,14 +59,29 @@ export function useCalls() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Call your backend API to initiate Twilio call
+      // First create the call record in our database
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contactId,
+          user_id: user.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
+
+      if (callError) throw callError;
+
+      // Then initiate the call via our API
       const response = await fetch("/api/calls/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          to: contactPhone,
+          callId: callData.id,
+          to: phone,
           from: settings.twilio_phone_number,
           notes,
         }),
@@ -66,29 +91,12 @@ export function useCalls() {
         throw new Error("Failed to initiate call");
       }
 
-      const callData = await response.json();
-
-      // Save call record to database
-      const { data, error } = await supabase
-        .from("calls")
-        .insert([{
-          contact_id: callData.contact_id,
-          user_id: user.id,
-          duration: 0, // Will be updated when call ends
-          notes,
-          created_at: new Date().toISOString(),
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
       toast({
         title: "Call Initiated",
         description: "Your call is being connected.",
       });
 
-      return data;
+      return callData;
     } catch (err) {
       toast({
         title: "Error creating call",

@@ -39,7 +39,16 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       return;
     }
     
-    await createCall(phone, notes);
+    if (!contact?.id) {
+      toast({
+        title: "Error",
+        description: "Contact information is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    await createCall(contact.id, phone, notes);
     setOpen(false);
     setPhone("");
     setNotes("");
