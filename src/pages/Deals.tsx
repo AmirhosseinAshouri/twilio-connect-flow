@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DragDropContext } from "@hello-pangea/dnd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { AddDealForm } from "@/components/AddDealForm";
 import { DealColumn } from "@/components/DealColumn";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 type DealStage = "qualify" | "cold" | "warm" | "hot";
 
@@ -25,27 +27,6 @@ interface Deal {
   assignedTo?: string;
 }
 
-const initialDeals: Deal[] = [
-  {
-    id: "1",
-    title: "Enterprise Software License",
-    value: 50000,
-    company: "Acme Inc",
-    stage: "warm",
-    probability: 70,
-    assignedTo: "1",
-  },
-  {
-    id: "2",
-    title: "Consulting Services",
-    value: 25000,
-    company: "Tech Corp",
-    stage: "cold",
-    probability: 50,
-    assignedTo: "2",
-  },
-];
-
 const stageColumns: { id: DealStage; title: string; color: string }[] = [
   { id: "qualify", title: "Qualify", color: "bg-gray-100" },
   { id: "cold", title: "Cold", color: "bg-blue-50" },
@@ -54,11 +35,56 @@ const stageColumns: { id: DealStage; title: string; color: string }[] = [
 ];
 
 const Deals = () => {
-  const [deals, setDeals] = useState<Deal[]>(initialDeals);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const onDragEnd = (result: any) => {
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/signin");
+      }
+    };
+    checkUser();
+  }, [navigate]);
+
+  useEffect(() => {
+    const fetchDeals = async () => {
+      const { data, error } = await supabase
+        .from("deals")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Error fetching deals",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data) {
+        setDeals(data);
+      }
+    };
+
+    fetchDeals();
+
+    // Subscribe to changes
+    const dealsSubscription = supabase
+      .channel("deals_channel")
+      .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, fetchDeals)
+      .subscribe();
+
+    return () => {
+      dealsSubscription.unsubscribe();
+    };
+  }, [toast]);
+
+  const onDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) return;
@@ -73,6 +99,20 @@ const Deals = () => {
     const deal = deals.find((d) => d.id === draggableId);
     if (!deal) return;
 
+    const { error } = await supabase
+      .from("deals")
+      .update({ stage: destination.droppableId })
+      .eq("id", draggableId);
+
+    if (error) {
+      toast({
+        title: "Error updating deal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newDeals = deals.map((d) =>
       d.id === draggableId
         ? { ...d, stage: destination.droppableId as DealStage }
@@ -86,7 +126,21 @@ const Deals = () => {
     });
   };
 
-  const handleUpdateDeal = (updatedDeal: Deal) => {
+  const handleUpdateDeal = async (updatedDeal: Deal) => {
+    const { error } = await supabase
+      .from("deals")
+      .update(updatedDeal)
+      .eq("id", updatedDeal.id);
+
+    if (error) {
+      toast({
+        title: "Error updating deal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDeals(deals.map((d) => (d.id === updatedDeal.id ? updatedDeal : d)));
     toast({
       title: "Deal Updated",
@@ -94,17 +148,33 @@ const Deals = () => {
     });
   };
 
-  const handleAddDeal = (values: Omit<Deal, "id">) => {
-    const newDeal = {
-      ...values,
-      id: `${deals.length + 1}`,
-    };
-    setDeals([...deals, newDeal]);
-    setIsAddDealOpen(false);
-    toast({
-      title: "Deal Added",
-      description: `${newDeal.title} has been added successfully.`,
-    });
+  const handleAddDeal = async (values: Omit<Deal, "id">) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("deals")
+      .insert([{ ...values, user_id: user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error adding deal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data) {
+      setDeals([data, ...deals]);
+      setIsAddDealOpen(false);
+      toast({
+        title: "Deal Added",
+        description: `${data.title} has been added successfully.`,
+      });
+    }
   };
 
   return (

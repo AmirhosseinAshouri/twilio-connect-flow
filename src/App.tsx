@@ -10,13 +10,20 @@ import Communications from "@/pages/Communications";
 import Settings from "@/pages/Settings";
 import SignIn from "@/pages/SignIn";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    setIsAuthenticated(!!user);
+    supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
   }, []);
 
   if (!isAuthenticated) {
