@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useSettings, TwilioSettings } from "@/hooks/useSettings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ErrorState } from "@/components/ui/error-state";
+import { ErrorState } from "@/components/ErrorState";
 
 interface User {
   id: string;
