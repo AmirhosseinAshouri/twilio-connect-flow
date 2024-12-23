@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DragDropContext } from "@hello-pangea/dnd";
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,20 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { AddDealForm } from "@/components/AddDealForm";
 import { DealColumn } from "@/components/DealColumn";
+import { useDeals } from "@/hooks/useDeals";
+import { Deal, DealStage } from "@/types/deals";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-
-type DealStage = "qualify" | "cold" | "warm" | "hot";
-
-interface Deal {
-  id: string;
-  title: string;
-  value: number;
-  company: string;
-  stage: DealStage;
-  probability: number;
-  assignedTo?: string;
-}
+import { useToast } from "@/hooks/use-toast";
 
 const stageColumns: { id: DealStage; title: string; color: string }[] = [
   { id: "qualify", title: "Qualify", color: "bg-gray-100" },
@@ -35,54 +24,9 @@ const stageColumns: { id: DealStage; title: string; color: string }[] = [
 ];
 
 const Deals = () => {
-  const [deals, setDeals] = useState<Deal[]>([]);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
+  const { deals, updateDeal } = useDeals();
   const { toast } = useToast();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/signin");
-      }
-    };
-    checkUser();
-  }, [navigate]);
-
-  useEffect(() => {
-    const fetchDeals = async () => {
-      const { data, error } = await supabase
-        .from("deals")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        toast({
-          title: "Error fetching deals",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data) {
-        setDeals(data);
-      }
-    };
-
-    fetchDeals();
-
-    // Subscribe to changes
-    const dealsSubscription = supabase
-      .channel("deals_channel")
-      .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, fetchDeals)
-      .subscribe();
-
-    return () => {
-      dealsSubscription.unsubscribe();
-    };
-  }, [toast]);
 
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result;
@@ -101,7 +45,7 @@ const Deals = () => {
 
     const { error } = await supabase
       .from("deals")
-      .update({ stage: destination.droppableId })
+      .update({ stage: destination.droppableId as DealStage })
       .eq("id", draggableId);
 
     if (error) {
@@ -113,38 +57,9 @@ const Deals = () => {
       return;
     }
 
-    const newDeals = deals.map((d) =>
-      d.id === draggableId
-        ? { ...d, stage: destination.droppableId as DealStage }
-        : d
-    );
-
-    setDeals(newDeals);
     toast({
       title: "Deal Updated",
       description: `${deal.title} moved to ${destination.droppableId}`,
-    });
-  };
-
-  const handleUpdateDeal = async (updatedDeal: Deal) => {
-    const { error } = await supabase
-      .from("deals")
-      .update(updatedDeal)
-      .eq("id", updatedDeal.id);
-
-    if (error) {
-      toast({
-        title: "Error updating deal",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setDeals(deals.map((d) => (d.id === updatedDeal.id ? updatedDeal : d)));
-    toast({
-      title: "Deal Updated",
-      description: `${updatedDeal.title} has been updated successfully.`,
     });
   };
 
@@ -168,7 +83,6 @@ const Deals = () => {
     }
 
     if (data) {
-      setDeals([data, ...deals]);
       setIsAddDealOpen(false);
       toast({
         title: "Deal Added",
@@ -207,7 +121,7 @@ const Deals = () => {
                 key={column.id}
                 column={column}
                 deals={deals.filter((d) => d.stage === column.id)}
-                onUpdateDeal={handleUpdateDeal}
+                onUpdateDeal={updateDeal}
               />
             ))}
           </div>
