@@ -27,9 +27,12 @@ const Contacts = () => {
   const { toast } = useToast();
 
   const handleAddContact = (values: ContactFormValues) => {
-    const newContact: Contact = {
+    const newContact = {
       id: (contacts.length + 1).toString(),
-      ...values,
+      name: values.name,
+      email: values.email,
+      phone: values.phone,
+      company: values.company,
     };
     setContacts([...contacts, newContact]);
     setOpen(false);
@@ -79,7 +82,7 @@ const Contacts = () => {
   );
 };
 
-const mockContacts = [
+const mockContacts: Contact[] = [
   {
     id: "1",
     name: "John Doe",

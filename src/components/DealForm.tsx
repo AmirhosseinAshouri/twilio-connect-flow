@@ -39,8 +39,8 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     defaultValues: {
       title: deal.title,
       company: deal.company,
-      value: String(deal.value),
-      probability: String(deal.probability),
+      value: deal.value,
+      probability: deal.probability,
     },
   });
 
@@ -48,8 +48,6 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     onSubmit({
       ...deal,
       ...values,
-      value: Number(values.value),
-      probability: Number(values.probability),
     });
   };
 

@@ -40,18 +40,14 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
     defaultValues: {
       title: "",
       company: "",
-      value: "0",
-      probability: "0",
+      value: 0,
+      probability: 0,
       stage: "qualify",
     },
   });
 
   const handleSubmit = (values: FormValues) => {
-    onSubmit({
-      ...values,
-      value: Number(values.value),
-      probability: Number(values.probability),
-    });
+    onSubmit(values);
   };
 
   return (
