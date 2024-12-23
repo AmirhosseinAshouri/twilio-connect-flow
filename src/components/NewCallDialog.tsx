@@ -11,13 +11,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PhoneCall } from "lucide-react";
-import { useCalls } from "@/hooks";
-import { useSettings } from "@/hooks";
+import { useCalls, useSettings } from "@/hooks";
+import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
-export function NewCallDialog() {
+interface NewCallDialogProps {
+  contact?: Contact;
+  trigger?: React.ReactNode;
+}
+
+export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const [open, setOpen] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
   const { createCall } = useCalls();
   const { settings } = useSettings();
@@ -43,13 +48,15 @@ export function NewCallDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          <PhoneCall className="mr-2 h-4 w-4" /> New Call
-        </Button>
+        {trigger || (
+          <Button variant="outline">
+            <PhoneCall className="mr-2 h-4 w-4" /> New Call
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New Call</DialogTitle>
+          <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

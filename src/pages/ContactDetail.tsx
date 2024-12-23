@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useContact } from "@/hooks/useContact";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
+import { NewCallDialog } from "@/components/NewCallDialog";
 
 export default function ContactDetail() {
   const { id } = useParams();
@@ -92,10 +93,15 @@ export default function ContactDetail() {
               <CardTitle className="text-lg">Communication</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button variant="outline" className="w-full justify-start">
-                <Phone className="h-4 w-4 mr-2" />
-                Call
-              </Button>
+              <NewCallDialog 
+                contact={contact}
+                trigger={
+                  <Button variant="outline" className="w-full justify-start">
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call
+                  </Button>
+                }
+              />
               <Button variant="outline" className="w-full justify-start">
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Send SMS

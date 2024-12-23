@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
+import { NewCallDialog } from "@/components/NewCallDialog";
 
 interface ContactCardProps {
   contact: {
@@ -35,10 +36,14 @@ export function ContactCard({ contact }: ContactCardProps) {
             <span>{contact.phone}</span>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button variant="outline" size="sm" className="flex-1">
-              <Phone className="h-4 w-4 mr-2" />
-              Call
-            </Button>
+            <NewCallDialog 
+              contact={contact}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Phone className="h-4 w-4" />
+                </Button>
+              }
+            />
             <Button variant="outline" size="sm" className="flex-1">
               <MessageSquare className="h-4 w-4 mr-2" />
               SMS
