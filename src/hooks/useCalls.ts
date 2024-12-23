@@ -78,6 +78,7 @@ export function useCalls() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
         body: JSON.stringify({
           callId: callData.id,
@@ -88,8 +89,17 @@ export function useCalls() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to initiate call");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to initiate call");
       }
+
+      const responseData = await response.json();
+      
+      // Update call with Twilio SID
+      await supabase
+        .from("calls")
+        .update({ twilio_sid: responseData.sid })
+        .eq("id", callData.id);
 
       toast({
         title: "Call Initiated",
