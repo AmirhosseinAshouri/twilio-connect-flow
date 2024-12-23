@@ -1,7 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { ContactCard } from "@/components/ContactCard";
-import { Plus, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { useContacts } from "@/hooks/useContacts";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -10,36 +9,34 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
-import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
-
-interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-}
+import { Plus, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ContactCard } from "@/components/ContactCard";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
 const Contacts = () => {
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const { contacts, loading, addContact } = useContacts();
   const [open, setOpen] = useState(false);
-  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const handleAddContact = (values: ContactFormValues) => {
-    const newContact = {
-      id: (contacts.length + 1).toString(),
-      name: values.name,
-      email: values.email,
-      phone: values.phone,
-      company: values.company,
+  const filteredContacts = contacts.filter(contact => 
+    contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    contact.company.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAddContact = async (values: ContactFormValues) => {
+    const contactData = {
+      name: values.name || '',
+      company: values.company || '',
+      email: values.email || '',
+      phone: values.phone || ''
     };
-    setContacts([...contacts, newContact]);
-    setOpen(false);
-    toast({
-      title: "Contact added",
-      description: `${values.name} has been added to your contacts.`,
-    });
+    const newContact = await addContact(contactData);
+    if (newContact) {
+      setOpen(false);
+    }
   };
 
   return (
@@ -68,42 +65,40 @@ const Contacts = () => {
             <Input
               placeholder="Search contacts..."
               className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {contacts.map((contact) => (
-            <ContactCard key={contact.id} contact={contact} />
-          ))}
+          {loading ? (
+            // Loading skeletons
+            Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <div className="flex gap-2 mt-4">
+                    <Skeleton className="h-9 flex-1" />
+                    <Skeleton className="h-9 flex-1" />
+                    <Skeleton className="h-9 flex-1" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            filteredContacts.map((contact) => (
+              <ContactCard key={contact.id} contact={contact} />
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 };
-
-const mockContacts: Contact[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "(555) 123-4567",
-    company: "Acme Inc",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    phone: "(555) 987-6543",
-    company: "Tech Corp",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    phone: "(555) 456-7890",
-    company: "Global Solutions",
-  },
-];
 
 export default Contacts;

@@ -12,49 +12,25 @@ import {
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
-
-interface Contact {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-}
+import { useContacts } from "@/hooks/useContacts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-      phone: "(555) 123-4567",
-      company: "Acme Inc",
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      phone: "(555) 987-6543",
-      company: "Tech Corp",
-    },
-  ]);
+  const { contacts, loading, addContact } = useContacts();
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  const handleAddContact = (values: ContactFormValues) => {
-    const newContact: Contact = {
-      id: (contacts.length + 1).toString(),
-      name: values.name,
-      email: values.email,
-      phone: values.phone,
-      company: values.company,
+  const handleAddContact = async (values: ContactFormValues) => {
+    const contactData = {
+      name: values.name || '',
+      company: values.company || '',
+      email: values.email || '',
+      phone: values.phone || ''
     };
-    setContacts([...contacts, newContact]);
-    setOpen(false);
-    toast({
-      title: "Contact added",
-      description: `${values.name} has been added to your contacts.`,
-    });
+    const newContact = await addContact(contactData);
+    if (newContact) {
+      setOpen(false);
+    }
   };
 
   return (
@@ -86,7 +62,11 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{contacts.length}</p>
+              {loading ? (
+                <Skeleton className="h-10 w-16" />
+              ) : (
+                <p className="text-3xl font-bold">{contacts.length}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -116,9 +96,28 @@ const Index = () => {
         <div>
           <h2 className="text-xl font-semibold mb-4">Recent Contacts</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {contacts.map((contact) => (
-              <ContactCard key={contact.id} contact={contact} />
-            ))}
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <Skeleton className="h-6 w-3/4" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <div className="flex gap-2 mt-4">
+                      <Skeleton className="h-9 flex-1" />
+                      <Skeleton className="h-9 flex-1" />
+                      <Skeleton className="h-9 flex-1" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              contacts.slice(0, 3).map((contact) => (
+                <ContactCard key={contact.id} contact={contact} />
+              ))
+            )}
           </div>
         </div>
       </div>

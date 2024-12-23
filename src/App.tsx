@@ -11,6 +11,7 @@ import Settings from "@/pages/Settings";
 import SignIn from "@/pages/SignIn";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,44 +21,43 @@ function App() {
       setIsAuthenticated(!!session);
     });
 
-    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAuthenticated(!!session);
     });
   }, []);
 
-  if (!isAuthenticated) {
-    return (
+  return (
+    <ErrorBoundary>
       <Router>
-        <Routes>
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="*" element={<Navigate to="/signin" replace />} />
-        </Routes>
+        {!isAuthenticated ? (
+          <>
+            <Routes>
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="*" element={<Navigate to="/signin" replace />} />
+            </Routes>
+            <Toaster />
+          </>
+        ) : (
+          <SidebarProvider>
+            <div className="flex h-screen w-full">
+              <CRMSidebar />
+              <main className="flex-1 overflow-y-auto">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/contacts" element={<Contacts />} />
+                  <Route path="/contacts/:id" element={<ContactDetail />} />
+                  <Route path="/deals" element={<Deals />} />
+                  <Route path="/communications" element={<Communications />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </main>
+            </div>
+          </SidebarProvider>
+        )}
         <Toaster />
       </Router>
-    );
-  }
-
-  return (
-    <Router>
-      <SidebarProvider>
-        <div className="flex h-screen w-full">
-          <CRMSidebar />
-          <main className="flex-1 overflow-y-auto">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/contacts" element={<Contacts />} />
-              <Route path="/contacts/:id" element={<ContactDetail />} />
-              <Route path="/deals" element={<Deals />} />
-              <Route path="/communications" element={<Communications />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-        </div>
-      </SidebarProvider>
-      <Toaster />
-    </Router>
+    </ErrorBoundary>
   );
 }
 
