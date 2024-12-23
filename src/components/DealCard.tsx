@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign } from "lucide-react";
+import { DollarSign, User } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
 
@@ -11,12 +11,23 @@ interface DealCardProps {
     value: number;
     probability: number;
     stage: string;
+    assignedTo?: string;
   };
   onUpdate: (updatedDeal: any) => void;
   provided: any;
 }
 
 export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
+  const getAssignedUserName = (userId?: string) => {
+    if (!userId) return "Unassigned";
+    const users: { [key: string]: string } = {
+      "1": "Admin User",
+      "2": "Jane Smith",
+      "3": "John Doe",
+    };
+    return users[userId] || "Unknown User";
+  };
+
   return (
     <div
       ref={provided.innerRef}
@@ -50,6 +61,15 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                       Probability
                     </span>
                     <span className="font-medium">{deal.probability}%</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Assigned To
+                    </span>
+                    <span className="font-medium flex items-center">
+                      <User className="h-4 w-4 mr-1" />
+                      {getAssignedUserName(deal.assignedTo)}
+                    </span>
                   </div>
                 </div>
               </CardContent>

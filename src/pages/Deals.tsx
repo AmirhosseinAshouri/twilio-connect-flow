@@ -22,6 +22,7 @@ interface Deal {
   company: string;
   stage: DealStage;
   probability: number;
+  assignedTo?: string;
 }
 
 const initialDeals: Deal[] = [
@@ -32,6 +33,7 @@ const initialDeals: Deal[] = [
     company: "Acme Inc",
     stage: "warm",
     probability: 70,
+    assignedTo: "1",
   },
   {
     id: "2",
@@ -40,6 +42,7 @@ const initialDeals: Deal[] = [
     company: "Tech Corp",
     stage: "cold",
     probability: 50,
+    assignedTo: "2",
   },
 ];
 

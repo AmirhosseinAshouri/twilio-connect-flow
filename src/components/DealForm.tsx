@@ -11,12 +11,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
   value: z.coerce.number(),
   probability: z.coerce.number(),
+  assignedTo: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -29,6 +37,7 @@ interface DealFormProps {
     value: number;
     probability: number;
     stage: string;
+    assignedTo?: string;
   };
   onSubmit: (values: any) => void;
 }
@@ -41,6 +50,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
       company: deal.company,
       value: deal.value,
       probability: deal.probability,
+      assignedTo: deal.assignedTo,
     },
   });
 
@@ -107,6 +117,28 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
                   {...field}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="assignedTo"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Assigned To</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a user" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="1">Admin User</SelectItem>
+                  <SelectItem value="2">Jane Smith</SelectItem>
+                  <SelectItem value="3">John Doe</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
