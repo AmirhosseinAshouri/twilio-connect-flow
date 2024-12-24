@@ -62,6 +62,35 @@ export function useContacts() {
     };
   }, [fetchContacts]);
 
+  const addContact = async (values: Omit<Contact, "id" | "user_id" | "created_at">) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data, error } = await supabase
+        .from("contacts")
+        .insert([{ ...values, user_id: user.id }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Contact Added",
+        description: `${values.name} has been added successfully.`,
+      });
+
+      return data;
+    } catch (err) {
+      toast({
+        title: "Error adding contact",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   // Always return an array for contacts, never undefined
   return { contacts, loading, error, addContact };
 }
