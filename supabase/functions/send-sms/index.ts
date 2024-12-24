@@ -13,6 +13,7 @@ interface SMSRequest {
 }
 
 serve(async (req: Request) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,17 +21,25 @@ serve(async (req: Request) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     // Get the user from the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-      req.headers.get('Authorization')?.split(' ')[1] ?? ''
+      authHeader.split(' ')[1]
     );
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
       throw new Error('Not authenticated');
     }
+
+    console.log('Authenticated user:', user.id);
 
     // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
@@ -39,14 +48,16 @@ serve(async (req: Request) => {
       .eq('user_id', user.id)
       .single();
 
-    if (settingsError || !settings) {
+    if (settingsError) {
       console.error('Settings error:', settingsError);
       throw new Error('Failed to fetch Twilio settings');
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
       throw new Error('Twilio settings not configured. Please configure them in the Settings page.');
     }
+
+    console.log('Successfully retrieved Twilio settings');
 
     const { to, message }: SMSRequest = await req.json();
 
@@ -73,6 +84,8 @@ serve(async (req: Request) => {
       console.error('Twilio error:', result);
       throw new Error(result.message || 'Failed to send SMS');
     }
+
+    console.log('SMS sent successfully:', result.sid);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
