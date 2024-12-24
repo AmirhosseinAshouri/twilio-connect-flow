@@ -30,15 +30,10 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading } = useContacts();
+  const { contacts, loading } = useContacts();
 
-  // Early return with loading state
-  if (loading) {
-    return <div>Loading contacts...</div>;
-  }
-
-  // Ensure contacts is always an array
-  const contactsList = Array.isArray(contacts) ? contacts : [];
+  // Ensure contacts is always an array and handle loading state
+  const contactsList = contacts || [];
 
   return (
     <FormControl>
@@ -49,11 +44,16 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
+            disabled={loading}
           >
-            {form.watch("contactId")
-              ? contactsList.find((contact) => contact.id === form.watch("contactId"))
-                  ?.name || "Select contact..."
-              : "Select contact..."}
+            {loading ? (
+              "Loading contacts..."
+            ) : form.watch("contactId") ? (
+              contactsList.find((contact) => contact.id === form.watch("contactId"))
+                ?.name || "Select contact..."
+            ) : (
+              "Select contact..."
+            )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
