@@ -5,7 +5,6 @@ export async function createCall(req: Request) {
   try {
     const { callId, to, from, notes } = await req.json();
 
-    // Get user's Twilio settings
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
 
@@ -17,25 +16,25 @@ export async function createCall(req: Request) {
 
     if (!settings) throw new Error("Twilio settings not found");
 
-    // Initialize Twilio client
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
     );
 
-    // Create call using Twilio
     const call = await client.calls.create({
-      url: `${process.env.VITE_APP_URL}/api/twiml`, // Your TwiML URL
+      url: `${process.env.VITE_APP_URL}/api/twiml`,
       to,
       from,
       statusCallback: `${process.env.VITE_APP_URL}/api/calls/status/${callId}`,
       statusCallbackEvent: ['completed'],
     });
 
-    // Update call record with Twilio SID
     await supabase
       .from("calls")
-      .update({ twilio_sid: call.sid })
+      .update({ 
+        twilio_sid: call.sid,
+        status: 'initiated'
+      })
       .eq("id", callId);
 
     return new Response(JSON.stringify({ success: true }), {
@@ -52,4 +51,4 @@ export async function createCall(req: Request) {
       }
     );
   }
-} 
+}

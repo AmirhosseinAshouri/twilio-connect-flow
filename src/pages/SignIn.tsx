@@ -11,14 +11,12 @@ export default function SignIn() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
         navigate("/");
       }
       
-      // Handle auth errors
-      if (event === 'USER_DELETED' || event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
         toast({
           title: "Signed out",
           description: "You have been signed out successfully.",
@@ -26,14 +24,12 @@ export default function SignIn() {
       }
     });
 
-    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");
       }
     });
 
-    // Cleanup subscription
     return () => {
       subscription?.unsubscribe();
     };
@@ -61,13 +57,6 @@ export default function SignIn() {
             }}
             theme="light"
             providers={[]}
-            onError={(error) => {
-              toast({
-                variant: "destructive",
-                title: "Authentication Error",
-                description: error.message,
-              });
-            }}
           />
         </CardContent>
       </Card>

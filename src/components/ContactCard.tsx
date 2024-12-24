@@ -3,15 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Phone, Mail, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { NewCallDialog } from "@/components/NewCallDialog";
+import { Contact } from "@/types";
 
 interface ContactCardProps {
-  contact: {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    company: string;
-  };
+  contact: Contact;
 }
 
 export function ContactCard({ contact }: ContactCardProps) {
