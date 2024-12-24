@@ -1,15 +1,18 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import twilio from 'twilio';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  process.env.VITE_SUPABASE_URL || '',
+  process.env.VITE_SUPABASE_ANON_KEY || ''
 );
 
 export const setupApiServer = (app: express.Application) => {
   // Create call endpoint
-  app.post('/api/calls/create', async (req, res) => {
+  app.post('/api/calls/create', async (req: Request, res: Response) => {
     try {
       const { callId, to, from, notes } = req.body;
 
@@ -31,10 +34,10 @@ export const setupApiServer = (app: express.Application) => {
 
       // Create call using Twilio
       const call = await client.calls.create({
-        url: `${import.meta.env.VITE_APP_URL}/api/calls/twiml`,
+        url: `${process.env.VITE_APP_URL}/api/calls/twiml`,
         to,
         from,
-        statusCallback: `${import.meta.env.VITE_APP_URL}/api/calls/status`,
+        statusCallback: `${process.env.VITE_APP_URL}/api/calls/status`,
         statusCallbackEvent: ['completed'],
       });
 
@@ -56,7 +59,7 @@ export const setupApiServer = (app: express.Application) => {
   });
 
   // Status callback endpoint
-  app.post('/api/calls/status', async (req, res) => {
+  app.post('/api/calls/status', async (req: Request, res: Response) => {
     try {
       const { CallSid, CallDuration, CallStatus } = req.body;
 
@@ -80,7 +83,7 @@ export const setupApiServer = (app: express.Application) => {
   });
 
   // TwiML endpoint
-  app.get('/api/calls/twiml', (req, res) => {
+  app.get('/api/calls/twiml', (req: Request, res: Response) => {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
     
@@ -91,4 +94,4 @@ export const setupApiServer = (app: express.Application) => {
     res.type('text/xml');
     res.send(response.toString());
   });
-}; 
+};

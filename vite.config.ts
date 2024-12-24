@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import express from 'express';
 import { setupApiServer } from './src/server';
+import type { ViteDevServer } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -17,7 +18,7 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
     {
       name: 'api-server',
-      configureServer(server) {
+      configureServer(server: ViteDevServer) {
         const app = express();
         app.use(express.json());
         setupApiServer(app);
