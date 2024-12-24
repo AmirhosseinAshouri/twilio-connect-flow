@@ -38,13 +38,13 @@ export async function POST(request: Request) {
       settings.twilio_auth_token
     );
 
-    // Create call using Twilio with better error handling
     try {
+      // Create call using Twilio
       const call = await client.calls.create({
-        url: 'https://crm-six-black.vercel.app/api/calls/twiml',
+        url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
         to,
         from: settings.twilio_phone_number,
-        statusCallback: 'https://crm-six-black.vercel.app/api/calls/status',
+        statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
         statusCallbackEvent: ['completed'],
       });
 
