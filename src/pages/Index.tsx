@@ -93,33 +93,8 @@ const Index = () => {
           </Card>
         </div>
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Recent Contacts</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {loading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <Skeleton className="h-6 w-3/4" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <div className="flex gap-2 mt-4">
-                      <Skeleton className="h-9 flex-1" />
-                      <Skeleton className="h-9 flex-1" />
-                      <Skeleton className="h-9 flex-1" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              contacts.slice(0, 3).map((contact) => (
-                <ContactCard key={contact.id} contact={contact} />
-              ))
-            )}
-          </div>
-        </div>
+        
+        
       </div>
     </div>
   );
