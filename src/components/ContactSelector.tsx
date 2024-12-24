@@ -32,9 +32,13 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts = [], loading } = useContacts();
 
+  // Early return with loading state
   if (loading) {
     return <div>Loading contacts...</div>;
   }
+
+  // Ensure contacts is always an array
+  const contactsList = Array.isArray(contacts) ? contacts : [];
 
   return (
     <FormControl>
@@ -47,7 +51,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             className="w-full justify-between"
           >
             {form.watch("contactId")
-              ? contacts.find((contact) => contact.id === form.watch("contactId"))
+              ? contactsList.find((contact) => contact.id === form.watch("contactId"))
                   ?.name || "Select contact..."
               : "Select contact..."}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -58,7 +62,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             <CommandInput placeholder="Search contacts..." />
             <CommandEmpty>No contacts found.</CommandEmpty>
             <CommandGroup>
-              {(contacts || []).map((contact) => (
+              {contactsList.map((contact) => (
                 <CommandItem
                   key={contact.id}
                   value={contact.id}
