@@ -8,7 +8,7 @@ export interface Contact {
   created_at: string;
 }
 
-export type { Deal, DealStage } from './deals';
+export { Deal, DealStage } from './deals';
 
 export interface Call {
   id: string;
