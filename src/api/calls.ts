@@ -8,13 +8,21 @@ export async function createCall(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
 
-    const { data: settings } = await supabase
+    // First check if settings exist
+    const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("*")
       .eq("user_id", user.id)
       .single();
 
-    if (!settings) throw new Error("Twilio settings not found");
+    if (settingsError) {
+      console.error('Error fetching settings:', settingsError);
+      throw new Error("Failed to fetch Twilio settings");
+    }
+
+    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error("Please configure your Twilio settings in the Settings page before making calls");
+    }
 
     const client = twilio(
       settings.twilio_account_sid,
@@ -41,6 +49,7 @@ export async function createCall(req: Request) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error('Call creation error:', error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : "Unknown error" 
