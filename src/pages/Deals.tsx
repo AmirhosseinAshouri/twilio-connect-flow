@@ -85,12 +85,23 @@ const Deals = () => {
     const deal = deals.find((d) => d.id === draggableId);
     if (!deal) return;
 
+    // Update local state immediately for a smoother UX
+    const updatedDeal = { ...deal, stage: destination.droppableId as DealStage };
+    setDeals(currentDeals =>
+      currentDeals.map(d => d.id === draggableId ? updatedDeal : d)
+    );
+
     const { error } = await supabase
       .from("deals")
       .update({ stage: destination.droppableId as DealStage })
       .eq("id", draggableId);
 
     if (error) {
+      // Revert the state if the update fails
+      setDeals(currentDeals =>
+        currentDeals.map(d => d.id === draggableId ? deal : d)
+      );
+      
       toast({
         title: "Error updating deal",
         description: error.message,
