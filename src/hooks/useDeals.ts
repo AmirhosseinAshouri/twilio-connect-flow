@@ -22,7 +22,7 @@ export function useDeals() {
 
         if (error) throw error;
 
-        setDeals(data || []);
+        setDeals(data as Deal[]);
       } catch (err) {
         setError(err as Error);
         toast({
