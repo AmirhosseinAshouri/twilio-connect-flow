@@ -32,7 +32,10 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts = [], loading } = useContacts();
 
-  const selectedContact = contacts.find(
+  // Ensure we have a valid array of contacts
+  const validContacts = Array.isArray(contacts) ? contacts : [];
+
+  const selectedContact = validContacts.find(
     (contact) => contact.id === form.watch("contactId")
   );
 
@@ -58,7 +61,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             <CommandInput placeholder="Search contacts..." />
             <CommandEmpty>No contacts found.</CommandEmpty>
             <CommandGroup>
-              {contacts.map((contact) => (
+              {validContacts.map((contact) => (
                 <CommandItem
                   key={contact.id}
                   value={contact.id}
