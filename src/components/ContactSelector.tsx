@@ -30,9 +30,9 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], isLoading } = useContacts();
+  const { contacts = [], loading } = useContacts();
 
-  if (isLoading) {
+  if (loading) {
     return <div>Loading contacts...</div>;
   }
 
@@ -58,7 +58,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             <CommandInput placeholder="Search contacts..." />
             <CommandEmpty>No contacts found.</CommandEmpty>
             <CommandGroup>
-              {contacts.map((contact) => (
+              {(contacts || []).map((contact) => (
                 <CommandItem
                   key={contact.id}
                   value={contact.id}
