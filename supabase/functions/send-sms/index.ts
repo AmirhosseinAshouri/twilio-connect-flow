@@ -23,26 +23,34 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser(
+    // Get the user from the authorization header
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
       req.headers.get('Authorization')?.split(' ')[1] ?? ''
     );
 
-    if (!user) {
+    if (authError || !user) {
       throw new Error('Not authenticated');
     }
 
-    const { data: settings } = await supabaseClient
+    // Get the user's Twilio settings
+    const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
       .eq('user_id', user.id)
       .single();
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-      throw new Error('Twilio settings not configured');
+    if (settingsError || !settings) {
+      console.error('Settings error:', settingsError);
+      throw new Error('Failed to fetch Twilio settings');
+    }
+
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error('Twilio settings not configured. Please configure them in the Settings page.');
     }
 
     const { to, message }: SMSRequest = await req.json();
 
+    // Send SMS using Twilio
     const twilioResponse = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${settings.twilio_account_sid}/Messages.json`,
       {
@@ -61,11 +69,17 @@ serve(async (req: Request) => {
 
     const result = await twilioResponse.json();
 
+    if (!twilioResponse.ok) {
+      console.error('Twilio error:', result);
+      throw new Error(result.message || 'Failed to send SMS');
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: twilioResponse.ok ? 200 : 400,
+      status: 200,
     });
   } catch (error) {
+    console.error('Error in send-sms function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
