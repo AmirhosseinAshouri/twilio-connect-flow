@@ -17,9 +17,13 @@ export function useCalls() {
         setLoading(true);
         setError(null);
         
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
           .from("calls")
           .select("*, contacts(name)")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;

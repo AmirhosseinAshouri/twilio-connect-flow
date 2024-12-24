@@ -41,10 +41,10 @@ export async function POST(request: Request) {
     try {
       // Create call using Twilio
       const call = await client.calls.create({
-        url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
+        url: `${process.env.VITE_APP_URL}/api/calls/twiml`,
         to,
         from: settings.twilio_phone_number,
-        statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
+        statusCallback: `${process.env.VITE_APP_URL}/api/calls/status`,
         statusCallbackEvent: ['completed'],
       });
 
