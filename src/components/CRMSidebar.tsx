@@ -25,7 +25,7 @@ export function CRMSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            <span className="text-xl font-bold text-crm-primary">SimpleCRM</span>
+            <span className="text-xl font-bold text-crm-primary">CRM</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
