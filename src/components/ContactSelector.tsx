@@ -32,8 +32,8 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts, loading } = useContacts();
 
-  // Ensure contacts is always an array and handle loading state
-  const contactsList = contacts || [];
+  // Initialize contacts list as an empty array if undefined
+  const contactsList = contacts?.length ? contacts : [];
 
   return (
     <FormControl>
