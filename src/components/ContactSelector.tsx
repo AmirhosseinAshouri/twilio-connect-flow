@@ -30,7 +30,11 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading } = useContacts();
+  const { contacts = [], loading } = useContacts();
+
+  const selectedContact = contacts.find(
+    (contact) => contact.id === form.watch("contactId")
+  );
 
   return (
     <FormControl>
@@ -43,14 +47,9 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             className="w-full justify-between"
             disabled={loading}
           >
-            {loading ? (
-              "Loading contacts..."
-            ) : form.watch("contactId") ? (
-              contacts.find((contact) => contact.id === form.watch("contactId"))
-                ?.name || "Select contact..."
-            ) : (
-              "Select contact..."
-            )}
+            {loading
+              ? "Loading contacts..."
+              : selectedContact?.name || "Select contact..."}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>

@@ -1,66 +1,46 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { Contact } from "@/types/contact";
 
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/signin");
-      }
-    };
-    checkUser();
-  }, [navigate]);
-
-  const fetchContacts = useCallback(async () => {
+  const fetchContacts = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("contacts")
         .select("*")
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id)
+        .order("name");
 
       if (error) throw error;
 
-      // Ensure we always set an array, even if data is null
       setContacts(data || []);
+      setError(null);
     } catch (err) {
+      console.error("Error fetching contacts:", err);
       setError(err as Error);
+      setContacts([]); // Ensure contacts is always an array
       toast({
         title: "Error fetching contacts",
         description: (err as Error).message,
         variant: "destructive",
       });
-      // Set empty array on error to prevent undefined
-      setContacts([]);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  };
 
   useEffect(() => {
     fetchContacts();
-
-    const contactsSubscription = supabase
-      .channel("contacts_channel")
-      .on("postgres_changes", { event: "*", schema: "public", table: "contacts" }, fetchContacts)
-      .subscribe();
-
-    return () => {
-      contactsSubscription.unsubscribe();
-    };
-  }, [fetchContacts]);
+  }, []);
 
   const addContact = async (values: Omit<Contact, "id" | "user_id" | "created_at">) => {
     try {
@@ -74,6 +54,9 @@ export function useContacts() {
         .single();
 
       if (error) throw error;
+
+      // Refresh contacts list
+      await fetchContacts();
 
       toast({
         title: "Contact Added",
@@ -91,6 +74,5 @@ export function useContacts() {
     }
   };
 
-  // Always return an array for contacts, never undefined
   return { contacts, loading, error, addContact };
 }
