@@ -12,7 +12,7 @@ import {
 import { AddDealForm } from "@/components/AddDealForm";
 import { DealColumn } from "@/components/DealColumn";
 import { useDeals } from "@/hooks/useDeals";
-import { Deal, DealStage } from "@/types/deals";
+import { Deal, DealStage } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,7 +29,6 @@ const Deals = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Subscribe to real-time updates
     const channel = supabase
       .channel('public:deals')
       .on(

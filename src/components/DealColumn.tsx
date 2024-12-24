@@ -1,5 +1,6 @@
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { DealCard } from "./DealCard";
+import { Deal } from "@/types";
 
 interface DealColumnProps {
   column: {
@@ -7,15 +8,8 @@ interface DealColumnProps {
     title: string;
     color: string;
   };
-  deals: Array<{
-    id: string;
-    title: string;
-    company: string;
-    value: number;
-    probability: number;
-    stage: string;
-  }>;
-  onUpdateDeal: (deal: any) => void;
+  deals: Deal[];
+  onUpdateDeal: (deal: Deal) => void;
 }
 
 export function DealColumn({ column, deals, onUpdateDeal }: DealColumnProps) {
