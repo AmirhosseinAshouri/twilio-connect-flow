@@ -17,9 +17,13 @@ export function useCalls() {
         setLoading(true);
         setError(null);
         
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         const { data, error } = await supabase
           .from("calls")
           .select("*, contacts(name)")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -52,12 +56,24 @@ export function useCalls() {
 
   const createCall = async (contactId: string, phone: string, notes: string) => {
     try {
-      if (!settings) {
-        throw new Error("Twilio settings not configured");
+      if (!settings?.twilio_phone_number) {
+        toast({
+          title: "Error",
+          description: "Please configure your Twilio settings in the Settings page first",
+          variant: "destructive",
+        });
+        return null;
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "User not authenticated",
+          variant: "destructive",
+        });
+        return null;
+      }
 
       // First create the call record in our database
       const { data: callData, error: callError } = await supabase
@@ -71,7 +87,14 @@ export function useCalls() {
         .select()
         .single();
 
-      if (callError) throw callError;
+      if (callError) {
+        toast({
+          title: "Error",
+          description: "Failed to create call record",
+          variant: "destructive",
+        });
+        return null;
+      }
 
       // Then initiate the call via our API
       const response = await fetch("/api/calls/create", {
@@ -87,12 +110,16 @@ export function useCalls() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to initiate call");
-      }
-
       const responseData = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: "Error",
+          description: responseData.error || "Failed to initiate call",
+          variant: "destructive",
+        });
+        return null;
+      }
       
       toast({
         title: "Call Initiated",
@@ -111,4 +138,4 @@ export function useCalls() {
   };
 
   return { calls, loading, error, createCall };
-} 
+}

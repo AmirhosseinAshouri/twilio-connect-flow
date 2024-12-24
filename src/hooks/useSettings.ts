@@ -23,13 +23,30 @@ export function useSettings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from("settings")
           .select("*")
           .eq("user_id", user.id)
           .single();
 
-        if (error) throw error;
+        if (error && error.code === 'PGRST116') {
+          // Settings don't exist yet, create them
+          const { data: newSettings, error: insertError } = await supabase
+            .from("settings")
+            .insert([{ 
+              user_id: user.id,
+              twilio_account_sid: '',
+              twilio_auth_token: '',
+              twilio_phone_number: ''
+            }])
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          data = newSettings;
+        } else if (error) {
+          throw error;
+        }
 
         setSettings(data);
       } catch (err) {
@@ -75,4 +92,4 @@ export function useSettings() {
   };
 
   return { settings, loading, error, updateSettings };
-} 
+}

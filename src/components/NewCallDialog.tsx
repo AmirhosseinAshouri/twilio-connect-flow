@@ -24,34 +24,54 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { createCall } = useCalls();
   const { settings } = useSettings();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!settings?.twilio_phone_number) {
+    setIsLoading(true);
+
+    try {
+      if (!settings?.twilio_phone_number) {
+        toast({
+          title: "Error",
+          description: "Please configure Twilio settings in the Settings page first",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!contact?.id) {
+        toast({
+          title: "Error",
+          description: "Contact information is missing",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const result = await createCall(contact.id, phone, notes);
+      
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Call initiated successfully",
+        });
+        setOpen(false);
+        setPhone("");
+        setNotes("");
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: "Please configure Twilio settings first",
+        description: error instanceof Error ? error.message : "Failed to initiate call",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (!contact?.id) {
-      toast({
-        title: "Error",
-        description: "Contact information is missing",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    await createCall(contact.id, phone, notes);
-    setOpen(false);
-    setPhone("");
-    setNotes("");
   };
 
   return (
@@ -88,9 +108,11 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
               placeholder="Call notes..."
             />
           </div>
-          <Button type="submit">Start Call</Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Initiating Call..." : "Start Call"}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
   );
-} 
+}

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DragDropContext } from "@hello-pangea/dnd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
 import { AddDealForm } from "@/components/AddDealForm";
 import { DealColumn } from "@/components/DealColumn";
 import { useDeals } from "@/hooks/useDeals";
-import { Deal, DealStage } from "@/types/deals";
+import { Deal, DealStage } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,8 +25,50 @@ const stageColumns: { id: DealStage; title: string; color: string }[] = [
 
 const Deals = () => {
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
-  const { deals, updateDeal } = useDeals();
+  const { deals, setDeals, updateDeal } = useDeals();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:deals')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deals'
+        },
+        (payload) => {
+          console.log('Real-time update:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            setDeals((currentDeals) =>
+              currentDeals.map((deal) =>
+                deal.id === payload.new.id ? { ...deal, ...payload.new } : deal
+              )
+            );
+            
+            if (payload.old.stage !== payload.new.stage) {
+              toast({
+                title: "Deal Moved",
+                description: `Deal "${payload.new.title}" moved to ${payload.new.stage}`,
+              });
+            }
+          } else if (payload.eventType === 'INSERT') {
+            setDeals((currentDeals) => [...currentDeals, payload.new as Deal]);
+          } else if (payload.eventType === 'DELETE') {
+            setDeals((currentDeals) =>
+              currentDeals.filter((deal) => deal.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [setDeals, toast]);
 
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result;
@@ -43,12 +85,23 @@ const Deals = () => {
     const deal = deals.find((d) => d.id === draggableId);
     if (!deal) return;
 
+    // Update local state immediately for a smoother UX
+    const updatedDeal = { ...deal, stage: destination.droppableId as DealStage };
+    setDeals(currentDeals =>
+      currentDeals.map(d => d.id === draggableId ? updatedDeal : d)
+    );
+
     const { error } = await supabase
       .from("deals")
       .update({ stage: destination.droppableId as DealStage })
       .eq("id", draggableId);
 
     if (error) {
+      // Revert the state if the update fails
+      setDeals(currentDeals =>
+        currentDeals.map(d => d.id === draggableId ? deal : d)
+      );
+      
       toast({
         title: "Error updating deal",
         description: error.message,
@@ -56,11 +109,6 @@ const Deals = () => {
       });
       return;
     }
-
-    toast({
-      title: "Deal Updated",
-      description: `${deal.title} moved to ${destination.droppableId}`,
-    });
   };
 
   const handleAddDeal = async (values: Omit<Deal, "id">) => {

@@ -5,43 +5,51 @@ export async function createCall(req: Request) {
   try {
     const { callId, to, from, notes } = await req.json();
 
-    // Get user's Twilio settings
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("User not authenticated");
 
-    const { data: settings } = await supabase
+    // First check if settings exist
+    const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("*")
       .eq("user_id", user.id)
       .single();
 
-    if (!settings) throw new Error("Twilio settings not found");
+    if (settingsError) {
+      console.error('Error fetching settings:', settingsError);
+      throw new Error("Failed to fetch Twilio settings");
+    }
 
-    // Initialize Twilio client
+    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error("Please configure your Twilio settings in the Settings page before making calls");
+    }
+
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
     );
 
-    // Create call using Twilio
     const call = await client.calls.create({
-      url: `${process.env.VITE_APP_URL}/api/twiml`, // Your TwiML URL
+      url: `${process.env.VITE_APP_URL}/api/twiml`,
       to,
       from,
       statusCallback: `${process.env.VITE_APP_URL}/api/calls/status/${callId}`,
       statusCallbackEvent: ['completed'],
     });
 
-    // Update call record with Twilio SID
     await supabase
       .from("calls")
-      .update({ twilio_sid: call.sid })
+      .update({ 
+        twilio_sid: call.sid,
+        status: 'initiated'
+      })
       .eq("id", callId);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error('Call creation error:', error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : "Unknown error" 
@@ -52,4 +60,4 @@ export async function createCall(req: Request) {
       }
     );
   }
-} 
+}

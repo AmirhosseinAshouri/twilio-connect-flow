@@ -1,4 +1,5 @@
 import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ErrorStateProps {
   title?: string;
@@ -19,4 +20,4 @@ export function ErrorState({ title = "Error", message, onRetry }: ErrorStateProp
       )}
     </div>
   );
-} 
+}
