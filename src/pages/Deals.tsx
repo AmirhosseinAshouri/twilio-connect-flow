@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DragDropContext } from "@hello-pangea/dnd";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,8 +25,51 @@ const stageColumns: { id: DealStage; title: string; color: string }[] = [
 
 const Deals = () => {
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
-  const { deals, updateDeal } = useDeals();
+  const { deals, setDeals, updateDeal } = useDeals();
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('public:deals')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deals'
+        },
+        (payload) => {
+          console.log('Real-time update:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            setDeals((currentDeals) =>
+              currentDeals.map((deal) =>
+                deal.id === payload.new.id ? { ...deal, ...payload.new } : deal
+              )
+            );
+            
+            if (payload.old.stage !== payload.new.stage) {
+              toast({
+                title: "Deal Moved",
+                description: `Deal "${payload.new.title}" moved to ${payload.new.stage}`,
+              });
+            }
+          } else if (payload.eventType === 'INSERT') {
+            setDeals((currentDeals) => [...currentDeals, payload.new as Deal]);
+          } else if (payload.eventType === 'DELETE') {
+            setDeals((currentDeals) =>
+              currentDeals.filter((deal) => deal.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [setDeals, toast]);
 
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result;
@@ -56,11 +99,6 @@ const Deals = () => {
       });
       return;
     }
-
-    toast({
-      title: "Deal Updated",
-      description: `${deal.title} moved to ${destination.droppableId}`,
-    });
   };
 
   const handleAddDeal = async (values: Omit<Deal, "id">) => {

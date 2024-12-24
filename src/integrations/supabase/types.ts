@@ -9,6 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      calls: {
+        Row: {
+          contact_id: string
+          created_at: string
+          duration: number | null
+          id: string
+          notes: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          duration?: number | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
           assigned_to: string | null
@@ -69,6 +137,33 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          created_at: string
+          id: string
+          twilio_account_sid: string | null
+          twilio_auth_token: string | null
+          twilio_phone_number: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          twilio_account_sid?: string | null
+          twilio_auth_token?: string | null
+          twilio_phone_number?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          twilio_account_sid?: string | null
+          twilio_auth_token?: string | null
+          twilio_phone_number?: string | null
+          user_id?: string
         }
         Relationships: []
       }

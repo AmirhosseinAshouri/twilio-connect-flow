@@ -38,5 +38,33 @@ export function useDeals() {
     fetchDeals();
   }, [toast]);
 
-  return { deals, loading, error };
+  const updateDeal = async (updatedDeal: Deal) => {
+    try {
+      const { error } = await supabase
+        .from("deals")
+        .update(updatedDeal)
+        .eq("id", updatedDeal.id);
+
+      if (error) throw error;
+
+      setDeals((currentDeals) =>
+        currentDeals.map((deal) =>
+          deal.id === updatedDeal.id ? updatedDeal : deal
+        )
+      );
+
+      toast({
+        title: "Deal Updated",
+        description: `${updatedDeal.title} has been updated successfully.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error updating deal",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  return { deals, loading, error, setDeals, updateDeal };
 }
