@@ -8,7 +8,21 @@ export interface Contact {
   created_at: string;
 }
 
-export type { Deal, DealStage } from './deals';
+export interface Deal {
+  id: string;
+  title: string;
+  company: string;
+  value: number;
+  probability: number;
+  stage: string;
+  user_id: string;
+  assigned_to?: string;
+  contact_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type { DealStage } from './deals';
 
 export interface Call {
   id: string;
