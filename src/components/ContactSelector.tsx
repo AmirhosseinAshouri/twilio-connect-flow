@@ -32,9 +32,6 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts, loading } = useContacts();
 
-  // Initialize contacts list as an empty array if undefined
-  const contactsList = contacts?.length ? contacts : [];
-
   return (
     <FormControl>
       <Popover open={open} onOpenChange={setOpen}>
@@ -49,7 +46,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             {loading ? (
               "Loading contacts..."
             ) : form.watch("contactId") ? (
-              contactsList.find((contact) => contact.id === form.watch("contactId"))
+              contacts.find((contact) => contact.id === form.watch("contactId"))
                 ?.name || "Select contact..."
             ) : (
               "Select contact..."
@@ -62,7 +59,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             <CommandInput placeholder="Search contacts..." />
             <CommandEmpty>No contacts found.</CommandEmpty>
             <CommandGroup>
-              {contactsList.map((contact) => (
+              {contacts.map((contact) => (
                 <CommandItem
                   key={contact.id}
                   value={contact.id}
