@@ -19,11 +19,17 @@ export async function POST(request: Request) {
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError);
-      throw new Error("Failed to fetch Twilio settings");
+      return NextResponse.json(
+        { error: "Failed to fetch Twilio settings" },
+        { status: 500 }
+      );
     }
 
     if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-      throw new Error("Please configure your Twilio settings in the Settings page before making calls");
+      return NextResponse.json(
+        { error: "Please configure your Twilio settings in the Settings page before making calls" },
+        { status: 400 }
+      );
     }
 
     // Initialize Twilio client
@@ -37,7 +43,7 @@ export async function POST(request: Request) {
       const call = await client.calls.create({
         url: 'https://crm-six-black.vercel.app/api/calls/twiml',
         to,
-        from,
+        from: settings.twilio_phone_number,
         statusCallback: 'https://crm-six-black.vercel.app/api/calls/status',
         statusCallbackEvent: ['completed'],
       });
@@ -50,13 +56,19 @@ export async function POST(request: Request) {
 
       if (updateError) {
         console.error('Call update error:', updateError);
-        throw updateError;
+        return NextResponse.json(
+          { error: "Failed to update call record" },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({ success: true, sid: call.sid });
     } catch (twilioError) {
       console.error('Twilio call creation error:', twilioError);
-      throw new Error(twilioError instanceof Error ? twilioError.message : "Failed to create Twilio call");
+      return NextResponse.json(
+        { error: twilioError instanceof Error ? twilioError.message : "Failed to create Twilio call" },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('Call creation error:', error);
