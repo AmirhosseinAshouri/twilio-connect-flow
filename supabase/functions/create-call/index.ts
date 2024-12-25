@@ -85,12 +85,15 @@ serve(async (req: Request) => {
 
     console.log('Creating Twilio call...');
 
-    // Create call using Twilio with hardcoded URLs
+    // Create call using Twilio with static string URLs
+    const twimlUrl = `https://fbwxtooicqpqotherube.functions.supabase.co/twiml`;
+    const statusCallbackUrl = `https://fbwxtooicqpqotherube.functions.supabase.co/call-status`;
+
     const call = await client.calls.create({
-      url: 'https://fbwxtooicqpqotherube.functions.supabase.co/twiml',
+      url: twimlUrl,
       to,
       from: settings.twilio_phone_number,
-      statusCallback: 'https://fbwxtooicqpqotherube.functions.supabase.co/call-status',
+      statusCallback: statusCallbackUrl,
       statusCallbackEvent: ['completed'],
     });
 
