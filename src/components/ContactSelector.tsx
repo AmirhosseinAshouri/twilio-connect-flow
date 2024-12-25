@@ -69,33 +69,27 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             <Command className="border rounded-md">
               <CommandInput placeholder="Search contacts..." />
               <CommandEmpty>No contacts found.</CommandEmpty>
-              {validContacts.length > 0 ? (
-                <CommandGroup className="max-h-40 overflow-auto">
-                  {validContacts.map((contact) => (
-                    <CommandItem
-                      key={contact.id}
-                      value={contact.id}
-                      onSelect={() => {
-                        field.onChange(contact.id);
-                        onSelect(contact);
-                      }}
-                    >
-                      <div>
-                        <div>{contact.name}</div>
-                        {contact.company && (
-                          <div className="text-sm text-muted-foreground">
-                            {contact.company}
-                          </div>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ) : (
-                <div className="p-4 text-sm text-muted-foreground">
-                  No contacts available.
-                </div>
-              )}
+              <CommandGroup>
+                {validContacts.map((contact) => (
+                  <CommandItem
+                    key={contact.id}
+                    value={contact.id}
+                    onSelect={() => {
+                      field.onChange(contact.id);
+                      onSelect(contact);
+                    }}
+                  >
+                    <div>
+                      <div>{contact.name}</div>
+                      {contact.company && (
+                        <div className="text-sm text-muted-foreground">
+                          {contact.company}
+                        </div>
+                      )}
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
             </Command>
           </FormControl>
           <FormMessage />
