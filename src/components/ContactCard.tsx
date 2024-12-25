@@ -30,11 +30,25 @@ export function ContactCard({ contact }: ContactCardProps) {
 
   const handleSendSMS = async () => {
     try {
+      // First, create a record in the communications table
+      const { error: dbError } = await supabase
+        .from('communications')
+        .insert({
+          contact_id: contact.id,
+          type: 'sms' as const,
+          direction: 'sent' as const,
+          content: message,
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (dbError) throw dbError;
+
+      // Then, invoke the Edge Function to send the SMS
       const response = await supabase.functions.invoke('send-sms', {
         body: { to: contact.phone, message }
       });
 
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) throw response.error;
 
       toast({
         title: "SMS Sent",
@@ -43,9 +57,10 @@ export function ContactCard({ contact }: ContactCardProps) {
       setSmsOpen(false);
       setMessage("");
     } catch (error) {
+      console.error('SMS Error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to send SMS",
         variant: "destructive",
       });
     }
@@ -53,6 +68,21 @@ export function ContactCard({ contact }: ContactCardProps) {
 
   const handleSendEmail = async () => {
     try {
+      // First, create a record in the communications table
+      const { error: dbError } = await supabase
+        .from('communications')
+        .insert({
+          contact_id: contact.id,
+          type: 'email' as const,
+          direction: 'sent' as const,
+          content: message,
+          subject: subject,
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (dbError) throw dbError;
+
+      // Then, invoke the Edge Function to send the email
       const response = await supabase.functions.invoke('send-email', {
         body: { 
           to: contact.email,
@@ -61,7 +91,7 @@ export function ContactCard({ contact }: ContactCardProps) {
         }
       });
 
-      if (response.error) throw new Error(response.error.message);
+      if (response.error) throw response.error;
 
       toast({
         title: "Email Sent",
@@ -71,9 +101,10 @@ export function ContactCard({ contact }: ContactCardProps) {
       setMessage("");
       setSubject("");
     } catch (error) {
+      console.error('Email Error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to send email",
         variant: "destructive",
       });
     }

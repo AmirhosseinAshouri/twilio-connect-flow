@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export interface Communication {
   id: string;
+  user_id: string;
+  contact_id: string;
   type: 'sms' | 'email';
   direction: 'sent' | 'received';
   content: string;
@@ -30,7 +32,8 @@ export function useCommunications(contactId: string | undefined) {
 
         if (error) throw error;
 
-        setCommunications(data || []);
+        // Explicitly type the data as Communication[]
+        setCommunications(data as Communication[]);
       } catch (err) {
         console.error("Error fetching communications:", err);
         setError(err as Error);
