@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 export interface Communication {
   id: string;
@@ -13,42 +12,34 @@ export interface Communication {
   created_at: string;
 }
 
-export function useCommunications(contactId: string | undefined) {
+export function useCommunications(contactId: string) {
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchCommunications = async () => {
       try {
-        if (!contactId) return;
-
+        setLoading(true);
         const { data, error } = await supabase
-          .from("communications")
-          .select("*")
-          .eq("contact_id", contactId)
-          .order("created_at", { ascending: false });
+          .from('communications')
+          .select('*')
+          .eq('contact_id', contactId)
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        // Explicitly type the data as Communication[]
         setCommunications(data as Communication[]);
       } catch (err) {
         console.error("Error fetching communications:", err);
-        setError(err as Error);
-        toast({
-          title: "Error fetching communications",
-          description: (err as Error).message,
-          variant: "destructive",
-        });
+        setError(err instanceof Error ? err : new Error('Unknown error occurred'));
       } finally {
         setLoading(false);
       }
     };
 
     fetchCommunications();
-  }, [contactId, toast]);
+  }, [contactId]);
 
   return { communications, loading, error };
 }

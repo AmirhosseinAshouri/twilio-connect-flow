@@ -3,113 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Phone, Mail, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { NewCallDialog } from "@/components/NewCallDialog";
+import { SendSMSDialog } from "@/components/SendSMSDialog";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { Contact } from "@/types";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
 
 interface ContactCardProps {
   contact: Contact;
 }
 
 export function ContactCard({ contact }: ContactCardProps) {
-  const [smsOpen, setSmsOpen] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [message, setMessage] = useState("");
-  const [subject, setSubject] = useState("");
-  const { toast } = useToast();
-
-  const handleSendSMS = async () => {
-    try {
-      // First, create a record in the communications table
-      const { error: dbError } = await supabase
-        .from('communications')
-        .insert({
-          contact_id: contact.id,
-          type: 'sms' as const,
-          direction: 'sent' as const,
-          content: message,
-          user_id: (await supabase.auth.getUser()).data.user?.id
-        });
-
-      if (dbError) throw dbError;
-
-      // Then, invoke the Edge Function to send the SMS
-      const response = await supabase.functions.invoke('send-sms', {
-        body: { to: contact.phone, message }
-      });
-
-      if (response.error) throw response.error;
-
-      toast({
-        title: "SMS Sent",
-        description: "Message has been sent successfully.",
-      });
-      setSmsOpen(false);
-      setMessage("");
-    } catch (error) {
-      console.error('SMS Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send SMS",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSendEmail = async () => {
-    try {
-      // First, create a record in the communications table
-      const { error: dbError } = await supabase
-        .from('communications')
-        .insert({
-          contact_id: contact.id,
-          type: 'email' as const,
-          direction: 'sent' as const,
-          content: message,
-          subject: subject,
-          user_id: (await supabase.auth.getUser()).data.user?.id
-        });
-
-      if (dbError) throw dbError;
-
-      // Then, invoke the Edge Function to send the email
-      const response = await supabase.functions.invoke('send-email', {
-        body: { 
-          to: contact.email,
-          subject,
-          html: message
-        }
-      });
-
-      if (response.error) throw response.error;
-
-      toast({
-        title: "Email Sent",
-        description: "Email has been sent successfully.",
-      });
-      setEmailOpen(false);
-      setMessage("");
-      setSubject("");
-    } catch (error) {
-      console.error('Email Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send email",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
@@ -139,67 +41,8 @@ export function ContactCard({ contact }: ContactCardProps) {
                 </Button>
               }
             />
-            
-            <Dialog open={smsOpen} onOpenChange={setSmsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  SMS
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Send SMS to {contact.name}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
-                    <Textarea
-                      id="message"
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Type your message..."
-                    />
-                  </div>
-                  <Button onClick={handleSendSMS}>Send SMS</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Email
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Send Email to {contact.name}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="subject">Subject</Label>
-                    <Textarea
-                      id="subject"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      placeholder="Email subject..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email-message">Message</Label>
-                    <Textarea
-                      id="email-message"
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Type your message..."
-                    />
-                  </div>
-                  <Button onClick={handleSendEmail}>Send Email</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <SendSMSDialog contact={contact} />
+            <SendEmailDialog contact={contact} />
           </div>
         </div>
       </CardContent>
