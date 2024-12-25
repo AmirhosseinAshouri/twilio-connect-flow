@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ContactSelector, Contact } from "./ContactSelector";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -26,7 +25,6 @@ const formSchema = z.object({
   value: z.coerce.number(),
   probability: z.coerce.number(),
   assignedTo: z.string().optional(),
-  contactId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -54,7 +52,6 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
       value: deal.value,
       probability: deal.probability,
       assignedTo: deal.assignedTo,
-      contactId: deal.contactId,
     },
   });
 
@@ -65,15 +62,9 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     });
   };
 
-  const handleContactSelect = (contact: Contact) => {
-    form.setValue("company", contact.company);
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <ContactSelector form={form} onSelect={handleContactSelect} />
-
         <FormField
           control={form.control}
           name="title"

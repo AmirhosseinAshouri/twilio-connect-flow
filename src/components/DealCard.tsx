@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, User } from "lucide-react";
+import { DollarSign, User, UserCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
+import { useContact } from "@/hooks/useContact";
+import { Link } from "react-router-dom";
 
 interface DealCardProps {
   deal: {
@@ -12,12 +14,15 @@ interface DealCardProps {
     probability: number;
     stage: string;
     assignedTo?: string;
+    contactId?: string;
   };
   onUpdate: (updatedDeal: any) => void;
   provided: any;
 }
 
 export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
+  const { contact } = useContact(deal.contactId || '');
+  
   const getAssignedUserName = (userId?: string) => {
     if (!userId) return "Unassigned";
     const users: { [key: string]: string } = {
@@ -71,6 +76,20 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                       {getAssignedUserName(deal.assignedTo)}
                     </span>
                   </div>
+                  {contact && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Contact
+                      </span>
+                      <Link 
+                        to={`/contacts/${contact.id}`}
+                        className="font-medium flex items-center hover:text-primary"
+                      >
+                        <UserCircle className="h-4 w-4 mr-1" />
+                        {contact.name}
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
