@@ -14,6 +14,7 @@ import { PhoneCall } from "lucide-react";
 import { useCalls, useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface NewCallDialogProps {
   contact?: Contact;
@@ -26,32 +27,33 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { createCall } = useCalls();
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading } = useSettings();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+      toast({
+        title: "Settings Required",
+        description: "Please configure your Twilio settings in the Settings page first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!contact?.id) {
+      toast({
+        title: "Error",
+        description: "Contact information is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      if (!settings?.twilio_phone_number) {
-        toast({
-          title: "Error",
-          description: "Please configure Twilio settings in the Settings page first",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (!contact?.id) {
-        toast({
-          title: "Error",
-          description: "Contact information is missing",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       const result = await createCall(contact.id, phone, notes);
       
       if (result) {
@@ -87,6 +89,13 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
         <DialogHeader>
           <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
         </DialogHeader>
+        {!settings?.twilio_phone_number && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>
+              Please configure your Twilio settings in the Settings page before making calls.
+            </AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
@@ -108,7 +117,10 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
               placeholder="Call notes..."
             />
           </div>
-          <Button type="submit" disabled={isLoading}>
+          <Button 
+            type="submit" 
+            disabled={isLoading || !settings?.twilio_phone_number}
+          >
             {isLoading ? "Initiating Call..." : "Start Call"}
           </Button>
         </form>

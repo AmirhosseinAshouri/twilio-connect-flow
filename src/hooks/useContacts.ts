@@ -55,8 +55,8 @@ export function useContacts() {
 
       if (error) throw error;
 
-      // Refresh contacts list
-      await fetchContacts();
+      // Update contacts list
+      setContacts(prev => [...prev, data]);
 
       toast({
         title: "Contact Added",
@@ -74,5 +74,5 @@ export function useContacts() {
     }
   };
 
-  return { contacts, loading, error, addContact };
+  return { contacts: contacts || [], loading, error, addContact };
 }
