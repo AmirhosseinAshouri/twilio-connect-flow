@@ -85,7 +85,7 @@ serve(async (req: Request) => {
 
     console.log('Creating Twilio call...');
 
-    // Create call using Twilio with static URLs
+    // Create call using Twilio with hardcoded URLs
     const call = await client.calls.create({
       url: 'https://fbwxtooicqpqotherube.functions.supabase.co/twiml',
       to,

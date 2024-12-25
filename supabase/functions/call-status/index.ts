@@ -16,32 +16,29 @@ serve(async (req: Request) => {
   }
 
   try {
-    const formData = await req.formData();
-    const callSid = formData.get('CallSid');
-    const duration = formData.get('CallDuration');
-    const status = formData.get('CallStatus');
-
-    if (!callSid) {
-      throw new Error('Missing CallSid');
-    }
-
-    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Update the call record
+    const formData = await req.formData();
+    const CallSid = formData.get('CallSid');
+    const CallStatus = formData.get('CallStatus');
+    const CallDuration = formData.get('CallDuration');
+
+    if (!CallSid) {
+      throw new Error('Missing CallSid');
+    }
+
     const { error } = await supabaseClient
       .from('calls')
       .update({
-        duration: parseInt(duration as string) || 0,
-        status: status as string,
+        status: CallStatus,
+        duration: CallDuration ? parseInt(CallDuration.toString()) : 0,
       })
-      .eq('twilio_sid', callSid);
+      .eq('twilio_sid', CallSid);
 
     if (error) {
-      console.error('Error updating call status:', error);
       throw error;
     }
 
