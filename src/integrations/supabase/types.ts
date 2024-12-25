@@ -47,6 +47,47 @@ export type Database = {
           },
         ]
       }
+      communications: {
+        Row: {
+          contact_id: string
+          content: string
+          created_at: string
+          direction: string
+          id: string
+          subject: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          contact_id: string
+          content: string
+          created_at?: string
+          direction: string
+          id?: string
+          subject?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          contact_id?: string
+          content?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          subject?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           company: string | null
