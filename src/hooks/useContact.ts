@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { ErrorState } from "@/components/ErrorState";
 
-export function useContact(id: string) {
+export function useContact(id: string | undefined) {
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -16,6 +15,12 @@ export function useContact(id: string) {
         setLoading(true);
         setError(null);
         
+        // Don't fetch if id is undefined or empty
+        if (!id) {
+          setContact(null);
+          return;
+        }
+
         const { data, error } = await supabase
           .from("contacts")
           .select("*")
@@ -41,4 +46,4 @@ export function useContact(id: string) {
   }, [id, toast]);
 
   return { contact, loading, error };
-} 
+}

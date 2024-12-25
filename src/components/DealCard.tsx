@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, User, UserCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
-import { useContact } from "@/hooks/useContact";
+import { useContact } from "@/hooks";
 import { Link } from "react-router-dom";
 
 interface DealCardProps {
@@ -21,7 +21,7 @@ interface DealCardProps {
 }
 
 export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
-  const { contact } = useContact(deal.contactId || '');
+  const { contact } = useContact(deal.contactId);
   
   const getAssignedUserName = (userId?: string) => {
     if (!userId) return "Unassigned";
