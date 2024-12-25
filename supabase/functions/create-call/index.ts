@@ -5,15 +5,20 @@ import { Twilio } from "https://esm.sh/twilio@4.19.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req: Request) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   try {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { 
+        headers: corsHeaders,
+        status: 204
+      });
+    }
+
+    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -26,7 +31,7 @@ serve(async (req: Request) => {
     }
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-      authHeader.split(' ')[1]
+      authHeader.replace('Bearer ', '')
     );
 
     if (authError || !user) {
