@@ -11,10 +11,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PhoneCall } from "lucide-react";
-import { useCalls, useSettings } from "@/hooks";
+import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NewCallDialogProps {
   contact?: Contact;
@@ -26,14 +27,13 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { createCall } = useCalls();
-  const { settings, loading: settingsLoading } = useSettings();
+  const { settings } = useSettings();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+    if (!settings?.twilio_phone_number) {
       toast({
         title: "Settings Required",
         description: "Please configure your Twilio settings in the Settings page first",
@@ -54,18 +54,27 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
     setIsLoading(true);
 
     try {
-      const result = await createCall(contact.id, phone, notes);
-      
-      if (result) {
-        toast({
-          title: "Success",
-          description: "Call initiated successfully",
-        });
-        setOpen(false);
-        setPhone("");
-        setNotes("");
+      const response = await supabase.functions.invoke('create-call', {
+        body: {
+          to: phone,
+          notes,
+          contactId: contact.id,
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
       }
+
+      toast({
+        title: "Success",
+        description: "Call initiated successfully",
+      });
+      setOpen(false);
+      setPhone("");
+      setNotes("");
     } catch (error) {
+      console.error('Call creation error:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to initiate call",
