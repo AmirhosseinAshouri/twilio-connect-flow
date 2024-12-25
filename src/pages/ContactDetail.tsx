@@ -7,6 +7,7 @@ import { useContact } from "@/hooks/useContact";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
 import { NewCallDialog } from "@/components/NewCallDialog";
+import { CommunicationHistory } from "@/components/CommunicationHistory";
 
 export default function ContactDetail() {
   const { id } = useParams();
@@ -127,6 +128,8 @@ export default function ContactDetail() {
             </CardContent>
           </Card>
         </div>
+
+        <CommunicationHistory contactId={contact.id} />
       </div>
     </div>
   );
