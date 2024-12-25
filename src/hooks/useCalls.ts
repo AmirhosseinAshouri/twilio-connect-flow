@@ -96,26 +96,19 @@ export function useCalls() {
         return null;
       }
 
-      // Then initiate the call via our API
-      const response = await fetch("/api/calls/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      // Then initiate the call via our edge function
+      const response = await supabase.functions.invoke('create-call', {
+        body: {
           callId: callData.id,
           to: phone,
-          from: settings.twilio_phone_number,
           notes,
-        }),
+        }
       });
 
-      const responseData = await response.json();
-
-      if (!response.ok) {
+      if (response.error) {
         toast({
           title: "Error",
-          description: responseData.error || "Failed to initiate call",
+          description: response.error.message || "Failed to initiate call",
           variant: "destructive",
         });
         return null;

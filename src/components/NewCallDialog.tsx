@@ -54,17 +54,33 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
     setIsLoading(true);
 
     try {
+      // First create the call record in our database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contact.id,
+          user_id: user.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
+
+      if (callError) throw callError;
+
+      // Then initiate the call via our edge function
       const response = await supabase.functions.invoke('create-call', {
         body: {
+          callId: callData.id,
           to: phone,
           notes,
-          contactId: contact.id,
         }
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
-      }
+      if (response.error) throw response.error;
 
       toast({
         title: "Success",
