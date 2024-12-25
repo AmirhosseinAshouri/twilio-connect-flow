@@ -8,12 +8,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface CallRequest {
-  to: string;
-  notes?: string;
-  contactId: string;
-}
-
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -43,6 +37,13 @@ serve(async (req: Request) => {
 
     console.log('Authenticated user:', user.id);
 
+    // Get the request body
+    const { callId, to, notes } = await req.json();
+    
+    if (!callId || !to) {
+      throw new Error('Missing required fields');
+    }
+
     // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
@@ -50,38 +51,19 @@ serve(async (req: Request) => {
       .eq('user_id', user.id)
       .single();
 
-    if (settingsError) {
+    if (settingsError || !settings) {
       console.error('Settings error:', settingsError);
       throw new Error('Failed to fetch Twilio settings');
     }
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-      throw new Error('Twilio settings not configured. Please configure them in the Settings page.');
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error('Twilio settings not configured');
     }
-
-    console.log('Successfully retrieved Twilio settings');
-
-    const { to, notes, contactId }: CallRequest = await req.json();
 
     // Initialize Twilio client
     const client = new Twilio(settings.twilio_account_sid, settings.twilio_auth_token);
 
-    // Create call record in database
-    const { data: callData, error: callError } = await supabaseClient
-      .from('calls')
-      .insert([{
-        contact_id: contactId,
-        user_id: user.id,
-        notes,
-        status: 'initiated'
-      }])
-      .select()
-      .single();
-
-    if (callError) {
-      console.error('Database error:', callError);
-      throw new Error('Failed to create call record');
-    }
+    console.log('Creating Twilio call...');
 
     // Create call using Twilio
     const call = await client.calls.create({
@@ -92,23 +74,26 @@ serve(async (req: Request) => {
       statusCallbackEvent: ['completed'],
     });
 
+    console.log('Call created:', call.sid);
+
     // Update call record with Twilio SID
     const { error: updateError } = await supabaseClient
       .from('calls')
       .update({ twilio_sid: call.sid })
-      .eq('id', callData.id);
+      .eq('id', callId);
 
     if (updateError) {
       console.error('Update error:', updateError);
       throw new Error('Failed to update call record');
     }
 
-    console.log('Call initiated successfully:', call.sid);
-
-    return new Response(JSON.stringify({ success: true, sid: call.sid }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({ success: true, sid: call.sid }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
   } catch (error) {
     console.error('Error in create-call function:', error);
     return new Response(
