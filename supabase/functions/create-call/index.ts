@@ -8,15 +8,15 @@ const corsHeaders = {
 }
 
 serve(async (req: Request) => {
-  try {
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { 
-        headers: corsHeaders,
-        status: 204
-      });
-    }
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    });
+  }
 
+  try {
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -85,12 +85,12 @@ serve(async (req: Request) => {
 
     console.log('Creating Twilio call...');
 
-    // Create call using Twilio with hardcoded URLs for TwiML and status callback
+    // Create call using Twilio with static URLs
     const call = await client.calls.create({
-      url: 'https://handler.twilio.com/twiml/EH8ccdbd7f0b8fe34357da8ce87cd5d442',
+      url: 'https://fbwxtooicqpqotherube.functions.supabase.co/twiml',
       to,
       from: settings.twilio_phone_number,
-      statusCallback: 'https://fbwxtooicqpqotherube.supabase.co/functions/v1/call-status',
+      statusCallback: 'https://fbwxtooicqpqotherube.functions.supabase.co/call-status',
       statusCallbackEvent: ['completed'],
     });
 
@@ -108,18 +108,30 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, sid: call.sid, callId: callData.id }),
+      JSON.stringify({ 
+        success: true, 
+        sid: call.sid, 
+        callId: callData.id 
+      }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
         status: 200,
       }
     );
   } catch (error) {
     console.error('Error in create-call function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
         status: 400,
       }
     );
