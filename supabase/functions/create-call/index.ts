@@ -5,8 +5,7 @@ import twilio from "https://esm.sh/twilio@4.19.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+}
 
 serve(async (req: Request) => {
   try {
@@ -86,12 +85,14 @@ serve(async (req: Request) => {
 
     console.log('Creating Twilio call...');
 
+    const baseUrl = Deno.env.get('VITE_APP_URL') || '';
+    
     // Create call using Twilio
     const call = await client.calls.create({
-      url: `${Deno.env.get('VITE_APP_URL')}/api/calls/twiml`,
+      url: `${baseUrl}/api/calls/twiml`,
       to,
       from: settings.twilio_phone_number,
-      statusCallback: `${Deno.env.get('VITE_APP_URL')}/api/calls/status`,
+      statusCallback: `${baseUrl}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });
 
