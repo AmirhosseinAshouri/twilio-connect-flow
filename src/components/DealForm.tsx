@@ -25,6 +25,7 @@ const formSchema = z.object({
   value: z.coerce.number(),
   probability: z.coerce.number(),
   assignedTo: z.string().optional(),
+  contactId: z.string().optional(), // Add this back to match the deal type
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -52,6 +53,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
       value: deal.value,
       probability: deal.probability,
       assignedTo: deal.assignedTo,
+      contactId: deal.contactId,
     },
   });
 
