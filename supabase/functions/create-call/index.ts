@@ -3,14 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Twilio } from "https://esm.sh/twilio@4.19.0";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -38,9 +37,9 @@ serve(async (req: Request) => {
     console.log('Authenticated user:', user.id);
 
     // Get the request body
-    const { callId, to, notes } = await req.json();
+    const { contactId, to, notes } = await req.json();
     
-    if (!callId || !to) {
+    if (!contactId || !to) {
       throw new Error('Missing required fields');
     }
 
@@ -58,6 +57,23 @@ serve(async (req: Request) => {
 
     if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
       throw new Error('Twilio settings not configured');
+    }
+
+    // Create call record in database first
+    const { data: callData, error: callError } = await supabaseClient
+      .from('calls')
+      .insert([{
+        contact_id: contactId,
+        user_id: user.id,
+        notes,
+        status: 'initiated'
+      }])
+      .select()
+      .single();
+
+    if (callError) {
+      console.error('Call record creation error:', callError);
+      throw new Error('Failed to create call record');
     }
 
     // Initialize Twilio client
@@ -80,7 +96,7 @@ serve(async (req: Request) => {
     const { error: updateError } = await supabaseClient
       .from('calls')
       .update({ twilio_sid: call.sid })
-      .eq('id', callId);
+      .eq('id', callData.id);
 
     if (updateError) {
       console.error('Update error:', updateError);
@@ -88,7 +104,7 @@ serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, sid: call.sid }),
+      JSON.stringify({ success: true, sid: call.sid, callId: callData.id }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

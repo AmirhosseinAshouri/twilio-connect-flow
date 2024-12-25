@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -54,27 +55,9 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
     setIsLoading(true);
 
     try {
-      // First create the call record in our database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
-      const { data: callData, error: callError } = await supabase
-        .from("calls")
-        .insert([{
-          contact_id: contact.id,
-          user_id: user.id,
-          notes,
-          status: 'initiated'
-        }])
-        .select()
-        .single();
-
-      if (callError) throw callError;
-
-      // Then initiate the call via our edge function
       const response = await supabase.functions.invoke('create-call', {
         body: {
-          callId: callData.id,
+          contactId: contact.id,
           to: phone,
           notes,
         }
@@ -113,6 +96,9 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
+          <DialogDescription>
+            Start a new call with this contact using Twilio.
+          </DialogDescription>
         </DialogHeader>
         {!settings?.twilio_phone_number && (
           <Alert variant="destructive" className="mb-4">
