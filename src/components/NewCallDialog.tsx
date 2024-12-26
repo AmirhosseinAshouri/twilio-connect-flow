@@ -15,7 +15,7 @@ import { PhoneCall } from "lucide-react";
 import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
 interface NewCallDialogProps {
@@ -34,7 +34,7 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!settings?.twilio_phone_number) {
+    if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
       toast({
         title: "Settings Required",
         description: "Please configure your Twilio settings in the Settings page first",
@@ -100,10 +100,16 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
             Start a new call with this contact using Twilio.
           </DialogDescription>
         </DialogHeader>
-        {!settings?.twilio_phone_number && (
-          <Alert variant="destructive" className="mb-4">
+        {(!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) && (
+          <Alert variant="destructive">
+            <AlertTitle>Twilio Settings Required</AlertTitle>
             <AlertDescription>
-              Please configure your Twilio settings in the Settings page before making calls.
+              Please configure your Twilio settings in the Settings page before making calls. You need to set up:
+              <ul className="list-disc pl-4 mt-2">
+                <li>Twilio Account SID</li>
+                <li>Twilio Auth Token</li>
+                <li>Twilio Phone Number</li>
+              </ul>
             </AlertDescription>
           </Alert>
         )}
@@ -130,7 +136,7 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
           </div>
           <Button 
             type="submit" 
-            disabled={isLoading || !settings?.twilio_phone_number}
+            disabled={isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token}
           >
             {isLoading ? "Initiating Call..." : "Start Call"}
           </Button>
