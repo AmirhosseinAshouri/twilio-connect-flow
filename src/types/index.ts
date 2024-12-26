@@ -35,6 +35,18 @@ export interface Call {
   status?: string;
 }
 
+export interface Communication {
+  id: string;
+  contact_id: string;
+  user_id: string;
+  type: 'email' | 'sms' | 'call';
+  direction: 'sent' | 'incoming';
+  content: string;
+  subject?: string;
+  created_at: string;
+  twilio_sid?: string;
+}
+
 export type ContactFormValues = Omit<Contact, 'id' | 'user_id' | 'created_at'>;
 export type DealFormValues = Omit<Deal, 'id' | 'user_id' | 'created_at'>;
 export type CallFormValues = Omit<Call, 'id' | 'user_id' | 'created_at'>;

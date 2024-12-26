@@ -1,9 +1,9 @@
 import { format } from "date-fns";
 import { Phone, Mail, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCommunications, Communication } from "@/hooks/useCommunications";
+import { useCommunications } from "@/hooks/useCommunications";
 import { useCalls } from "@/hooks/useCalls";
-import { Call } from "@/types";
+import { Call, Communication } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface CommunicationHistoryProps {

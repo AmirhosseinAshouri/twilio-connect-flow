@@ -28,9 +28,9 @@ export function useCommunications(contactId?: string) {
           query = query.eq("contact_id", contactId);
         }
 
-        const { data, error } = await query;
+        const { data, error: dbError } = await query;
 
-        if (error) throw error;
+        if (dbError) throw dbError;
 
         setCommunications(data || []);
       } catch (err) {
@@ -62,7 +62,7 @@ export function useCommunications(contactId?: string) {
             setCommunications(prev => [payload.new as Communication, ...prev]);
             toast({
               title: "New Communication",
-              description: `New ${payload.new.type} received`,
+              description: `New ${(payload.new as Communication).type} received`,
             });
           }
         }
@@ -76,3 +76,5 @@ export function useCommunications(contactId?: string) {
 
   return { communications, loading, error };
 }
+
+export type { Communication };
