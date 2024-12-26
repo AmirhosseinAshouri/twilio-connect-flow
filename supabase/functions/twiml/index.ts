@@ -17,8 +17,9 @@ serve(async (req) => {
     return new Response(twiml.toString(), {
       headers: { 
         ...corsHeaders,
-        "Content-Type": "application/xml",
+        "Content-Type": "text/xml",
       },
+      status: 200,
     });
   } catch (error) {
     console.error('Error in twiml function:', error);

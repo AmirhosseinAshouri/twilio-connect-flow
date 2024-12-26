@@ -39,7 +39,7 @@ serve(async (req) => {
     );
 
     console.log('Creating Twilio call...');
-    const baseUrl = 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1';
+    const baseUrl = `${req.url.split('/functions/')[0]}/functions/v1`;
 
     // Create call using Twilio
     const call = await client.calls.create({
