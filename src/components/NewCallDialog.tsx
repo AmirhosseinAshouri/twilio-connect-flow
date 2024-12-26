@@ -82,18 +82,17 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       });
 
       if (response.error) {
-        // Check if it's a missing settings error
-        const errorData = JSON.parse(response.error.message);
-        if (errorData.missingSettings) {
+        const errorData = response.error;
+        if (errorData.body.includes('missingSettings')) {
           toast({
             title: "Twilio Settings Required",
             description: "Please configure your Twilio settings in the Settings page first",
             variant: "destructive",
           });
+          return;
         } else {
-          throw new Error(errorData.error || "Failed to initiate call");
+          throw new Error(errorData.message || "Failed to initiate call");
         }
-        return;
       }
 
       toast({
