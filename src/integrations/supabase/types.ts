@@ -55,6 +55,7 @@ export type Database = {
           direction: string
           id: string
           subject: string | null
+          twilio_sid: string | null
           type: string
           user_id: string
         }
@@ -65,6 +66,7 @@ export type Database = {
           direction: string
           id?: string
           subject?: string | null
+          twilio_sid?: string | null
           type: string
           user_id: string
         }
@@ -75,6 +77,7 @@ export type Database = {
           direction?: string
           id?: string
           subject?: string | null
+          twilio_sid?: string | null
           type?: string
           user_id?: string
         }
