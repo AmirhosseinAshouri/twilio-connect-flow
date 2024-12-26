@@ -23,16 +23,35 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
+    
+    if (userError || !user) {
+      console.error('User fetch error:', userError)
+      throw new Error('Unauthorized')
+    }
+
     // Get user's Twilio settings
-    console.log('Fetching Twilio settings...')
+    console.log('Fetching Twilio settings for user:', user.id)
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("*")
-      .single()
+      .eq("user_id", user.id)
+      .maybeSingle()
 
-    if (settingsError || !settings) {
+    if (settingsError) {
       console.error('Settings fetch error:', settingsError)
-      throw new Error("Twilio settings not found")
+      throw new Error("Failed to fetch Twilio settings")
+    }
+
+    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error("Please configure your Twilio settings in the Settings page first")
     }
 
     // Initialize Twilio client
@@ -56,14 +75,16 @@ serve(async (req) => {
 
     // Update call record with Twilio SID
     console.log('Updating call record with SID:', call.sid)
-    const { error: updateError } = await supabaseClient
-      .from("calls")
-      .update({ twilio_sid: call.sid })
-      .eq("id", callId)
+    if (callId) {
+      const { error: updateError } = await supabaseClient
+        .from("calls")
+        .update({ twilio_sid: call.sid })
+        .eq("id", callId)
 
-    if (updateError) {
-      console.error('Call update error:', updateError)
-      throw updateError
+      if (updateError) {
+        console.error('Call update error:', updateError)
+        throw updateError
+      }
     }
 
     return new Response(
