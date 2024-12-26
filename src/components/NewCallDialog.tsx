@@ -82,16 +82,20 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       });
 
       if (response.error) {
-        const errorBody = JSON.parse(response.error.body);
-        if (errorBody.missingSettings) {
-          toast({
-            title: "Twilio Settings Required",
-            description: "Please configure your Twilio settings in the Settings page first",
-            variant: "destructive",
-          });
-          return;
-        } else {
+        try {
+          const errorBody = JSON.parse(response.error.body);
+          if (errorBody.missingSettings) {
+            toast({
+              title: "Twilio Settings Required",
+              description: "Please configure your Twilio settings in the Settings page first",
+              variant: "destructive",
+            });
+            return;
+          }
           throw new Error(errorBody.error || "Failed to initiate call");
+        } catch (parseError) {
+          console.error('Error parsing response:', parseError);
+          throw new Error("Failed to initiate call");
         }
       }
 
