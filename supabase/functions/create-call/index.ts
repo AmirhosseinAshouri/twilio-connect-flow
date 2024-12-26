@@ -6,7 +6,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -40,7 +40,7 @@ serve(async (req) => {
 
     console.log('Creating Twilio call...');
 
-    // Create call using Twilio with correct Edge Function URLs
+    // Create call using Twilio with hardcoded URLs
     const call = await client.calls.create({
       url: 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1/twiml',
       to,

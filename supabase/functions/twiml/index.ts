@@ -1,44 +1,33 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import twilio from "https://esm.sh/twilio@4.19.0";
+import { Twilio } from "https://esm.sh/twilio@4.19.0";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-serve(async (req: Request) => {
+serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      headers: corsHeaders,
-      status: 204
-    });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const VoiceResponse = twilio.twiml.VoiceResponse;
-    const response = new VoiceResponse();
-    
-    response.say('Hello! This is a call from your CRM system.');
-    response.pause({ length: 1 });
-    response.say('Connecting you now.');
+    const twiml = new Twilio.twiml.VoiceResponse();
+    twiml.say('Hello! This is a call from your CRM system.');
+    twiml.pause({ length: 1 });
+    twiml.say('Connecting you now.');
 
-    return new Response(response.toString(), {
-      headers: {
+    return new Response(twiml.toString(), {
+      headers: { 
         ...corsHeaders,
-        'Content-Type': 'text/xml',
+        "Content-Type": "application/xml",
       },
+      status: 200,
     });
   } catch (error) {
-    console.error('Error generating TwiML:', error);
+    console.error('Error in twiml function:', error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate TwiML' }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
-        status: 500,
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
       }
     );
   }
