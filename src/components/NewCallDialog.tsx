@@ -84,19 +84,21 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       if (response.error) {
         let errorMessage = "Failed to initiate call";
         
-        try {
-          const errorBody = JSON.parse(response.error.body);
-          if (errorBody.missingSettings) {
-            toast({
-              title: "Twilio Settings Required",
-              description: "Please configure your Twilio settings in the Settings page first",
-              variant: "destructive",
-            });
-            return;
+        if (response.error.body) {
+          try {
+            const errorBody = JSON.parse(response.error.body);
+            if (errorBody.missingSettings) {
+              toast({
+                title: "Twilio Settings Required",
+                description: "Please configure your Twilio settings in the Settings page first",
+                variant: "destructive",
+              });
+              return;
+            }
+            errorMessage = errorBody.error || errorMessage;
+          } catch (parseError) {
+            console.error('Error parsing response:', parseError);
           }
-          errorMessage = errorBody.error || errorMessage;
-        } catch (parseError) {
-          console.error('Error parsing response:', parseError);
         }
         
         throw new Error(errorMessage);
