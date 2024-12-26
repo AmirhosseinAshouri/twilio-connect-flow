@@ -39,13 +39,14 @@ serve(async (req) => {
     );
 
     console.log('Creating Twilio call...');
+    const baseUrl = 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1';
 
-    // Create call using Twilio with hardcoded URLs
+    // Create call using Twilio
     const call = await client.calls.create({
-      url: 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1/twiml',
+      url: `${baseUrl}/twiml`,
       to,
       from: settings.twilio_phone_number,
-      statusCallback: 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1/call-status',
+      statusCallback: `${baseUrl}/call-status`,
       statusCallbackEvent: ['completed'],
     });
 
@@ -64,7 +65,7 @@ serve(async (req) => {
     // Return success response
     return new Response(
       JSON.stringify({ success: true, sid: call.sid }),
-      {
+      { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }

@@ -1,6 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Twilio } from "https://esm.sh/twilio@4.19.0";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { Twilio } from "https://esm.sh/twilio@4.19.0";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -19,12 +19,13 @@ serve(async (req) => {
         ...corsHeaders,
         "Content-Type": "application/xml",
       },
-      status: 200,
     });
   } catch (error) {
     console.error('Error in twiml function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
