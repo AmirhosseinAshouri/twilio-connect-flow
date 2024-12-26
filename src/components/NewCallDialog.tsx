@@ -82,8 +82,8 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       });
 
       if (response.error) {
-        const errorData = response.error;
-        if (errorData.body.includes('missingSettings')) {
+        const errorBody = JSON.parse(response.error.body);
+        if (errorBody.missingSettings) {
           toast({
             title: "Twilio Settings Required",
             description: "Please configure your Twilio settings in the Settings page first",
@@ -91,7 +91,7 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
           });
           return;
         } else {
-          throw new Error(errorData.message || "Failed to initiate call");
+          throw new Error(errorBody.error || "Failed to initiate call");
         }
       }
 
