@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Communication } from "@/types";
+import { Communication, CommunicationType, CommunicationDirection } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
 export function useCommunications(contactId?: string) {
@@ -32,7 +32,14 @@ export function useCommunications(contactId?: string) {
 
         if (dbError) throw dbError;
 
-        setCommunications(data || []);
+        // Cast the data to ensure type safety
+        const typedCommunications: Communication[] = (data || []).map(item => ({
+          ...item,
+          type: item.type as CommunicationType,
+          direction: item.direction as CommunicationDirection
+        }));
+
+        setCommunications(typedCommunications);
       } catch (err) {
         setError(err as Error);
         toast({
@@ -59,10 +66,18 @@ export function useCommunications(contactId?: string) {
         }, 
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setCommunications(prev => [payload.new as Communication, ...prev]);
+            const newComm = payload.new as Communication;
+            setCommunications(prev => [
+              {
+                ...newComm,
+                type: newComm.type as CommunicationType,
+                direction: newComm.direction as CommunicationDirection
+              },
+              ...prev
+            ]);
             toast({
               title: "New Communication",
-              description: `New ${(payload.new as Communication).type} received`,
+              description: `New ${newComm.type} received`,
             });
           }
         }

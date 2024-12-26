@@ -35,12 +35,15 @@ export interface Call {
   status?: string;
 }
 
+export type CommunicationType = 'email' | 'sms' | 'call';
+export type CommunicationDirection = 'sent' | 'incoming';
+
 export interface Communication {
   id: string;
   contact_id: string;
   user_id: string;
-  type: 'email' | 'sms' | 'call';
-  direction: 'sent' | 'incoming';
+  type: CommunicationType;
+  direction: CommunicationDirection;
   content: string;
   subject?: string;
   created_at: string;
