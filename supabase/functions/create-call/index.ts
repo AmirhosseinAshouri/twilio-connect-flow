@@ -34,24 +34,45 @@ serve(async (req) => {
     
     if (userError || !user) {
       console.error('User fetch error:', userError)
-      throw new Error('Unauthorized')
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Get user's Twilio settings
     console.log('Fetching Twilio settings for user:', user.id)
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
-      .select("*")
+      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
       .maybeSingle()
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError)
-      throw new Error("Failed to fetch Twilio settings")
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch Twilio settings" }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
-    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      throw new Error("Please configure your Twilio settings in the Settings page first")
+    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Please configure your Twilio settings in the Settings page first",
+          missingSettings: true 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Initialize Twilio client
@@ -103,7 +124,7 @@ serve(async (req) => {
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
+        status: 500,
       }
     )
   }

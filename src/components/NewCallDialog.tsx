@@ -55,15 +55,42 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
     setIsLoading(true);
 
     try {
+      // First create the call record
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contact.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
+
+      if (callError) throw callError;
+
+      // Then initiate the call
       const response = await supabase.functions.invoke('create-call', {
         body: {
-          contactId: contact.id,
+          callId: callData.id,
           to: phone,
           notes,
         }
       });
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        // Check if it's a missing settings error
+        const errorData = JSON.parse(response.error.message);
+        if (errorData.missingSettings) {
+          toast({
+            title: "Twilio Settings Required",
+            description: "Please configure your Twilio settings in the Settings page first",
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(errorData.error || "Failed to initiate call");
+        }
+        return;
+      }
 
       toast({
         title: "Success",
