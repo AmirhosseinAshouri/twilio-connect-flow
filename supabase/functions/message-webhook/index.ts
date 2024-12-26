@@ -2,93 +2,58 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1"
 
-// Type definitions
-interface TwilioMessage {
-  From: string
-  Body: string
-  MessageSid: string
-}
+// Environment variables
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')! // Use service role key instead of anon key
 
-// Environment variable validation
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing required environment variables')
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-// Helper function to parse message data from either GET or POST requests
-async function parseTwilioMessage(req: Request): Promise<TwilioMessage> {
-  if (req.method === 'GET') {
-    const url = new URL(req.url)
-    const from = url.searchParams.get('From')
-    const body = url.searchParams.get('Body')
-    const messageSid = url.searchParams.get('MessageSid')
-
-    if (!from || !body || !messageSid) {
-      throw new Error('Missing required Twilio message fields in query parameters')
-    }
-
-    return {
-      From: decodeURIComponent(from),
-      Body: decodeURIComponent(body),
-      MessageSid: messageSid
-    }
-  } else if (req.method === 'POST') {
-    const formData = await req.formData()
-    const from = formData.get('From')
-    const body = formData.get('Body')
-    const messageSid = formData.get('MessageSid')
-
-    if (!from || !body || !messageSid) {
-      throw new Error('Missing required Twilio message fields in form data')
-    }
-
-    return {
-      From: from.toString(),
-      Body: body.toString(),
-      MessageSid: messageSid.toString()
-    }
+// Create Supabase client with service role key for full access
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
   }
+})
 
-  throw new Error('Unsupported request method')
-}
-
-// Helper function to create response
-function createResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    status
-  })
+// Helper function to parse message data
+function parseTwilioMessage(url: URL): Record<string, string> {
+  const params = url.searchParams
+  return {
+    from: params.get('From') || '',
+    body: params.get('Body') || '',
+    messageSid: params.get('MessageSid') || '',
+  }
 }
 
 serve(async (req) => {
-  // Handle preflight requests
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Parse message data from either GET or POST request
-    const { From, Body, MessageSid } = await parseTwilioMessage(req)
+    const url = new URL(req.url)
+    const messageData = parseTwilioMessage(url)
 
     // Find the contact based on the phone number
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
       .select('id, user_id')
-      .eq('phone', From)
+      .eq('phone', messageData.from)
       .maybeSingle()
 
     if (contactError) {
-      console.error('Error fetching contact:', contactError)
-      throw new Error('Failed to fetch contact')
+      throw contactError
     }
 
     if (!contact) {
-      console.error('No contact found for phone number:', From)
-      return createResponse({ error: 'Contact not found' }, 404)
+      console.error('No contact found for phone number:', messageData.from)
+      return new Response(
+        JSON.stringify({ error: 'Contact not found' }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Store the incoming message
@@ -99,27 +64,28 @@ serve(async (req) => {
         user_id: contact.user_id,
         type: 'sms',
         direction: 'incoming',
-        content: Body,
-        twilio_sid: MessageSid,
+        content: messageData.body,
+        twilio_sid: messageData.messageSid,
         created_at: new Date().toISOString()
       })
 
     if (messageError) {
-      console.error('Error storing message:', messageError)
-      throw new Error('Failed to store message')
+      throw messageError
     }
 
-    return createResponse({ 
-      success: true,
-      message: 'SMS message processed successfully',
-      messageSid: MessageSid
-    })
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
 
   } catch (error) {
-    console.error('Error processing incoming message:', error)
-    return createResponse({ 
-      error: error.message || 'Internal server error',
-      timestamp: new Date().toISOString()
-    }, 500)
+    console.error('Error processing webhook:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
   }
 })
