@@ -55,14 +55,18 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
     setIsLoading(true);
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       // First create the call record
       const { data: callData, error: callError } = await supabase
         .from("calls")
-        .insert([{
+        .insert({
           contact_id: contact.id,
+          user_id: user.id,
           notes,
           status: 'initiated'
-        }])
+        })
         .select()
         .single();
 
