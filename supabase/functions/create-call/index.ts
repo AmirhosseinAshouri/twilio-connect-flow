@@ -1,137 +1,83 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import twilio from "https://esm.sh/twilio@4.19.0";
+import { Twilio } from "https://esm.sh/twilio@4.19.0";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-serve(async (req: Request) => {
+serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      headers: corsHeaders,
-      status: 204
-    });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Create Supabase client
+    const { callId, to, notes } = await req.json();
+    console.log('Received request:', { callId, to, notes });
+
+    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    // Get the user from the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      throw new Error('Not authenticated');
-    }
-
-    console.log('Authenticated user:', user.id);
-
-    // Get the request body
-    const { contactId, to, notes } = await req.json();
-    
-    if (!contactId || !to) {
-      throw new Error('Missing required fields');
-    }
-
-    // Get the user's Twilio settings
+    // Get user's Twilio settings
+    console.log('Fetching Twilio settings...');
     const { data: settings, error: settingsError } = await supabaseClient
-      .from('settings')
-      .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
-      .eq('user_id', user.id)
+      .from("settings")
+      .select("*")
       .single();
 
     if (settingsError || !settings) {
-      console.error('Settings error:', settingsError);
-      throw new Error('Failed to fetch Twilio settings');
-    }
-
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      throw new Error('Twilio settings not configured');
-    }
-
-    // Create call record in database first
-    const { data: callData, error: callError } = await supabaseClient
-      .from('calls')
-      .insert([{
-        contact_id: contactId,
-        user_id: user.id,
-        notes,
-        status: 'initiated'
-      }])
-      .select()
-      .single();
-
-    if (callError) {
-      console.error('Call record creation error:', callError);
-      throw new Error('Failed to create call record');
+      console.error('Settings fetch error:', settingsError);
+      throw new Error("Twilio settings not found");
     }
 
     // Initialize Twilio client
-    const client = twilio(settings.twilio_account_sid, settings.twilio_auth_token);
+    console.log('Initializing Twilio client...');
+    const client = new Twilio(
+      settings.twilio_account_sid,
+      settings.twilio_auth_token
+    );
 
     console.log('Creating Twilio call...');
 
-    // Create call using Twilio with string URLs
+    // Create call using Twilio with correct Edge Function URLs
     const call = await client.calls.create({
-      url: 'https://fbwxtooicqpqotherube.functions.supabase.co/twiml',
+      url: 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1/twiml',
       to,
       from: settings.twilio_phone_number,
-      statusCallback: 'https://fbwxtooicqpqotherube.functions.supabase.co/call-status',
+      statusCallback: 'https://fbwxtooicqpqotherube.functions.supabase.co/functions/v1/call-status',
       statusCallbackEvent: ['completed'],
     });
 
-    console.log('Call created:', call.sid);
-
     // Update call record with Twilio SID
+    console.log('Updating call record with SID:', call.sid);
     const { error: updateError } = await supabaseClient
-      .from('calls')
+      .from("calls")
       .update({ twilio_sid: call.sid })
-      .eq('id', callData.id);
+      .eq("id", callId);
 
     if (updateError) {
-      console.error('Update error:', updateError);
-      throw new Error('Failed to update call record');
+      console.error('Call update error:', updateError);
+      throw updateError;
     }
 
+    // Return success response
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        sid: call.sid, 
-        callId: callData.id 
-      }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
+      JSON.stringify({ success: true, sid: call.sid }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }
     );
+
   } catch (error) {
     console.error('Error in create-call function:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : "Unknown error" 
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        },
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       }
     );
