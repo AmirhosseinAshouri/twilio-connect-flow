@@ -34,6 +34,7 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check if Twilio settings are configured
     if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
       toast({
         title: "Settings Required",
@@ -83,24 +84,18 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
 
       if (response.error) {
         if (response.error.body) {
-          try {
-            const errorBody = JSON.parse(response.error.body);
-            if (errorBody.missingSettings) {
-              toast({
-                title: "Twilio Settings Required",
-                description: "Please configure your Twilio settings in the Settings page first",
-                variant: "destructive",
-              });
-              return;
-            }
-            throw new Error(errorBody.error || "Failed to initiate call");
-          } catch (parseError) {
-            console.error('Error parsing response:', parseError);
-            throw new Error("Failed to initiate call");
+          const errorBody = JSON.parse(response.error.body);
+          if (errorBody.missingSettings) {
+            toast({
+              title: "Twilio Settings Required",
+              description: "Please configure your Twilio settings in the Settings page first",
+              variant: "destructive",
+            });
+            return;
           }
-        } else {
-          throw new Error(response.error.message || "Failed to initiate call");
+          throw new Error(errorBody.error || "Failed to initiate call");
         }
+        throw new Error(response.error.message || "Failed to initiate call");
       }
 
       toast({
