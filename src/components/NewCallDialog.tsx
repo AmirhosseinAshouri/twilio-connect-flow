@@ -31,18 +31,22 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const { settings } = useSettings();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Check if Twilio settings are configured
+  const validateTwilioSettings = () => {
     if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
       toast({
         title: "Settings Required",
         description: "Please configure your Twilio settings in the Settings page first",
         variant: "destructive",
       });
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateTwilioSettings()) return;
 
     if (!contact?.id) {
       toast({
@@ -83,19 +87,28 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       });
 
       if (response.error) {
+        const errorMessage = response.error.message || "Failed to initiate call";
+        
+        // Try to parse the error body if it exists
         if (response.error.body) {
-          const errorBody = JSON.parse(response.error.body);
-          if (errorBody.missingSettings) {
-            toast({
-              title: "Twilio Settings Required",
-              description: "Please configure your Twilio settings in the Settings page first",
-              variant: "destructive",
-            });
-            return;
+          try {
+            const errorBody = JSON.parse(response.error.body);
+            if (errorBody.missingSettings) {
+              toast({
+                title: "Twilio Settings Required",
+                description: "Please configure your Twilio settings in the Settings page first",
+                variant: "destructive",
+              });
+              return;
+            }
+            throw new Error(errorBody.error || errorMessage);
+          } catch (parseError) {
+            console.error('Error parsing response:', parseError);
+            throw new Error(errorMessage);
           }
-          throw new Error(errorBody.error || "Failed to initiate call");
         }
-        throw new Error(response.error.message || "Failed to initiate call");
+        
+        throw new Error(errorMessage);
       }
 
       toast({
