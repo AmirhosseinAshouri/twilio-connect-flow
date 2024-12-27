@@ -26,7 +26,14 @@ serve(async (req) => {
     // Get user from auth header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      throw new Error('No authorization header')
+      console.error('No authorization header provided')
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     const token = authHeader.replace('Bearer ', '')
@@ -43,8 +50,9 @@ serve(async (req) => {
       )
     }
 
+    console.log('Authenticated user:', user.id)
+
     // Get user's Twilio settings
-    console.log('Fetching Twilio settings for user:', user.id)
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
@@ -54,7 +62,10 @@ serve(async (req) => {
     if (settingsError) {
       console.error('Settings fetch error:', settingsError)
       return new Response(
-        JSON.stringify({ error: "Failed to fetch Twilio settings" }),
+        JSON.stringify({ 
+          error: "Failed to fetch Twilio settings",
+          details: settingsError.message 
+        }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -62,7 +73,21 @@ serve(async (req) => {
       )
     }
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+    if (!settings) {
+      console.error('No settings found for user:', user.id)
+      return new Response(
+        JSON.stringify({ 
+          error: "No Twilio settings found for user",
+        }),
+        { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      console.error('Incomplete Twilio settings for user:', user.id)
       return new Response(
         JSON.stringify({ 
           error: "Please configure your Twilio settings in the Settings page first",
@@ -75,8 +100,9 @@ serve(async (req) => {
       )
     }
 
+    console.log('Retrieved Twilio settings for user:', user.id)
+
     // Initialize Twilio client
-    console.log('Initializing Twilio client...')
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
@@ -111,10 +137,12 @@ serve(async (req) => {
           status: 'initiated'
         })
         .eq("id", callId)
+        .eq("user_id", user.id)  // Ensure we only update the user's own call
 
       if (updateError) {
         console.error('Call update error:', updateError)
-        throw updateError
+        // Don't throw here, as the call was created successfully
+        console.warn('Failed to update call record, but call was created')
       }
     }
 
@@ -130,7 +158,8 @@ serve(async (req) => {
     console.error('Error in create-call function:', error)
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error" 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : undefined
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
