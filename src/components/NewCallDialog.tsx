@@ -69,28 +69,10 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       const response = await initiateCall(callData.id, phone, notes);
 
       if (response.error) {
-        if (response.error.body) {
-          try {
-            const errorBody = JSON.parse(response.error.body);
-            toast({
-              title: "Error",
-              description: errorBody.error || "Failed to initiate call",
-              variant: "destructive",
-            });
-          } catch (parseError) {
-            console.error('Error parsing response:', parseError);
-            toast({
-              title: "Error",
-              description: "Failed to initiate call",
-              variant: "destructive",
-            });
-          }
-          return;
-        }
-        
+        const errorMessage = response.error.message || "Failed to initiate call";
         toast({
           title: "Error",
-          description: "Failed to initiate call",
+          description: errorMessage,
           variant: "destructive",
         });
         return;
