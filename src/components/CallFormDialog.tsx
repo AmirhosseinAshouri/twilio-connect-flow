@@ -76,9 +76,16 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
     navigate("/settings");
   };
 
-  const isTwilioConfigured = settings?.twilio_phone_number && 
-                            settings?.twilio_account_sid && 
-                            settings?.twilio_auth_token;
+  const getMissingSettings = () => {
+    const missing = [];
+    if (!settings?.twilio_account_sid) missing.push("Twilio Account SID");
+    if (!settings?.twilio_auth_token) missing.push("Twilio Auth Token");
+    if (!settings?.twilio_phone_number) missing.push("Twilio Phone Number");
+    return missing;
+  };
+
+  const missingSettings = getMissingSettings();
+  const isTwilioConfigured = missingSettings.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -103,16 +110,16 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
           </div>
         ) : !isTwilioConfigured ? (
           <Alert variant="destructive">
-            <AlertTitle>Twilio Settings Required</AlertTitle>
+            <AlertTitle>Missing Twilio Settings</AlertTitle>
             <AlertDescription className="space-y-4">
-              <p>Please configure your Twilio settings before making calls. You need to set up:</p>
+              <p>The following Twilio settings need to be configured:</p>
               <ul className="list-disc pl-4">
-                <li>Twilio Account SID</li>
-                <li>Twilio Auth Token</li>
-                <li>Twilio Phone Number</li>
+                {missingSettings.map((setting) => (
+                  <li key={setting}>{setting}</li>
+                ))}
               </ul>
               <Button onClick={handleSettingsClick} variant="outline" className="mt-2">
-                Go to Settings
+                Configure Settings
               </Button>
             </AlertDescription>
           </Alert>
