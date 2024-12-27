@@ -14,6 +14,7 @@ import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
 import { useInitiateCall } from "@/hooks/useInitiateCall";
+import { useToast } from "@/hooks/use-toast";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -26,11 +27,26 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const [notes, setNotes] = useState("");
   const { settings } = useSettings();
   const { initiateCall, isLoading } = useInitiateCall();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!contact?.id) {
+      toast({
+        title: "Error",
+        description: "Contact information is missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+      toast({
+        title: "Settings Required",
+        description: "Please configure your Twilio settings in the Settings page first",
+        variant: "destructive",
+      });
       return;
     }
 

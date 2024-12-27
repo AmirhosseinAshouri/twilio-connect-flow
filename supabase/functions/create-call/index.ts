@@ -52,7 +52,7 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
-    // Get user's Twilio settings using maybeSingle() instead of single()
+    // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
@@ -137,7 +137,7 @@ serve(async (req) => {
           status: 'initiated'
         })
         .eq("id", callId)
-        .eq("user_id", user.id)  // Ensure we only update the user's own call
+        .eq("user_id", user.id)
 
       if (updateError) {
         console.error('Call update error:', updateError)
