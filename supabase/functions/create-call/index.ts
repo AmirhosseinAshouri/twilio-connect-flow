@@ -56,7 +56,7 @@ serve(async (req) => {
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError)
