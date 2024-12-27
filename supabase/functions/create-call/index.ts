@@ -8,6 +8,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -16,11 +17,7 @@ serve(async (req) => {
     const { callId, to, notes } = await req.json()
     console.log('Received request:', { callId, to, notes })
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
+    // Get auth user
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       console.error('No authorization header provided')
@@ -32,6 +29,11 @@ serve(async (req) => {
         }
       )
     }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
 
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
@@ -49,11 +51,12 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
+    // Get Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
-      .maybeSingle()
+      .single()
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError)
@@ -69,11 +72,12 @@ serve(async (req) => {
       )
     }
 
-    if (!settings) {
-      console.error('No settings found for user:', user.id)
+    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      console.error('Missing Twilio settings for user:', user.id)
       return new Response(
         JSON.stringify({ 
           error: "Please configure your Twilio settings in the Settings page first",
+          missingSettings: true 
         }),
         { 
           status: 404,
@@ -82,22 +86,9 @@ serve(async (req) => {
       )
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      console.error('Incomplete Twilio settings for user:', user.id)
-      return new Response(
-        JSON.stringify({ 
-          error: "Please configure your Twilio settings in the Settings page first",
-          missingSettings: true 
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
     console.log('Retrieved Twilio settings for user:', user.id)
 
+    // Initialize Twilio client
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
@@ -112,6 +103,7 @@ serve(async (req) => {
       statusCallback: `${baseUrl}/call-status`
     })
 
+    // Create call using Twilio
     const call = await client.calls.create({
       url: `${baseUrl}/twiml`,
       to,
@@ -122,6 +114,7 @@ serve(async (req) => {
 
     console.log('Call created successfully:', call.sid)
 
+    // Update call record with Twilio SID
     if (callId) {
       const { error: updateError } = await supabaseClient
         .from("calls")

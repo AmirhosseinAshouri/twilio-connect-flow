@@ -26,7 +26,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading } = useSettings();
   const { initiateCall, isLoading } = useInitiateCall();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -76,6 +76,10 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
     navigate("/settings");
   };
 
+  const isTwilioConfigured = settings?.twilio_phone_number && 
+                            settings?.twilio_account_sid && 
+                            settings?.twilio_auth_token;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -92,7 +96,12 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
             Start a new call with this contact using Twilio.
           </DialogDescription>
         </DialogHeader>
-        {(!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) ? (
+
+        {settingsLoading ? (
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          </div>
+        ) : !isTwilioConfigured ? (
           <Alert variant="destructive">
             <AlertTitle>Twilio Settings Required</AlertTitle>
             <AlertDescription className="space-y-4">
