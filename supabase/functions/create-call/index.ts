@@ -51,7 +51,7 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
-    // Get Twilio settings
+    // Get Twilio settings with improved error handling
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
@@ -72,15 +72,21 @@ serve(async (req) => {
       )
     }
 
+    // Check if settings exist and are complete
     if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
       console.error('Missing Twilio settings for user:', user.id)
       return new Response(
         JSON.stringify({ 
           error: "Please configure your Twilio settings in the Settings page first",
-          missingSettings: true 
+          missingSettings: true,
+          details: {
+            hasTwilioAccountSid: !!settings?.twilio_account_sid,
+            hasTwilioAuthToken: !!settings?.twilio_auth_token,
+            hasTwilioPhoneNumber: !!settings?.twilio_phone_number
+          }
         }),
         { 
-          status: 404,
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
