@@ -49,7 +49,7 @@ serve(async (req) => {
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
-      .maybeSingle()
+      .single()
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError)
@@ -82,10 +82,16 @@ serve(async (req) => {
       settings.twilio_auth_token
     )
 
-    console.log('Creating Twilio call...')
     const baseUrl = `${req.url.split('/functions/')[0]}/functions/v1`
 
     // Create call using Twilio
+    console.log('Creating Twilio call with settings:', {
+      url: `${baseUrl}/twiml`,
+      to,
+      from: settings.twilio_phone_number,
+      statusCallback: `${baseUrl}/call-status`
+    })
+
     const call = await client.calls.create({
       url: `${baseUrl}/twiml`,
       to,
@@ -94,12 +100,16 @@ serve(async (req) => {
       statusCallbackEvent: ['completed'],
     })
 
+    console.log('Call created successfully:', call.sid)
+
     // Update call record with Twilio SID
-    console.log('Updating call record with SID:', call.sid)
     if (callId) {
       const { error: updateError } = await supabaseClient
         .from("calls")
-        .update({ twilio_sid: call.sid })
+        .update({ 
+          twilio_sid: call.sid,
+          status: 'initiated'
+        })
         .eq("id", callId)
 
       if (updateError) {
