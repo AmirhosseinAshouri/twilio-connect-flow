@@ -8,7 +8,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -17,13 +16,11 @@ serve(async (req) => {
     const { callId, to, notes } = await req.json()
     console.log('Received request:', { callId, to, notes })
 
-    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Get user from auth header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       console.error('No authorization header provided')
@@ -52,7 +49,6 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
-    // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
@@ -102,7 +98,6 @@ serve(async (req) => {
 
     console.log('Retrieved Twilio settings for user:', user.id)
 
-    // Initialize Twilio client
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
@@ -110,7 +105,6 @@ serve(async (req) => {
 
     const baseUrl = `${req.url.split('/functions/')[0]}/functions/v1`
 
-    // Create call using Twilio
     console.log('Creating Twilio call with settings:', {
       url: `${baseUrl}/twiml`,
       to,
@@ -128,7 +122,6 @@ serve(async (req) => {
 
     console.log('Call created successfully:', call.sid)
 
-    // Update call record with Twilio SID
     if (callId) {
       const { error: updateError } = await supabaseClient
         .from("calls")
@@ -141,7 +134,6 @@ serve(async (req) => {
 
       if (updateError) {
         console.error('Call update error:', updateError)
-        // Don't throw here, as the call was created successfully
         console.warn('Failed to update call record, but call was created')
       }
     }

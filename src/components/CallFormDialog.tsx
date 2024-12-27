@@ -15,6 +15,7 @@ import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
 import { useInitiateCall } from "@/hooks/useInitiateCall";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -28,6 +29,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const { settings } = useSettings();
   const { initiateCall, isLoading } = useInitiateCall();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +46,11 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
     if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
       toast({
         title: "Settings Required",
-        description: "Please configure your Twilio settings in the Settings page first",
+        description: "Please configure your Twilio settings in the Settings page",
         variant: "destructive",
       });
+      setOpen(false);
+      navigate("/settings");
       return;
     }
 
@@ -60,7 +64,16 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
       setOpen(false);
       setPhone("");
       setNotes("");
+      toast({
+        title: "Success",
+        description: "Call initiated successfully",
+      });
     }
+  };
+
+  const handleSettingsClick = () => {
+    setOpen(false);
+    navigate("/settings");
   };
 
   return (
@@ -79,28 +92,32 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
             Start a new call with this contact using Twilio.
           </DialogDescription>
         </DialogHeader>
-        {(!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) && (
+        {(!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) ? (
           <Alert variant="destructive">
             <AlertTitle>Twilio Settings Required</AlertTitle>
-            <AlertDescription>
-              Please configure your Twilio settings in the Settings page before making calls. You need to set up:
-              <ul className="list-disc pl-4 mt-2">
+            <AlertDescription className="space-y-4">
+              <p>Please configure your Twilio settings before making calls. You need to set up:</p>
+              <ul className="list-disc pl-4">
                 <li>Twilio Account SID</li>
                 <li>Twilio Auth Token</li>
                 <li>Twilio Phone Number</li>
               </ul>
+              <Button onClick={handleSettingsClick} variant="outline" className="mt-2">
+                Go to Settings
+              </Button>
             </AlertDescription>
           </Alert>
+        ) : (
+          <CallForm
+            phone={phone}
+            notes={notes}
+            isLoading={isLoading}
+            settings={settings}
+            onPhoneChange={setPhone}
+            onNotesChange={setNotes}
+            onSubmit={handleSubmit}
+          />
         )}
-        <CallForm
-          phone={phone}
-          notes={notes}
-          isLoading={isLoading}
-          settings={settings}
-          onPhoneChange={setPhone}
-          onNotesChange={setNotes}
-          onSubmit={handleSubmit}
-        />
       </DialogContent>
     </Dialog>
   );
