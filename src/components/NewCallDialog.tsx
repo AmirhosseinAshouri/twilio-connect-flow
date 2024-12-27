@@ -61,7 +61,14 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "User not authenticated",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // First create the call record
       const { data: callData, error: callError } = await supabase
@@ -75,7 +82,14 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
         .select()
         .single();
 
-      if (callError) throw callError;
+      if (callError) {
+        toast({
+          title: "Error",
+          description: "Failed to create call record",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Then initiate the call
       const response = await supabase.functions.invoke('create-call', {
@@ -87,8 +101,6 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       });
 
       if (response.error) {
-        let errorMessage = "Failed to initiate call";
-        
         if (response.error.body) {
           try {
             const errorBody = JSON.parse(response.error.body);
@@ -100,13 +112,29 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
               });
               return;
             }
-            errorMessage = errorBody.error || errorMessage;
+            toast({
+              title: "Error",
+              description: errorBody.error || "Failed to initiate call",
+              variant: "destructive",
+            });
+            return;
           } catch (parseError) {
             console.error('Error parsing response:', parseError);
+            toast({
+              title: "Error",
+              description: "Failed to initiate call",
+              variant: "destructive",
+            });
+            return;
           }
         }
         
-        throw new Error(errorMessage);
+        toast({
+          title: "Error",
+          description: "Failed to initiate call",
+          variant: "destructive",
+        });
+        return;
       }
 
       toast({
