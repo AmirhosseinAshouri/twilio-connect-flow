@@ -52,12 +52,12 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
-    // Get user's Twilio settings
+    // Get user's Twilio settings using maybeSingle() instead of single()
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
-      .single()
+      .maybeSingle()
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError)
@@ -77,7 +77,7 @@ serve(async (req) => {
       console.error('No settings found for user:', user.id)
       return new Response(
         JSON.stringify({ 
-          error: "No Twilio settings found for user",
+          error: "Please configure your Twilio settings in the Settings page first",
         }),
         { 
           status: 404,
