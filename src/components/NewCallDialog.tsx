@@ -87,9 +87,8 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
       });
 
       if (response.error) {
-        const errorMessage = response.error.message || "Failed to initiate call";
+        let errorMessage = "Failed to initiate call";
         
-        // Try to parse the error body if it exists
         if (response.error.body) {
           try {
             const errorBody = JSON.parse(response.error.body);
@@ -101,10 +100,9 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
               });
               return;
             }
-            throw new Error(errorBody.error || errorMessage);
+            errorMessage = errorBody.error || errorMessage;
           } catch (parseError) {
             console.error('Error parsing response:', parseError);
-            throw new Error(errorMessage);
           }
         }
         
