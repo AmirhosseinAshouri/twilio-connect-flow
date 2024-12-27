@@ -1,0 +1,56 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { TwilioSettings } from "@/hooks/useSettings";
+
+interface CallFormProps {
+  phone: string;
+  notes: string;
+  isLoading: boolean;
+  settings: TwilioSettings | null;
+  onPhoneChange: (value: string) => void;
+  onNotesChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+export function CallForm({
+  phone,
+  notes,
+  isLoading,
+  settings,
+  onPhoneChange,
+  onNotesChange,
+  onSubmit
+}: CallFormProps) {
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="phone">Phone Number</Label>
+        <Input
+          id="phone"
+          type="tel"
+          value={phone}
+          onChange={(e) => onPhoneChange(e.target.value)}
+          placeholder="+1234567890"
+          required
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={notes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          placeholder="Call notes..."
+        />
+      </div>
+      <Button 
+        type="submit" 
+        disabled={isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token}
+      >
+        {isLoading ? "Initiating Call..." : "Start Call"}
+      </Button>
+    </form>
+  );
+}

@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { PhoneCall } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,12 +8,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PhoneCall } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { CallForm } from "./CallForm";
+import { validateTwilioSettings, createCallRecord, initiateCall } from "@/utils/twilioUtils";
 
 interface NewCallDialogProps {
   contact?: Contact;
@@ -31,22 +29,18 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
   const { settings } = useSettings();
   const { toast } = useToast();
 
-  const validateTwilioSettings = () => {
-    if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
-      toast({
-        title: "Settings Required",
-        description: "Please configure your Twilio settings in the Settings page first",
-        variant: "destructive",
-      });
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateTwilioSettings()) return;
+    const validation = await validateTwilioSettings(settings);
+    if (!validation.isValid) {
+      toast({
+        title: "Settings Required",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!contact?.id) {
       toast({
@@ -70,54 +64,18 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
         return;
       }
 
-      // First create the call record
-      const { data: callData, error: callError } = await supabase
-        .from("calls")
-        .insert({
-          contact_id: contact.id,
-          user_id: user.id,
-          notes,
-          status: 'initiated'
-        })
-        .select()
-        .single();
-
-      if (callError) {
-        toast({
-          title: "Error",
-          description: "Failed to create call record",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Then initiate the call
-      const response = await supabase.functions.invoke('create-call', {
-        body: {
-          callId: callData.id,
-          to: phone,
-          notes,
-        }
-      });
+      const callData = await createCallRecord(contact.id, user.id, notes);
+      const response = await initiateCall(callData.id, phone, notes);
 
       if (response.error) {
         if (response.error.body) {
           try {
             const errorBody = JSON.parse(response.error.body);
-            if (errorBody.missingSettings) {
-              toast({
-                title: "Twilio Settings Required",
-                description: "Please configure your Twilio settings in the Settings page first",
-                variant: "destructive",
-              });
-              return;
-            }
             toast({
               title: "Error",
               description: errorBody.error || "Failed to initiate call",
               variant: "destructive",
             });
-            return;
           } catch (parseError) {
             console.error('Error parsing response:', parseError);
             toast({
@@ -125,8 +83,8 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
               description: "Failed to initiate call",
               variant: "destructive",
             });
-            return;
           }
+          return;
         }
         
         toast({
@@ -185,34 +143,15 @@ export function NewCallDialog({ contact, trigger }: NewCallDialogProps) {
             </AlertDescription>
           </Alert>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1234567890"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Call notes..."
-            />
-          </div>
-          <Button 
-            type="submit" 
-            disabled={isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token}
-          >
-            {isLoading ? "Initiating Call..." : "Start Call"}
-          </Button>
-        </form>
+        <CallForm
+          phone={phone}
+          notes={notes}
+          isLoading={isLoading}
+          settings={settings}
+          onPhoneChange={setPhone}
+          onNotesChange={setNotes}
+          onSubmit={handleSubmit}
+        />
       </DialogContent>
     </Dialog>
   );
