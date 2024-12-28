@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Device, Call } from '@twilio/voice-sdk';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from './use-toast';
+import { useSettings } from './useSettings';
 
 export function useTwilioVoice() {
   const [device, setDevice] = useState<Device | null>(null);
@@ -9,21 +10,55 @@ export function useTwilioVoice() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const { toast } = useToast();
+  const { settings } = useSettings();
 
   useEffect(() => {
     const initializeDevice = async () => {
       try {
+        // First check if Twilio settings are configured
+        if (!settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+          console.log('Twilio settings not configured');
+          toast({
+            title: "Twilio Settings Required",
+            description: "Please configure your Twilio settings in the Settings page before making calls.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Get access token from our edge function
         const { data, error } = await supabase.functions.invoke('get-twilio-token', {
           body: { scope: 'outgoing' }
         });
 
-        if (error || !data.token) {
-          console.error('Error getting token:', error || 'No token received');
+        if (error) {
+          console.error('Error getting token:', error);
+          let errorMessage = "Failed to initialize voice client";
+          
+          // Parse error message if available
+          if (typeof error.message === 'string' && error.message.includes('Incomplete Twilio settings')) {
+            errorMessage = "Please configure your Twilio settings in the Settings page";
+          }
+          
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
           return;
         }
 
-        // Create a new Twilio Device with minimal options as per quickstart
+        if (!data?.token) {
+          console.error('No token received');
+          toast({
+            title: "Error",
+            description: "Failed to initialize voice client. No token received.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Create a new Twilio Device
         const newDevice = new Device(data.token);
 
         await newDevice.register();
@@ -54,7 +89,7 @@ export function useTwilioVoice() {
         device.destroy();
       }
     };
-  }, [toast]);
+  }, [toast, settings]);
 
   const makeCall = async (to: string) => {
     if (!device || !isReady) {
