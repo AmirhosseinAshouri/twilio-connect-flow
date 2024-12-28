@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Device, Call, Codec } from '@twilio/voice-sdk';
+import { Device, Call } from '@twilio/voice-sdk';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from './use-toast';
 
@@ -23,10 +23,9 @@ export function useTwilioVoice() {
           return;
         }
 
-        // Create a new Twilio Device
+        // Create a new Twilio Device with correct options
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'] as Codec[],
-          fakeLocalDTMF: true,
+          codecPreferences: ['opus', 'pcmu'],
           enableRingingState: true,
         });
 
