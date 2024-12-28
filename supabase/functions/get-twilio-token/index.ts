@@ -5,12 +5,16 @@ import { Twilio } from 'https://esm.sh/twilio@4.19.0'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    });
   }
 
   try {
@@ -42,6 +46,7 @@ serve(async (req) => {
       .maybeSingle()
 
     if (settingsError) {
+      console.error('Settings fetch error:', settingsError);
       throw new Error('Failed to fetch Twilio settings')
     }
 
@@ -91,7 +96,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Token generation error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: error
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
