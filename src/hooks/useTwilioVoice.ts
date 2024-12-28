@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Device } from '@twilio/voice-sdk';
+import { Device, Call } from '@twilio/voice-sdk';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from './use-toast';
 
@@ -7,7 +7,7 @@ export function useTwilioVoice() {
   const [device, setDevice] = useState<Device | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [activeCall, setActiveCall] = useState<any>(null);
+  const [activeCall, setActiveCall] = useState<Call | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -23,9 +23,9 @@ export function useTwilioVoice() {
           return;
         }
 
+        // Create a new Twilio Device
         const newDevice = new Device(data.token, {
-          // Use proper codec types from Twilio SDK
-          codecPreferences: ['pcmu', 'opus'] as const,
+          codecPreferences: ['opus', 'pcmu'] as Array<'opus' | 'pcmu'>,
           fakeLocalDTMF: true,
           enableRingingState: true,
         });
