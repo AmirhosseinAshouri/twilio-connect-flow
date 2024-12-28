@@ -23,9 +23,9 @@ export function useTwilioVoice() {
           return;
         }
 
-        // Create a new Twilio Device with correct options
+        // Create a new Twilio Device with correct options from the quickstart example
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
+          // The quickstart doesn't specify codec preferences, so we'll remove that option
           enableRingingState: true,
         });
 
