@@ -24,7 +24,8 @@ export function useTwilioVoice() {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
+          // Use proper codec types from Twilio SDK
+          codecPreferences: ['pcmu', 'opus'] as const,
           fakeLocalDTMF: true,
           enableRingingState: true,
         });

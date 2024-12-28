@@ -8,6 +8,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -40,12 +41,24 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (settingsError || !settings) {
+    if (settingsError) {
       throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token) {
-      throw new Error('Incomplete Twilio settings')
+    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+      return new Response(
+        JSON.stringify({
+          error: 'Incomplete Twilio settings',
+          details: {
+            hasTwilioAccountSid: !!settings?.twilio_account_sid,
+            hasTwilioAuthToken: !!settings?.twilio_auth_token
+          }
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      )
     }
 
     const AccessToken = Twilio.jwt.AccessToken
@@ -76,6 +89,7 @@ serve(async (req) => {
       },
     )
   } catch (error) {
+    console.error('Token generation error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
