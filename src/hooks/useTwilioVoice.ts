@@ -23,11 +23,8 @@ export function useTwilioVoice() {
           return;
         }
 
-        // Create a new Twilio Device with correct options from the quickstart example
-        const newDevice = new Device(data.token, {
-          // The quickstart doesn't specify codec preferences, so we'll remove that option
-          enableRingingState: true,
-        });
+        // Create a new Twilio Device with minimal options as per quickstart
+        const newDevice = new Device(data.token);
 
         await newDevice.register();
         setDevice(newDevice);
