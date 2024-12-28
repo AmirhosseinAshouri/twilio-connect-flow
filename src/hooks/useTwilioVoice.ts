@@ -3,6 +3,7 @@ import { Device, Call } from '@twilio/voice-sdk';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from './use-toast';
 import { useSettings } from './useSettings';
+import { useNavigate } from 'react-router-dom';
 
 export function useTwilioVoice() {
   const [device, setDevice] = useState<Device | null>(null);
@@ -11,6 +12,7 @@ export function useTwilioVoice() {
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const { toast } = useToast();
   const { settings } = useSettings();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const initializeDevice = async () => {
@@ -23,21 +25,21 @@ export function useTwilioVoice() {
             description: "Please configure your Twilio settings in the Settings page before making calls.",
             variant: "destructive",
           });
+          navigate('/settings');
           return;
         }
 
         // Get access token from our edge function
-        const { data, error } = await supabase.functions.invoke('get-twilio-token', {
-          body: { scope: 'outgoing' }
-        });
+        const { data, error } = await supabase.functions.invoke('get-twilio-token');
 
         if (error) {
           console.error('Error getting token:', error);
           let errorMessage = "Failed to initialize voice client";
           
-          // Parse error message if available
-          if (typeof error.message === 'string' && error.message.includes('Incomplete Twilio settings')) {
+          // Check if the error is due to missing Twilio settings
+          if (error.message?.includes('Incomplete Twilio settings')) {
             errorMessage = "Please configure your Twilio settings in the Settings page";
+            navigate('/settings');
           }
           
           toast({
@@ -89,7 +91,7 @@ export function useTwilioVoice() {
         device.destroy();
       }
     };
-  }, [toast, settings]);
+  }, [toast, settings, navigate]);
 
   const makeCall = async (to: string) => {
     if (!device || !isReady) {

@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import twilio from 'https://esm.sh/twilio@4.19.0'
+import { AccessToken } from 'https://esm.sh/twilio@4.19.0/lib/jwt/AccessToken'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
@@ -38,19 +37,26 @@ serve(async (req) => {
       throw new Error('Invalid token')
     }
 
+    console.log('Fetching Twilio settings for user:', user.id)
+
     // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
       .select('twilio_account_sid, twilio_auth_token')
       .eq('user_id', user.id)
-      .maybeSingle()
+      .single()
 
     if (settingsError) {
-      console.error('Settings fetch error:', settingsError);
+      console.error('Settings fetch error:', settingsError)
       throw new Error('Failed to fetch Twilio settings')
     }
 
     if (!settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+      console.error('Incomplete Twilio settings:', {
+        hasTwilioAccountSid: !!settings?.twilio_account_sid,
+        hasTwilioAuthToken: !!settings?.twilio_auth_token
+      })
+      
       return new Response(
         JSON.stringify({
           error: 'Incomplete Twilio settings',
@@ -66,8 +72,7 @@ serve(async (req) => {
       )
     }
 
-    const AccessToken = twilio.jwt.AccessToken
-    const VoiceGrant = AccessToken.VoiceGrant
+    console.log('Creating Twilio access token')
 
     // Create an access token
     const accessToken = new AccessToken(
@@ -77,6 +82,7 @@ serve(async (req) => {
     )
 
     // Create a Voice grant and add it to the token
+    const VoiceGrant = AccessToken.VoiceGrant
     const voiceGrant = new VoiceGrant({
       outgoingApplicationSid: settings.twilio_account_sid,
       incomingAllow: true,
@@ -85,6 +91,8 @@ serve(async (req) => {
 
     // Generate the token
     const token = accessToken.toJwt()
+
+    console.log('Token generated successfully')
 
     return new Response(
       JSON.stringify({ token }),
