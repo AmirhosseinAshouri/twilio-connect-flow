@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
-import { useInitiateCall } from "@/hooks/useInitiateCall";
+import { useTwilioVoice } from "@/hooks/useTwilioVoice";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -27,7 +27,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
   const { settings, loading: settingsLoading } = useSettings();
-  const { initiateCall, isLoading } = useInitiateCall();
+  const { makeCall, hangUp, isReady, isConnecting, hasActiveCall } = useTwilioVoice();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -54,19 +54,26 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
       return;
     }
 
-    const success = await initiateCall({
-      contact,
-      phone,
-      notes
-    });
-
-    if (success) {
-      setOpen(false);
-      setPhone("");
-      setNotes("");
+    if (!isReady) {
       toast({
-        title: "Success",
-        description: "Call initiated successfully",
+        title: "Error",
+        description: "Voice client not ready. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await makeCall(phone);
+      toast({
+        title: "Call Initiated",
+        description: "Connecting your call...",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to initiate call",
+        variant: "destructive",
       });
     }
   };
@@ -92,7 +99,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline">
-            <PhoneCall className="mr-2 h-4 w-4" /> New Call
+            <PhoneCall className="mr-2 h-4 w-4" /> {hasActiveCall ? 'End Call' : 'New Call'}
           </Button>
         )}
       </DialogTrigger>
@@ -100,7 +107,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
         <DialogHeader>
           <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
           <DialogDescription>
-            Start a new call with this contact using Twilio.
+            Start a new browser-based call with this contact using Twilio Voice.
           </DialogDescription>
         </DialogHeader>
 
@@ -127,7 +134,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
           <CallForm
             phone={phone}
             notes={notes}
-            isLoading={isLoading}
+            isLoading={isConnecting}
             settings={settings}
             onPhoneChange={setPhone}
             onNotesChange={setNotes}
