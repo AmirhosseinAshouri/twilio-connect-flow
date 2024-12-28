@@ -50,19 +50,15 @@ export function useSettings() {
 
         setSettings(data);
       } catch (err) {
+        console.error('Error fetching settings:', err);
         setError(err as Error);
-        toast({
-          title: "Error fetching settings",
-          description: (err as Error).message,
-          variant: "destructive",
-        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchSettings();
-  }, [toast]);
+  }, []);
 
   const updateSettings = async (values: TwilioSettings) => {
     try {
@@ -71,23 +67,18 @@ export function useSettings() {
 
       const { error } = await supabase
         .from("settings")
-        .upsert([{ ...values, user_id: user.id }])
-        .select()
-        .single();
+        .upsert([{ 
+          ...values, 
+          user_id: user.id 
+        }]);
 
       if (error) throw error;
 
       setSettings(values);
-      toast({
-        title: "Settings Updated",
-        description: "Your Twilio settings have been saved.",
-      });
+      return true;
     } catch (err) {
-      toast({
-        title: "Error updating settings",
-        description: (err as Error).message,
-        variant: "destructive",
-      });
+      console.error('Error updating settings:', err);
+      throw err;
     }
   };
 

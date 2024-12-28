@@ -6,14 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSettings, TwilioSettings } from "@/hooks/useSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
+import { useToast } from "@/hooks/use-toast";
 
 export function TwilioSettingsForm() {
   const { settings, loading, error, updateSettings } = useSettings();
+  const { toast } = useToast();
   const [twilioConfig, setTwilioConfig] = useState<TwilioSettings>({
     twilio_account_sid: settings?.twilio_account_sid || "",
     twilio_auth_token: settings?.twilio_auth_token || "",
     twilio_phone_number: settings?.twilio_phone_number || "",
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -23,7 +26,22 @@ export function TwilioSettingsForm() {
 
   const handleTwilioSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateSettings(twilioConfig);
+    setIsSaving(true);
+    try {
+      await updateSettings(twilioConfig);
+      toast({
+        title: "Settings saved",
+        description: "Your Twilio settings have been updated successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to save Twilio settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -56,6 +74,7 @@ export function TwilioSettingsForm() {
                   twilio_account_sid: e.target.value
                 })}
                 placeholder="Enter your Twilio Account SID"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -69,6 +88,7 @@ export function TwilioSettingsForm() {
                   twilio_auth_token: e.target.value
                 })}
                 placeholder="Enter your Twilio Auth Token"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -80,10 +100,13 @@ export function TwilioSettingsForm() {
                   ...twilioConfig,
                   twilio_phone_number: e.target.value
                 })}
-                placeholder="Enter your Twilio Phone Number"
+                placeholder="Enter your Twilio Phone Number (e.g., +1234567890)"
+                required
               />
             </div>
-            <Button type="submit">Save Twilio Settings</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Twilio Settings"}
+            </Button>
           </form>
         )}
       </CardContent>
