@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 export interface TwilioSettings {
   twilio_account_sid: string;
@@ -12,7 +11,6 @@ export function useSettings() {
   const [settings, setSettings] = useState<TwilioSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -74,7 +72,16 @@ export function useSettings() {
 
       if (error) throw error;
 
-      setSettings(values);
+      // Fetch the updated settings to ensure we have the latest data
+      const { data: updatedSettings, error: fetchError } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      setSettings(updatedSettings);
       return true;
     } catch (err) {
       console.error('Error updating settings:', err);
