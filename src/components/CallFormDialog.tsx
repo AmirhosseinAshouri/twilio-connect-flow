@@ -49,8 +49,6 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
         description: "Please configure your Twilio settings in the Settings page",
         variant: "destructive",
       });
-      setOpen(false);
-      navigate("/settings");
       return;
     }
 
@@ -84,10 +82,11 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   };
 
   const getMissingSettings = () => {
+    if (!settings) return ["Twilio Account SID", "Twilio Auth Token", "Twilio Phone Number"];
     const missing = [];
-    if (!settings?.twilio_account_sid) missing.push("Twilio Account SID");
-    if (!settings?.twilio_auth_token) missing.push("Twilio Auth Token");
-    if (!settings?.twilio_phone_number) missing.push("Twilio Phone Number");
+    if (!settings.twilio_account_sid) missing.push("Twilio Account SID");
+    if (!settings.twilio_auth_token) missing.push("Twilio Auth Token");
+    if (!settings.twilio_phone_number) missing.push("Twilio Phone Number");
     return missing;
   };
 
