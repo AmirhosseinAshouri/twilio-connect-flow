@@ -43,6 +43,15 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
       return;
     }
 
+    if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+      toast({
+        title: "Settings Required",
+        description: "Please configure your Twilio settings in the Settings page",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!isReady) {
       toast({
         title: "Error",
