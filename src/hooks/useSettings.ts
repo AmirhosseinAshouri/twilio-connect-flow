@@ -21,14 +21,18 @@ export function useSettings() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        let { data, error } = await supabase
+        const { data, error } = await supabase
           .from("settings")
           .select("*")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code === 'PGRST116') {
-          // Settings don't exist yet, create them
+        if (error) throw error;
+
+        if (data) {
+          setSettings(data);
+        } else {
+          // No settings exist yet, create empty settings
           const { data: newSettings, error: insertError } = await supabase
             .from("settings")
             .insert([{ 
@@ -41,12 +45,8 @@ export function useSettings() {
             .single();
 
           if (insertError) throw insertError;
-          data = newSettings;
-        } else if (error) {
-          throw error;
+          setSettings(newSettings);
         }
-
-        setSettings(data);
       } catch (err) {
         console.error('Error fetching settings:', err);
         setError(err as Error);
@@ -65,23 +65,12 @@ export function useSettings() {
 
       const { error } = await supabase
         .from("settings")
-        .upsert([{ 
-          ...values, 
-          user_id: user.id 
-        }]);
+        .update(values)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
-      // Fetch the updated settings to ensure we have the latest data
-      const { data: updatedSettings, error: fetchError } = await supabase
-        .from("settings")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      if (fetchError) throw fetchError;
-      
-      setSettings(updatedSettings);
+      setSettings(values);
       return true;
     } catch (err) {
       console.error('Error updating settings:', err);
