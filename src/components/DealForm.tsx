@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Deal } from "@/types";
+import { Deal, Contact } from "@/types";
+import { ContactSelector } from "../components/ContactSelector";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -62,6 +63,12 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     });
   };
 
+  const handleContactSelect = (contact: Contact) => {
+    if (contact) {
+      form.setValue("company", contact.company || form.getValues("company"));
+    }
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -78,6 +85,9 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
+
+        <ContactSelector form={form} onSelect={handleContactSelect} />
+
         <FormField
           control={form.control}
           name="company"
@@ -91,6 +101,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="value"
@@ -104,6 +115,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="probability"
@@ -122,6 +134,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="assigned_to"
@@ -146,6 +159,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
+
         <Button type="submit" className="w-full">
           Save Changes
         </Button>
