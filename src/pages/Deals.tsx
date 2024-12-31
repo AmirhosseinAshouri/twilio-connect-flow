@@ -85,7 +85,6 @@ const Deals = () => {
     const deal = deals.find((d) => d.id === draggableId);
     if (!deal) return;
 
-    // Update local state immediately for a smoother UX
     const updatedDeal = { ...deal, stage: destination.droppableId as DealStage };
     setDeals(currentDeals =>
       currentDeals.map(d => d.id === draggableId ? updatedDeal : d)
@@ -93,11 +92,10 @@ const Deals = () => {
 
     const { error } = await supabase
       .from("deals")
-      .update({ stage: destination.droppableId as DealStage })
+      .update({ stage: destination.droppableId })
       .eq("id", draggableId);
 
     if (error) {
-      // Revert the state if the update fails
       setDeals(currentDeals =>
         currentDeals.map(d => d.id === draggableId ? deal : d)
       );
@@ -111,13 +109,19 @@ const Deals = () => {
     }
   };
 
-  const handleAddDeal = async (values: Omit<Deal, "id">) => {
+  const handleAddDeal = async (values: Omit<Deal, "id" | "created_at" | "updated_at">) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const newDeal = {
+      ...values,
+      user_id: user.id,
+      stage: "qualify" as DealStage,
+    };
+
     const { data, error } = await supabase
       .from("deals")
-      .insert([{ ...values, user_id: user.id }])
+      .insert([newDeal])
       .select()
       .single();
 

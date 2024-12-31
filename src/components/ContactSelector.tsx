@@ -1,6 +1,6 @@
-import React from "react";
-import { UseFormReturn } from "react-hook-form";
-import { useContacts } from "@/hooks";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -9,92 +9,66 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
-
-export interface Contact {
-  id: string;
-  name: string;
-  company: string;
-}
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { useState } from "react";
+import { useContacts } from "@/hooks";
+import { FormControl } from "./ui/form";
 
 interface ContactSelectorProps {
-  form: UseFormReturn<any>;
-  onSelect: (contact: Contact) => void;
+  value?: string;
+  onChange: (value: string) => void;
 }
 
-export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
-  const { contacts, loading, error } = useContacts();
-
-  // Initialize contacts as an empty array if undefined
-  const validContacts = contacts || [];
-
-  // Show loading state
-  if (loading) {
-    return (
-      <FormItem>
-        <FormLabel>Contact</FormLabel>
-        <div className="flex items-center justify-center p-4 border rounded-md">
-          <Loader2 className="h-4 w-4 animate-spin" />
-        </div>
-      </FormItem>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <FormItem>
-        <FormLabel>Contact</FormLabel>
-        <div className="text-sm text-destructive p-4 border rounded-md">
-          Error loading contacts. Please try again.
-        </div>
-      </FormItem>
-    );
-  }
+export function ContactSelector({ value, onChange }: ContactSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const { contacts = [] } = useContacts();
 
   return (
-    <FormField
-      control={form.control}
-      name="contactId"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Contact</FormLabel>
-          <FormControl>
-            <Command className="border rounded-md">
-              <CommandInput placeholder="Search contacts..." />
-              <CommandEmpty>No contacts found.</CommandEmpty>
-              <CommandGroup>
-                {validContacts.map((contact) => (
-                  <CommandItem
-                    key={contact.id}
-                    value={contact.id}
-                    onSelect={() => {
-                      field.onChange(contact.id);
-                      onSelect(contact);
-                    }}
-                  >
-                    <div>
-                      <div>{contact.name}</div>
-                      {contact.company && (
-                        <div className="text-sm text-muted-foreground">
-                          {contact.company}
-                        </div>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </Command>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <FormControl>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+          >
+            {value
+              ? contacts.find((contact) => contact.id === value)?.name
+              : "Select contact..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </FormControl>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command>
+          <CommandInput placeholder="Search contacts..." />
+          <CommandEmpty>No contact found.</CommandEmpty>
+          <CommandGroup>
+            {contacts.map((contact) => (
+              <CommandItem
+                key={contact.id}
+                value={contact.id}
+                onSelect={() => {
+                  onChange(contact.id);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === contact.id ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {contact.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
