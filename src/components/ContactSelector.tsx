@@ -33,22 +33,23 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const contactsList = contacts ?? [];
 
   // Find selected contact
-  const selectedContact = value 
-    ? contactsList.find((contact) => contact.id === value) 
-    : null;
+  const selectedContact = contactsList.find(
+    (contact) => contact.id === value
+  );
 
-  // Show loading state
   if (loading) {
     return (
-      <Button
-        variant="outline"
-        role="combobox"
-        disabled
-        className="w-full justify-between"
-      >
-        Loading contacts...
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-      </Button>
+      <FormControl>
+        <Button
+          variant="outline"
+          role="combobox"
+          disabled
+          className="w-full justify-between"
+        >
+          Loading contacts...
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </FormControl>
     );
   }
 
