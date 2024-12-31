@@ -29,13 +29,15 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const { contacts, loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Ensure contacts is always an array
-  const contactsList = contacts || [];
+  // Initialize contacts as an empty array if undefined
+  const contactsList = contacts ?? [];
 
+  // Find selected contact
   const selectedContact = value 
     ? contactsList.find((contact) => contact.id === value) 
     : null;
 
+  // Show loading state
   if (loading) {
     return (
       <Button
@@ -68,9 +70,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
       <PopoverContent className="w-full p-0">
         <Command>
           <CommandInput placeholder="Search contacts..." />
-          <CommandEmpty>
-            No contact found.
-          </CommandEmpty>
+          <CommandEmpty>No contact found.</CommandEmpty>
           <CommandGroup>
             {contactsList.map((contact) => (
               <CommandItem
