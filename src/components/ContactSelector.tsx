@@ -26,15 +26,11 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading } = useContacts();
+  const { contacts = [], loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Initialize contacts as an empty array if undefined
-  const safeContacts = contacts ?? [];
-
-  // Find selected contact safely
   const selectedContact = value 
-    ? safeContacts.find((contact) => contact.id === value) 
+    ? contacts.find((contact) => contact.id === value) 
     : null;
 
   return (
@@ -62,7 +58,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             {loading ? "Loading..." : "No contact found."}
           </CommandEmpty>
           <CommandGroup>
-            {safeContacts.map((contact) => (
+            {contacts.map((contact) => (
               <CommandItem
                 key={contact.id}
                 value={contact.id}
