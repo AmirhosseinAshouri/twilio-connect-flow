@@ -23,10 +23,10 @@ import { Deal } from "@/types";
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
-  value: z.coerce.number(),
-  probability: z.coerce.number(),
+  value: z.coerce.number().min(0, "Value must be positive"),
+  probability: z.coerce.number().min(0).max(100, "Probability must be between 0 and 100"),
   assignedTo: z.string().optional(),
-  contactId: z.string().optional(),
+  contactId: z.string(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -36,16 +36,22 @@ interface DealFormProps {
   onSubmit: (values: Deal) => void;
 }
 
+const USERS = [
+  { id: "1", name: "Admin User" },
+  { id: "2", name: "Jane Smith" },
+  { id: "3", name: "John Doe" },
+] as const;
+
 export function DealForm({ deal, onSubmit }: DealFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: deal.title,
-      company: deal.company,
-      value: deal.value,
-      probability: deal.probability,
-      assignedTo: deal.assignedTo,
-      contactId: deal.contactId,
+      title: deal.title || "",
+      company: deal.company || "",
+      value: deal.value || 0,
+      probability: deal.probability || 0,
+      assignedTo: deal.assignedTo || undefined,
+      contactId: deal.contactId || "",
     },
   });
 
@@ -92,7 +98,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             <FormItem>
               <FormLabel>Value</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" min="0" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -122,16 +128,18 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Assigned To</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a user" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="1">Admin User</SelectItem>
-                  <SelectItem value="2">Jane Smith</SelectItem>
-                  <SelectItem value="3">John Doe</SelectItem>
+                  {USERS.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

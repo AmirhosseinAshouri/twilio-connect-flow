@@ -125,7 +125,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           company: string
-          contact_id: string | null
+          contact_id: string
           created_at: string
           id: string
           probability: number
@@ -138,7 +138,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           company: string
-          contact_id?: string | null
+          contact_id: string
           created_at?: string
           id?: string
           probability?: number
@@ -151,7 +151,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           company?: string
-          contact_id?: string | null
+          contact_id?: string
           created_at?: string
           id?: string
           probability?: number
@@ -216,7 +216,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
