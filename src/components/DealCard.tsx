@@ -4,19 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DealForm } from "./DealForm";
 import { useContact } from "@/hooks";
 import { Link } from "react-router-dom";
+import { Deal } from "@/types";
 
 interface DealCardProps {
-  deal: {
-    id: string;
-    title: string;
-    company: string;
-    value: number;
-    probability: number;
-    stage: string;
-    assignedTo?: string;
-    contactId?: string;
-  };
-  onUpdate: (updatedDeal: any) => void;
+  deal: Deal;
+  onUpdate: (updatedDeal: Deal) => void;
   provided: any;
 }
 
@@ -42,58 +34,57 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
     >
       <Dialog>
         <DialogTrigger asChild>
-          <div>
-            <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
-              <CardHeader>
-                <CardTitle className="flex justify-between items-center">
-                  <span className="text-lg">{deal.title}</span>
-                  <span className="text-sm font-normal text-muted-foreground">
-                    {deal.company}
+          <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex justify-between items-center">
+                <span className="text-lg font-medium">{deal.title}</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {deal.company}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Value</span>
+                  <span className="font-medium flex items-center">
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    {deal.value.toLocaleString()}
                   </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Value</span>
-                    <span className="font-medium flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1" />
-                      {deal.value.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Probability
-                    </span>
-                    <span className="font-medium">{deal.probability}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Assigned To
-                    </span>
-                    <span className="font-medium flex items-center">
-                      <User className="h-4 w-4 mr-1" />
-                      {getAssignedUserName(deal.assignedTo)}
-                    </span>
-                  </div>
-                  {contact && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Contact
-                      </span>
-                      <Link 
-                        to={`/contacts/${contact.id}`}
-                        className="font-medium flex items-center hover:text-primary"
-                      >
-                        <UserCircle className="h-4 w-4 mr-1" />
-                        {contact.name}
-                      </Link>
-                    </div>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Probability
+                  </span>
+                  <span className="font-medium">{deal.probability}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Assigned To
+                  </span>
+                  <span className="font-medium flex items-center">
+                    <User className="h-4 w-4 mr-1" />
+                    {getAssignedUserName(deal.assignedTo)}
+                  </span>
+                </div>
+                {contact && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Contact
+                    </span>
+                    <Link 
+                      to={`/contacts/${contact.id}`}
+                      className="font-medium flex items-center hover:text-primary"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <UserCircle className="h-4 w-4 mr-1" />
+                      {contact.name}
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>

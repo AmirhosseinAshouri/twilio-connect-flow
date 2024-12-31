@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Deal } from "@/types";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -25,23 +26,14 @@ const formSchema = z.object({
   value: z.coerce.number(),
   probability: z.coerce.number(),
   assignedTo: z.string().optional(),
-  contactId: z.string().optional(), // Add this back to match the deal type
+  contactId: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 interface DealFormProps {
-  deal: {
-    id: string;
-    title: string;
-    company: string;
-    value: number;
-    probability: number;
-    stage: string;
-    assignedTo?: string;
-    contactId?: string;
-  };
-  onSubmit: (values: any) => void;
+  deal: Deal;
+  onSubmit: (values: Deal) => void;
 }
 
 export function DealForm({ deal, onSubmit }: DealFormProps) {
@@ -80,7 +72,6 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="company"
@@ -94,7 +85,6 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="value"
@@ -108,7 +98,6 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="probability"
@@ -116,13 +105,17 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             <FormItem>
               <FormLabel>Probability (%)</FormLabel>
               <FormControl>
-                <Input type="number" min="0" max="100" {...field} />
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="assignedTo"
@@ -145,7 +138,6 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
-
         <Button type="submit" className="w-full">
           Save Changes
         </Button>

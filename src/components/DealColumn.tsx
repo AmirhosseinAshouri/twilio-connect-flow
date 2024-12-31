@@ -1,6 +1,7 @@
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { DealCard } from "./DealCard";
 import { Deal } from "@/types";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface DealColumnProps {
   column: {
@@ -21,28 +22,30 @@ export function DealColumn({ column, deals, onUpdateDeal }: DealColumnProps) {
           {deals.length} deals
         </span>
       </div>
-      <Droppable droppableId={column.id}>
-        {(provided) => (
-          <div
-            {...provided.droppableProps}
-            ref={provided.innerRef}
-            className={`${column.color} p-4 rounded-lg min-h-[500px] transition-colors`}
-          >
-            {deals.map((deal, index) => (
-              <Draggable key={deal.id} draggableId={deal.id} index={index}>
-                {(provided) => (
-                  <DealCard
-                    deal={deal}
-                    onUpdate={onUpdateDeal}
-                    provided={provided}
-                  />
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </div>
-        )}
-      </Droppable>
+      <ErrorBoundary>
+        <Droppable droppableId={column.id}>
+          {(provided) => (
+            <div
+              {...provided.droppableProps}
+              ref={provided.innerRef}
+              className={`${column.color} p-4 rounded-lg min-h-[500px] transition-colors`}
+            >
+              {deals.map((deal, index) => (
+                <Draggable key={deal.id} draggableId={deal.id} index={index}>
+                  {(provided) => (
+                    <DealCard
+                      deal={deal}
+                      onUpdate={onUpdateDeal}
+                      provided={provided}
+                    />
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </ErrorBoundary>
     </div>
   );
 }
