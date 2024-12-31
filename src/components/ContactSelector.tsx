@@ -31,8 +31,11 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [] } = useContacts();
+  const { contacts = [], loading } = useContacts();
   const value = form.watch("contact_id");
+
+  // Ensure contacts is always an array
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -45,7 +48,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             className="w-full justify-between"
           >
             {value
-              ? contacts.find((contact) => contact.id === value)?.name
+              ? safeContacts.find((contact) => contact.id === value)?.name || "Select contact..."
               : "Select contact..."}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -54,9 +57,11 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
       <PopoverContent className="w-full p-0">
         <Command>
           <CommandInput placeholder="Search contacts..." />
-          <CommandEmpty>No contact found.</CommandEmpty>
+          <CommandEmpty>
+            {loading ? "Loading..." : "No contact found."}
+          </CommandEmpty>
           <CommandGroup>
-            {contacts.map((contact) => (
+            {safeContacts.map((contact) => (
               <CommandItem
                 key={contact.id}
                 value={contact.id}
