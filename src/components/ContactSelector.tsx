@@ -26,12 +26,29 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading } = useContacts();
+  const { contacts, loading } = useContacts();
   const value = form.watch("contact_id");
 
+  // Ensure contacts is always an array
+  const contactsList = contacts || [];
+
   const selectedContact = value 
-    ? contacts.find((contact) => contact.id === value) 
+    ? contactsList.find((contact) => contact.id === value) 
     : null;
+
+  if (loading) {
+    return (
+      <Button
+        variant="outline"
+        role="combobox"
+        disabled
+        className="w-full justify-between"
+      >
+        Loading contacts...
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -42,11 +59,8 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={loading}
           >
-            {loading 
-              ? "Loading contacts..." 
-              : selectedContact?.name || "Select contact..."}
+            {selectedContact?.name || "Select contact..."}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </FormControl>
@@ -55,10 +69,10 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
         <Command>
           <CommandInput placeholder="Search contacts..." />
           <CommandEmpty>
-            {loading ? "Loading..." : "No contact found."}
+            No contact found.
           </CommandEmpty>
           <CommandGroup>
-            {contacts.map((contact) => (
+            {contactsList.map((contact) => (
               <CommandItem
                 key={contact.id}
                 value={contact.id}
