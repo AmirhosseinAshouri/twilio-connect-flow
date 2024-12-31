@@ -9,7 +9,7 @@ export interface Deal {
   stage: DealStage;
   user_id: string;
   assigned_to?: string;
-  contact_id?: string;
-  created_at?: string;
-  updated_at?: string;
+  contact_id: string;
+  created_at: string;
+  updated_at: string;
 }

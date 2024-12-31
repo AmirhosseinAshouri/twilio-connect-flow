@@ -25,8 +25,8 @@ const formSchema = z.object({
   company: z.string().min(1, "Company is required"),
   value: z.coerce.number().min(0, "Value must be positive"),
   probability: z.coerce.number().min(0).max(100, "Probability must be between 0 and 100"),
-  assignedTo: z.string().optional(),
-  contactId: z.string(),
+  assigned_to: z.string().optional(),
+  contact_id: z.string(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,8 +50,8 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
       company: deal.company || "",
       value: deal.value || 0,
       probability: deal.probability || 0,
-      assignedTo: deal.assignedTo || undefined,
-      contactId: deal.contactId || "",
+      assigned_to: deal.assigned_to || undefined,
+      contact_id: deal.contact_id || "",
     },
   });
 
@@ -124,7 +124,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
         />
         <FormField
           control={form.control}
-          name="assignedTo"
+          name="assigned_to"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Assigned To</FormLabel>

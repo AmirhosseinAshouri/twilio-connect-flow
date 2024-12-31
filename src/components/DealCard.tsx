@@ -13,7 +13,7 @@ interface DealCardProps {
 }
 
 export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
-  const { contact } = useContact(deal.contactId);
+  const { contact } = useContact(deal.contact_id);
   
   const getAssignedUserName = (userId?: string) => {
     if (!userId) return "Unassigned";
@@ -64,7 +64,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                   </span>
                   <span className="font-medium flex items-center">
                     <User className="h-4 w-4 mr-1" />
-                    {getAssignedUserName(deal.assignedTo)}
+                    {getAssignedUserName(deal.assigned_to)}
                   </span>
                 </div>
                 {contact && (
