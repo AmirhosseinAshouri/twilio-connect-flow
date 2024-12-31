@@ -29,8 +29,8 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const { contacts, loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Ensure contacts is always an array
-  const safeContacts = contacts || [];
+  // Initialize contacts as an empty array if undefined
+  const safeContacts = contacts ?? [];
 
   // Find selected contact safely
   const selectedContact = value 
