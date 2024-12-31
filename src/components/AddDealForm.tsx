@@ -26,7 +26,7 @@ const formSchema = z.object({
   value: z.coerce.number(),
   probability: z.coerce.number(),
   stage: z.string(),
-  contactId: z.string().optional(),
+  contact_id: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,7 +45,7 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
       value: 0,
       probability: 0,
       stage: "qualify",
-      contactId: undefined,
+      contact_id: undefined,
     },
   });
 

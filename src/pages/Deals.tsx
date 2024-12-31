@@ -117,6 +117,7 @@ const Deals = () => {
       ...values,
       user_id: user.id,
       stage: "qualify" as DealStage,
+      contact_id: values.contact_id || null,
     };
 
     const { data, error } = await supabase

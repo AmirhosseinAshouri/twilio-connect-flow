@@ -16,15 +16,23 @@ import {
 import { useState } from "react";
 import { useContacts } from "@/hooks";
 import { FormControl } from "./ui/form";
+import { UseFormReturn } from "react-hook-form";
 
-interface ContactSelectorProps {
-  value?: string;
-  onChange: (value: string) => void;
+export interface Contact {
+  id: string;
+  name: string;
+  company: string;
 }
 
-export function ContactSelector({ value, onChange }: ContactSelectorProps) {
+interface ContactSelectorProps {
+  form: UseFormReturn<any>;
+  onSelect: (contact: Contact) => void;
+}
+
+export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts = [] } = useContacts();
+  const value = form.watch("contact_id");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -53,7 +61,8 @@ export function ContactSelector({ value, onChange }: ContactSelectorProps) {
                 key={contact.id}
                 value={contact.id}
                 onSelect={() => {
-                  onChange(contact.id);
+                  form.setValue("contact_id", contact.id);
+                  onSelect(contact);
                   setOpen(false);
                 }}
               >
