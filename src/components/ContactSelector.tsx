@@ -17,12 +17,7 @@ import { useState } from "react";
 import { useContacts } from "@/hooks";
 import { FormControl } from "./ui/form";
 import { UseFormReturn } from "react-hook-form";
-
-export interface Contact {
-  id: string;
-  name: string;
-  company: string;
-}
+import { Contact } from "@/types";
 
 interface ContactSelectorProps {
   form: UseFormReturn<any>;
@@ -34,8 +29,11 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const { contacts = [], loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Ensure contacts is always an array
+  // Ensure contacts is always an array and handle undefined
   const safeContacts = Array.isArray(contacts) ? contacts : [];
+
+  // Find selected contact safely
+  const selectedContact = value ? safeContacts.find((contact) => contact.id === value) : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -47,9 +45,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             aria-expanded={open}
             className="w-full justify-between"
           >
-            {value
-              ? safeContacts.find((contact) => contact.id === value)?.name || "Select contact..."
-              : "Select contact..."}
+            {selectedContact?.name || "Select contact..."}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </FormControl>
