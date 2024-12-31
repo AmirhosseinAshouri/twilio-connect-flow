@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ContactSelector, Contact } from "./ContactSelector";
+import { ContactSelector } from "./ContactSelector";
+import { Contact } from "@/types";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
