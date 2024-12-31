@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,18 +26,17 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading } = useContacts();
+  const { contacts = [], loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Ensure contacts is always an array
-  const contactsList = contacts ?? [];
+  const selectedContact = contacts.find((contact) => contact.id === value);
 
   return (
     <FormField
       control={form.control}
       name="contact_id"
-      render={() => (
-        <FormItem>
+      render={({ field }) => (
+        <FormItem className="flex flex-col">
           <FormLabel>Contact</FormLabel>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -47,12 +46,19 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                   role="combobox"
                   aria-expanded={open}
                   disabled={loading}
-                  className="w-full justify-between"
+                  className={cn(
+                    "w-full justify-between",
+                    !field.value && "text-muted-foreground"
+                  )}
                 >
                   {loading ? (
-                    "Loading contacts..."
+                    <div className="flex items-center">
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Loading contacts...
+                    </div>
+                  ) : selectedContact ? (
+                    selectedContact.name
                   ) : (
-                    contactsList.find((contact) => contact.id === value)?.name || 
                     "Select contact..."
                   )}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -64,7 +70,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                 <CommandInput placeholder="Search contacts..." />
                 <CommandEmpty>No contact found.</CommandEmpty>
                 <CommandGroup>
-                  {contactsList.map((contact) => (
+                  {contacts.map((contact) => (
                     <CommandItem
                       key={contact.id}
                       value={contact.id}
