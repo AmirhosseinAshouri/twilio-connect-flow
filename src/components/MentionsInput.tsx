@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { FormControl } from "./ui/form";
 import { Textarea } from "./ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty } from "./ui/command";
+import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty, CommandList } from "./ui/command";
 import { supabase } from "@/integrations/supabase/client";
 
 interface User {
@@ -108,24 +108,28 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search users..." />
-          {!isLoading && (
-            <>
-              {filteredUsers.length > 0 ? (
-                <CommandGroup>
-                  {filteredUsers.map((user) => (
-                    <CommandItem
-                      key={user.id}
-                      onSelect={() => handleSelectUser(user.full_name)}
-                    >
-                      {user.full_name}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ) : (
-                <CommandEmpty>No users found.</CommandEmpty>
-              )}
-            </>
-          )}
+          <CommandList>
+            {isLoading ? (
+              <CommandEmpty>Loading users...</CommandEmpty>
+            ) : (
+              <>
+                {filteredUsers.length > 0 ? (
+                  <CommandGroup>
+                    {filteredUsers.map((user) => (
+                      <CommandItem
+                        key={user.id}
+                        onSelect={() => handleSelectUser(user.full_name)}
+                      >
+                        {user.full_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                ) : (
+                  <CommandEmpty>No users found.</CommandEmpty>
+                )}
+              </>
+            )}
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
