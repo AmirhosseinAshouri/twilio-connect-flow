@@ -2,26 +2,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Form } from "@/components/ui/form";
 import { Deal, Contact } from "@/types";
 import { ContactSelector } from "./ContactSelector";
-import { DealNotesList } from "./DealNotesList";
+import { DealNotesSection } from "./DealNotesSection";
+import { DealAssignedToSection } from "./DealAssignedToSection";
+import { DealBasicInfoSection } from "./DealBasicInfoSection";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -40,12 +26,6 @@ interface DealFormProps {
   deal: Deal;
   onSubmit: (values: Deal) => void;
 }
-
-const USERS = [
-  { id: "1", name: "Admin User" },
-  { id: "2", name: "Jane Smith" },
-  { id: "3", name: "John Doe" },
-] as const;
 
 interface Note {
   content: string;
@@ -152,84 +132,9 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <ContactSelector form={form} onSelect={handleContactSelect} />
-
-        <FormField
-          control={form.control}
-          name="company"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Company</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Add Note</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Add a note... Use @ to mention users"
-                  className="min-h-[100px]"
-                  {...field} 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Notes History</h3>
-          <DealNotesList notes={notes} />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="assigned_to"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Assigned To</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {USERS.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
+        <DealBasicInfoSection form={form} onContactSelect={handleContactSelect} />
+        <DealNotesSection form={form} notes={notes} />
+        <DealAssignedToSection form={form} />
         <Button type="submit" className="w-full">
           Save Changes
         </Button>
