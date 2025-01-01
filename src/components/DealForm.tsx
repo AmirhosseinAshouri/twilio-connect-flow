@@ -21,6 +21,10 @@ import {
 } from "@/components/ui/select";
 import { Deal, Contact } from "@/types";
 import { ContactSelector } from "./ContactSelector";
+import { DealNotesList } from "./DealNotesList";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -43,23 +47,100 @@ const USERS = [
   { id: "3", name: "John Doe" },
 ] as const;
 
+interface Note {
+  content: string;
+  created_at: string;
+  user_name?: string;
+}
+
 export function DealForm({ deal, onSubmit }: DealFormProps) {
+  const [notes, setNotes] = useState<Note[]>([]);
+  const { toast } = useToast();
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: deal.title || "",
       company: deal.company || "",
-      notes: deal.notes || "",
+      notes: "",
       assigned_to: deal.assigned_to || undefined,
       contact_id: deal.contact_id || "",
     },
   });
 
-  const handleSubmit = (values: FormValues) => {
-    onSubmit({
-      ...deal,
-      ...values,
-    });
+  useEffect(() => {
+    const fetchNotes = async () => {
+      const { data: notesData, error } = await supabase
+        .from('deals')
+        .select('notes, created_at')
+        .eq('id', deal.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Error fetching notes",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (notesData && notesData[0]?.notes) {
+        const notesList = notesData.map(note => ({
+          content: note.notes || "",
+          created_at: note.created_at,
+        }));
+        setNotes(notesList);
+      }
+    };
+
+    fetchNotes();
+  }, [deal.id, toast]);
+
+  const handleSubmit = async (values: FormValues) => {
+    // Process mentions in notes
+    const mentionRegex = /@(\w+)/g;
+    const mentions = values.notes?.match(mentionRegex) || [];
+    
+    // Create mentions records if any mentions found
+    if (mentions.length > 0) {
+      const mentionPromises = mentions.map(async (mention) => {
+        const username = mention.slice(1); // Remove @ symbol
+        const { data: userData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('full_name', username)
+          .single();
+
+        if (userData) {
+          await supabase.from('mentions').insert({
+            deal_id: deal.id,
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            mentioned_user_id: userData.id,
+          });
+        }
+      });
+
+      await Promise.all(mentionPromises);
+    }
+
+    // Update deal with new note
+    if (values.notes) {
+      const updatedDeal = {
+        ...deal,
+        ...values,
+      };
+      onSubmit(updatedDeal);
+
+      // Add new note to the list
+      setNotes(prev => [{
+        content: values.notes || "",
+        created_at: new Date().toISOString(),
+      }, ...prev]);
+
+      // Clear notes field after submission
+      form.setValue('notes', '');
+    }
   };
 
   const handleContactSelect = (contact: Contact) => {
@@ -106,10 +187,10 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes</FormLabel>
+              <FormLabel>Add Note</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Add notes about this deal..."
+                  placeholder="Add a note... Use @ to mention users"
                   className="min-h-[100px]"
                   {...field} 
                 />
@@ -118,6 +199,11 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
             </FormItem>
           )}
         />
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Notes History</h3>
+          <DealNotesList notes={notes} />
+        </div>
 
         <FormField
           control={form.control}

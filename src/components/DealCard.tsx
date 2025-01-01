@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, UserCircle } from "lucide-react";
+import { User, UserCircle, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
 import { useContact } from "@/hooks";
@@ -46,8 +46,11 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
             <CardContent>
               <div className="space-y-4">
                 {deal.notes && (
-                  <div className="text-sm text-muted-foreground">
-                    {deal.notes}
+                  <div className="flex items-start space-x-2">
+                    <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground" />
+                    <div className="text-sm text-muted-foreground line-clamp-2">
+                      {deal.notes}
+                    </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
