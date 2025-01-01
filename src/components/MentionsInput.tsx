@@ -33,7 +33,7 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
           .filter(user => user.full_name) // Only include users with a full_name
           .map(user => ({
             id: user.id,
-            full_name: user.full_name || 'Unnamed User'
+            full_name: user.full_name
           }));
         setUsers(validUsers);
       }
@@ -97,16 +97,18 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search users..." />
-          <CommandGroup>
-            {filteredUsers.map((user) => (
-              <CommandItem
-                key={user.id}
-                onSelect={() => handleSelectUser(user.full_name)}
-              >
-                {user.full_name}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          {users.length > 0 ? (
+            <CommandGroup>
+              {filteredUsers.map((user) => (
+                <CommandItem
+                  key={user.id}
+                  onSelect={() => handleSelectUser(user.full_name)}
+                >
+                  {user.full_name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null}
           <CommandEmpty>No users found.</CommandEmpty>
         </Command>
       </PopoverContent>
