@@ -1,12 +1,8 @@
-import { Check, ChevronsUpDown, Loader } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -15,9 +11,11 @@ import {
 } from "@/components/ui/popover";
 import { useState } from "react";
 import { useContacts } from "@/hooks";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { Contact } from "@/types";
+import { ContactListItem } from "./ContactListItem";
+import { ContactTriggerButton } from "./ContactTriggerButton";
 
 interface ContactSelectorProps {
   form: UseFormReturn<any>;
@@ -33,6 +31,12 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const contactsList = contacts || [];
   const selectedContact = contactsList.find((contact) => contact.id === value);
 
+  const handleSelect = (contact: Contact) => {
+    form.setValue("contact_id", contact.id);
+    onSelect(contact);
+    setOpen(false);
+  };
+
   return (
     <FormField
       control={form.control}
@@ -42,30 +46,10 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
           <FormLabel>Contact</FormLabel>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <FormControl>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={open}
-                  disabled={loading}
-                  className={cn(
-                    "w-full justify-between",
-                    !field.value && "text-muted-foreground"
-                  )}
-                >
-                  {loading ? (
-                    <div className="flex items-center">
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Loading contacts...
-                    </div>
-                  ) : selectedContact ? (
-                    selectedContact.name
-                  ) : (
-                    "Select contact..."
-                  )}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </FormControl>
+              <ContactTriggerButton
+                loading={loading}
+                selectedContact={selectedContact}
+              />
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
               <Command>
@@ -73,23 +57,12 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                 <CommandEmpty>No contact found.</CommandEmpty>
                 <CommandGroup>
                   {contactsList.map((contact) => (
-                    <CommandItem
+                    <ContactListItem
                       key={contact.id}
-                      value={contact.id}
-                      onSelect={() => {
-                        form.setValue("contact_id", contact.id);
-                        onSelect(contact);
-                        setOpen(false);
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === contact.id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {contact.name}
-                    </CommandItem>
+                      contact={contact}
+                      isSelected={value === contact.id}
+                      onSelect={handleSelect}
+                    />
                   ))}
                 </CommandGroup>
               </Command>
