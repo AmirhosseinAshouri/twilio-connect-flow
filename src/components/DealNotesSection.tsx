@@ -84,7 +84,7 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Add Note</FormLabel>
-            <Popover open={showMentions} onOpenChange={setShowMentions}>
+            <Popover open={showMentions && filteredUsers.length > 0} onOpenChange={setShowMentions}>
               <PopoverTrigger asChild>
                 <FormControl>
                   <Textarea 
@@ -95,20 +95,22 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
                   />
                 </FormControl>
               </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0" align="start">
-                <Command>
-                  <CommandGroup>
-                    {filteredUsers.map((user) => (
-                      <CommandItem
-                        key={user.id}
-                        onSelect={() => handleSelectUser(user.full_name || 'Unnamed User')}
-                      >
-                        {user.full_name || 'Unnamed User'}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
+              {filteredUsers.length > 0 && (
+                <PopoverContent className="w-[200px] p-0" align="start">
+                  <Command>
+                    <CommandGroup>
+                      {filteredUsers.map((user) => (
+                        <CommandItem
+                          key={user.id}
+                          onSelect={() => handleSelectUser(user.full_name || 'Unnamed User')}
+                        >
+                          {user.full_name || 'Unnamed User'}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              )}
             </Popover>
             <FormMessage />
           </FormItem>
