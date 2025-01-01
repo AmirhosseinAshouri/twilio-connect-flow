@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface User {
   id: string;
-  full_name: string;
+  full_name: string | null;
 }
 
 interface DealNotesSectionProps {
@@ -28,7 +28,12 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
         .from('profiles')
         .select('id, full_name');
       if (data) {
-        setUsers(data);
+        // Filter out users without names and provide a default name if needed
+        const validUsers = data.map(user => ({
+          ...user,
+          full_name: user.full_name || 'Unnamed User'
+        }));
+        setUsers(validUsers);
       }
     };
     fetchUsers();
@@ -68,7 +73,7 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
   };
 
   const filteredUsers = users.filter(user => 
-    user.full_name.toLowerCase().includes(mentionFilter.toLowerCase())
+    (user.full_name || '').toLowerCase().includes(mentionFilter.toLowerCase())
   );
 
   return (
@@ -96,9 +101,9 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
                     {filteredUsers.map((user) => (
                       <CommandItem
                         key={user.id}
-                        onSelect={() => handleSelectUser(user.full_name)}
+                        onSelect={() => handleSelectUser(user.full_name || 'Unnamed User')}
                       >
-                        {user.full_name}
+                        {user.full_name || 'Unnamed User'}
                       </CommandItem>
                     ))}
                   </CommandGroup>
