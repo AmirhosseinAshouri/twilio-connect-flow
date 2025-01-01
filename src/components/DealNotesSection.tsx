@@ -29,7 +29,7 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
         .select('id, full_name');
       if (data) {
         const validUsers = data.map(user => ({
-          ...user,
+          id: user.id,
           full_name: user.full_name || 'Unnamed User'
         }));
         setUsers(validUsers);
@@ -83,7 +83,10 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Add Note</FormLabel>
-            <Popover open={showMentions && filteredUsers.length > 0} onOpenChange={setShowMentions}>
+            <Popover 
+              open={showMentions && filteredUsers.length > 0} 
+              onOpenChange={setShowMentions}
+            >
               <PopoverTrigger asChild>
                 <FormControl>
                   <Textarea 
