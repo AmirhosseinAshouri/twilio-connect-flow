@@ -19,23 +19,34 @@ interface MentionsInputProps {
 
 export function MentionsInput({ value, onChange, placeholder, className }: MentionsInputProps) {
   const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [textareaElement, setTextareaElement] = useState<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name');
-      if (data) {
-        const validUsers = data
-          .filter(user => user.full_name) // Only include users with a full_name
-          .map(user => ({
-            id: user.id,
-            full_name: user.full_name
-          }));
-        setUsers(validUsers);
+      try {
+        setIsLoading(true);
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, full_name');
+        
+        if (data) {
+          const validUsers = data
+            .filter((user): user is { id: string; full_name: string } => 
+              Boolean(user && user.full_name)
+            )
+            .map(user => ({
+              id: user.id,
+              full_name: user.full_name
+            }));
+          setUsers(validUsers);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchUsers();
@@ -80,7 +91,7 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
 
   return (
     <Popover 
-      open={showMentions && filteredUsers.length > 0} 
+      open={showMentions} 
       onOpenChange={setShowMentions}
     >
       <PopoverTrigger asChild>
@@ -97,19 +108,24 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search users..." />
-          {users.length > 0 ? (
-            <CommandGroup>
-              {filteredUsers.map((user) => (
-                <CommandItem
-                  key={user.id}
-                  onSelect={() => handleSelectUser(user.full_name)}
-                >
-                  {user.full_name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          ) : null}
-          <CommandEmpty>No users found.</CommandEmpty>
+          {!isLoading && (
+            <>
+              {filteredUsers.length > 0 ? (
+                <CommandGroup>
+                  {filteredUsers.map((user) => (
+                    <CommandItem
+                      key={user.id}
+                      onSelect={() => handleSelectUser(user.full_name)}
+                    >
+                      {user.full_name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ) : (
+                <CommandEmpty>No users found.</CommandEmpty>
+              )}
+            </>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
