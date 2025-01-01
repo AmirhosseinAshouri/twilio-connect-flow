@@ -8,4 +8,4 @@ export interface Contact {
   created_at: string;
 }
 
-export type ContactFormValues = Omit<Contact, "id" | "user_id" | "created_at">; 
+export type ContactFormValues = Omit<Contact, 'id' | 'user_id' | 'created_at'>;

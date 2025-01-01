@@ -11,6 +11,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -24,9 +25,8 @@ import { Contact } from "@/types";
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
-  value: z.coerce.number(),
-  probability: z.coerce.number(),
   stage: z.string(),
+  notes: z.string().optional(),
   contact_id: z.string().optional(),
 });
 
@@ -43,9 +43,8 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
     defaultValues: {
       title: "",
       company: "",
-      value: 0,
-      probability: 0,
       stage: "qualify",
+      notes: "",
       contact_id: undefined,
     },
   });
@@ -91,29 +90,15 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
         />
         <FormField
           control={form.control}
-          name="value"
+          name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Value</FormLabel>
+              <FormLabel>Notes</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="probability"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Probability (%)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  {...field}
+                <Textarea 
+                  placeholder="Add notes about this deal..."
+                  className="min-h-[100px]"
+                  {...field} 
                 />
               </FormControl>
               <FormMessage />

@@ -11,6 +11,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,13 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Deal, Contact } from "@/types";
-import { ContactSelector } from "../components/ContactSelector";
+import { ContactSelector } from "./ContactSelector";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
-  value: z.coerce.number().min(0, "Value must be positive"),
-  probability: z.coerce.number().min(0).max(100, "Probability must be between 0 and 100"),
+  notes: z.string().optional(),
   assigned_to: z.string().optional(),
   contact_id: z.string(),
 });
@@ -49,8 +49,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     defaultValues: {
       title: deal.title || "",
       company: deal.company || "",
-      value: deal.value || 0,
-      probability: deal.probability || 0,
+      notes: deal.notes || "",
       assigned_to: deal.assigned_to || undefined,
       contact_id: deal.contact_id || "",
     },
@@ -104,30 +103,15 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
 
         <FormField
           control={form.control}
-          name="value"
+          name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Value</FormLabel>
+              <FormLabel>Notes</FormLabel>
               <FormControl>
-                <Input type="number" min="0" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="probability"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Probability (%)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  {...field}
+                <Textarea 
+                  placeholder="Add notes about this deal..."
+                  className="min-h-[100px]"
+                  {...field} 
                 />
               </FormControl>
               <FormMessage />

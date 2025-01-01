@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, User, UserCircle } from "lucide-react";
+import { User, UserCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
 import { useContact } from "@/hooks";
@@ -45,19 +45,11 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Value</span>
-                  <span className="font-medium flex items-center">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    {deal.value.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Probability
-                  </span>
-                  <span className="font-medium">{deal.probability}%</span>
-                </div>
+                {deal.notes && (
+                  <div className="text-sm text-muted-foreground">
+                    {deal.notes}
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
                     Assigned To

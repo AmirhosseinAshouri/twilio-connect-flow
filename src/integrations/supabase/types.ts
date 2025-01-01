@@ -128,12 +128,11 @@ export type Database = {
           contact_id: string
           created_at: string
           id: string
-          probability: number
+          notes: string | null
           stage: string
           title: string
           updated_at: string
           user_id: string
-          value: number
         }
         Insert: {
           assigned_to?: string | null
@@ -141,12 +140,11 @@ export type Database = {
           contact_id: string
           created_at?: string
           id?: string
-          probability?: number
+          notes?: string | null
           stage?: string
           title: string
           updated_at?: string
           user_id: string
-          value?: number
         }
         Update: {
           assigned_to?: string | null
@@ -154,14 +152,45 @@ export type Database = {
           contact_id?: string
           created_at?: string
           id?: string
-          probability?: number
+          notes?: string | null
           stage?: string
           title?: string
           updated_at?: string
           user_id?: string
-          value?: number
         }
         Relationships: []
+      }
+      mentions: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          id: string
+          mentioned_user_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          mentioned_user_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          mentioned_user_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
