@@ -2,7 +2,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/f
 import { Textarea } from "./ui/textarea";
 import { DealNotesList } from "./DealNotesList";
 import { useState, useEffect } from "react";
-import { Command, CommandGroup, CommandItem } from "./ui/command";
+import { Command, CommandGroup, CommandItem, CommandInput, CommandEmpty } from "./ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,7 +28,6 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
         .from('profiles')
         .select('id, full_name');
       if (data) {
-        // Filter out users without names and provide a default name if needed
         const validUsers = data.map(user => ({
           ...user,
           full_name: user.full_name || 'Unnamed User'
@@ -73,7 +72,7 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
   };
 
   const filteredUsers = users.filter(user => 
-    (user.full_name || '').toLowerCase().includes(mentionFilter.toLowerCase())
+    user.full_name.toLowerCase().includes(mentionFilter.toLowerCase())
   );
 
   return (
@@ -95,22 +94,22 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
                   />
                 </FormControl>
               </PopoverTrigger>
-              {filteredUsers.length > 0 && (
-                <PopoverContent className="w-[200px] p-0" align="start">
-                  <Command>
-                    <CommandGroup>
-                      {filteredUsers.map((user) => (
-                        <CommandItem
-                          key={user.id}
-                          onSelect={() => handleSelectUser(user.full_name || 'Unnamed User')}
-                        >
-                          {user.full_name || 'Unnamed User'}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              )}
+              <PopoverContent className="w-[200px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search users..." />
+                  <CommandEmpty>No users found.</CommandEmpty>
+                  <CommandGroup>
+                    {filteredUsers.map((user) => (
+                      <CommandItem
+                        key={user.id}
+                        onSelect={() => handleSelectUser(user.full_name)}
+                      >
+                        {user.full_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
             </Popover>
             <FormMessage />
           </FormItem>
