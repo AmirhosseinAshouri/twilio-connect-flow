@@ -29,10 +29,12 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
         .from('profiles')
         .select('id, full_name');
       if (data) {
-        const validUsers = data.map(user => ({
-          id: user.id,
-          full_name: user.full_name || 'Unnamed User'
-        }));
+        const validUsers = data
+          .filter(user => user.full_name) // Only include users with a full_name
+          .map(user => ({
+            id: user.id,
+            full_name: user.full_name || 'Unnamed User'
+          }));
         setUsers(validUsers);
       }
     };
@@ -95,7 +97,6 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command>
           <CommandInput placeholder="Search users..." />
-          <CommandEmpty>No users found.</CommandEmpty>
           <CommandGroup>
             {filteredUsers.map((user) => (
               <CommandItem
@@ -106,6 +107,7 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
               </CommandItem>
             ))}
           </CommandGroup>
+          <CommandEmpty>No users found.</CommandEmpty>
         </Command>
       </PopoverContent>
     </Popover>
