@@ -26,10 +26,12 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading } = useContacts();
+  const { contacts, loading } = useContacts();
   const value = form.watch("contact_id");
 
-  const selectedContact = contacts?.find((contact) => contact.id === value) || null;
+  // Ensure we have a valid contacts array and find the selected contact
+  const contactsList = contacts || [];
+  const selectedContact = contactsList.find((contact) => contact.id === value);
 
   return (
     <FormField
@@ -70,7 +72,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                 <CommandInput placeholder="Search contacts..." />
                 <CommandEmpty>No contact found.</CommandEmpty>
                 <CommandGroup>
-                  {(contacts || []).map((contact) => (
+                  {contactsList.map((contact) => (
                     <CommandItem
                       key={contact.id}
                       value={contact.id}
