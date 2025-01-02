@@ -6,7 +6,15 @@ import { DollarSign, Phone, Users, AtSign } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Deal } from "@/types";
-import { DealCard } from "@/components/DealCard";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
@@ -87,19 +95,31 @@ export default function Dashboard() {
             <AtSign className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Deals You're Mentioned In</h2>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {mentionedDeals.map((deal) => (
-              <DealCard
-                key={deal.id}
-                deal={deal}
-                onUpdate={updateDeal}
-                provided={{
-                  innerRef: () => {},
-                  draggableProps: {},
-                  dragHandleProps: null,
-                }}
-              />
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Stage</TableHead>
+                  <TableHead>Last Updated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mentionedDeals.map((deal) => (
+                  <TableRow key={deal.id}>
+                    <TableCell className="font-medium">{deal.title}</TableCell>
+                    <TableCell>{deal.company}</TableCell>
+                    <TableCell>
+                      <span className="capitalize">{deal.stage}</span>
+                    </TableCell>
+                    <TableCell>
+                      {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
