@@ -18,7 +18,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
-  const { deals, updateDeal } = useDeals();
+  const { deals } = useDeals();
   const { calls } = useCalls();
   const [mentionedDeals, setMentionedDeals] = useState<Deal[]>([]);
 
