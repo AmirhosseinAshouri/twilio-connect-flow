@@ -16,20 +16,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchMentionedDeals = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data: mentions } = await supabase
         .from('mentions')
         .select('deal_id')
-        .eq('mentioned_user_id', await supabase.auth.getUser().then(({ data }) => data.user?.id));
+        .eq('mentioned_user_id', user.id);
 
       if (mentions && mentions.length > 0) {
         const dealIds = mentions.map(mention => mention.deal_id);
-        const { data: deals } = await supabase
+        const { data: dealsData } = await supabase
           .from('deals')
           .select('*')
           .in('id', dealIds)
           .order('updated_at', { ascending: false });
 
-        setMentionedDeals(deals || []);
+        if (dealsData) {
+          const typedDeals: Deal[] = dealsData.map(deal => ({
+            ...deal,
+            stage: deal.stage as Deal['stage']
+          }));
+          setMentionedDeals(typedDeals);
+        }
       }
     };
 
@@ -79,7 +88,7 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold">Deals You're Mentioned In</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {mentionedDeals.map((deal, index) => (
+            {mentionedDeals.map((deal) => (
               <DealCard
                 key={deal.id}
                 deal={deal}
