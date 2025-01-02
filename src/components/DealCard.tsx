@@ -36,7 +36,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
         <DialogTrigger asChild>
           <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
             <CardHeader>
-              <CardTitle className="flex justify-between items-center">
+              <CardTitle className="flex justify-between items-center flex-wrap gap-2">
                 <span className="text-lg font-medium">{deal.title}</span>
                 <span className="text-sm font-normal text-muted-foreground">
                   {deal.company}
@@ -47,13 +47,13 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
               <div className="space-y-4">
                 {deal.notes && (
                   <div className="flex items-start space-x-2">
-                    <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground" />
+                    <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
                     <div className="text-sm text-muted-foreground line-clamp-2">
                       {deal.notes}
                     </div>
                   </div>
                 )}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-sm text-muted-foreground">
                     Assigned To
                   </span>
@@ -63,7 +63,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                   </span>
                 </div>
                 {contact && (
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <span className="text-sm text-muted-foreground">
                       Contact
                     </span>
@@ -81,7 +81,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
             </CardContent>
           </Card>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="max-w-2xl w-full">
           <DialogHeader>
             <DialogTitle>Edit Deal</DialogTitle>
           </DialogHeader>
