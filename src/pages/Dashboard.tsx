@@ -41,11 +41,7 @@ export default function Dashboard() {
           .order('updated_at', { ascending: false });
 
         if (dealsData) {
-          const typedDeals: Deal[] = dealsData.map(deal => ({
-            ...deal,
-            stage: deal.stage as Deal['stage']
-          }));
-          setMentionedDeals(typedDeals);
+          setMentionedDeals(dealsData as Deal[]);
         }
       }
     };
