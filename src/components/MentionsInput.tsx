@@ -111,23 +111,19 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
           <CommandList>
             {isLoading ? (
               <CommandEmpty>Loading users...</CommandEmpty>
+            ) : filteredUsers.length > 0 ? (
+              <CommandGroup>
+                {filteredUsers.map((user) => (
+                  <CommandItem
+                    key={user.id}
+                    onSelect={() => handleSelectUser(user.full_name)}
+                  >
+                    {user.full_name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
             ) : (
-              <>
-                {filteredUsers.length > 0 ? (
-                  <CommandGroup>
-                    {filteredUsers.map((user) => (
-                      <CommandItem
-                        key={user.id}
-                        onSelect={() => handleSelectUser(user.full_name)}
-                      >
-                        {user.full_name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ) : (
-                  <CommandEmpty>No users found.</CommandEmpty>
-                )}
-              </>
+              <CommandEmpty>No users found.</CommandEmpty>
             )}
           </CommandList>
         </Command>
