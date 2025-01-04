@@ -30,49 +30,49 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
       ref={provided.innerRef}
       {...provided.draggableProps}
       {...provided.dragHandleProps}
-      className="mb-4"
+      className="mb-3"
     >
       <Dialog>
         <DialogTrigger asChild>
           <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
-            <CardHeader>
+            <CardHeader className="p-4">
               <CardTitle className="flex justify-between items-center flex-wrap gap-2">
-                <span className="text-lg font-medium">{deal.title}</span>
-                <span className="text-sm font-normal text-muted-foreground">
+                <span className="text-base font-medium">{deal.title}</span>
+                <span className="text-xs font-normal text-muted-foreground">
                   {deal.company}
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="p-4 pt-0">
+              <div className="space-y-2">
                 {deal.notes && (
                   <div className="flex items-start space-x-2">
-                    <MessageSquare className="h-4 w-4 mt-1 text-muted-foreground flex-shrink-0" />
-                    <div className="text-sm text-muted-foreground line-clamp-2">
+                    <MessageSquare className="h-3 w-3 mt-1 text-muted-foreground flex-shrink-0" />
+                    <div className="text-xs text-muted-foreground line-clamp-2">
                       {deal.notes}
                     </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Assigned To
                   </span>
-                  <span className="font-medium flex items-center">
-                    <User className="h-4 w-4 mr-1" />
+                  <span className="text-xs font-medium flex items-center">
+                    <User className="h-3 w-3 mr-1" />
                     {getAssignedUserName(deal.assigned_to)}
                   </span>
                 </div>
                 {contact && (
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Contact
                     </span>
                     <Link 
                       to={`/contacts/${contact.id}`}
-                      className="font-medium flex items-center hover:text-primary"
+                      className="text-xs font-medium flex items-center hover:text-primary"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <UserCircle className="h-4 w-4 mr-1" />
+                      <UserCircle className="h-3 w-3 mr-1" />
                       {contact.name}
                     </Link>
                   </div>

@@ -15,7 +15,7 @@ interface DealColumnProps {
 
 export function DealColumn({ column, deals, onUpdateDeal }: DealColumnProps) {
   return (
-    <div key={column.id} className="space-y-4">
+    <div key={column.id} className="space-y-4 h-full">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg">{column.title}</h2>
         <span className="text-sm text-muted-foreground">
@@ -28,7 +28,7 @@ export function DealColumn({ column, deals, onUpdateDeal }: DealColumnProps) {
             <div
               {...provided.droppableProps}
               ref={provided.innerRef}
-              className={`${column.color} p-4 rounded-lg min-h-[500px] transition-colors`}
+              className={`${column.color} p-4 rounded-lg h-[calc(100vh-200px)] overflow-y-auto transition-colors`}
             >
               {deals.map((deal, index) => (
                 <Draggable key={deal.id} draggableId={deal.id} index={index}>
