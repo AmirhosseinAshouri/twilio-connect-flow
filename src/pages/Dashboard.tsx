@@ -137,7 +137,7 @@ export default function Dashboard() {
       )}
 
       <Dialog open={!!selectedDeal} onOpenChange={(open) => !open && setSelectedDeal(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Deal</DialogTitle>
           </DialogHeader>
