@@ -96,8 +96,7 @@ export default function Dashboard() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Stage</TableHead>
+                  <TableHead>Last Note</TableHead>
                   <TableHead>Last Updated</TableHead>
                 </TableRow>
               </TableHeader>
@@ -105,9 +104,10 @@ export default function Dashboard() {
                 {mentionedDeals.map((deal) => (
                   <TableRow key={deal.id}>
                     <TableCell className="font-medium">{deal.title}</TableCell>
-                    <TableCell>{deal.company}</TableCell>
                     <TableCell>
-                      <span className="capitalize">{deal.stage}</span>
+                      <div className="max-w-md truncate">
+                        {deal.notes || "No notes yet"}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
