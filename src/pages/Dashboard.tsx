@@ -15,12 +15,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DealForm } from "@/components/DealForm";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
-  const { deals } = useDeals();
+  const { deals, updateDeal } = useDeals();
   const { calls } = useCalls();
   const [mentionedDeals, setMentionedDeals] = useState<Deal[]>([]);
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
   useEffect(() => {
     const fetchMentionedDeals = async () => {
@@ -48,6 +51,15 @@ export default function Dashboard() {
 
     fetchMentionedDeals();
   }, []);
+
+  const handleDealUpdate = (updatedDeal: Deal) => {
+    updateDeal(updatedDeal);
+    setSelectedDeal(null);
+    // Update the mentioned deals list
+    setMentionedDeals(prev => 
+      prev.map(deal => deal.id === updatedDeal.id ? updatedDeal : deal)
+    );
+  };
 
   return (
     <div className="p-8 space-y-8">
@@ -102,7 +114,11 @@ export default function Dashboard() {
               </TableHeader>
               <TableBody>
                 {mentionedDeals.map((deal) => (
-                  <TableRow key={deal.id}>
+                  <TableRow 
+                    key={deal.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedDeal(deal)}
+                  >
                     <TableCell className="font-medium">{deal.title}</TableCell>
                     <TableCell>
                       <div className="max-w-md truncate">
@@ -119,6 +135,17 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!selectedDeal} onOpenChange={(open) => !open && setSelectedDeal(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+          </DialogHeader>
+          {selectedDeal && (
+            <DealForm deal={selectedDeal} onSubmit={handleDealUpdate} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
