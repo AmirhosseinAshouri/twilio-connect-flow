@@ -11,9 +11,18 @@ import {
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
 import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ContactCard } from "@/components/ContactCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CallFormDialog } from "@/components/CallFormDialog";
+import { SendSMSDialog } from "@/components/SendSMSDialog";
+import { SendEmailDialog } from "@/components/SendEmailDialog";
 
 const Contacts = () => {
   const { contacts, loading, addContact } = useContacts();
@@ -22,8 +31,8 @@ const Contacts = () => {
 
   const filteredContacts = contacts.filter(contact => 
     contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.company.toLowerCase().includes(searchQuery.toLowerCase())
+    contact.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    contact.company?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleAddContact = async (values: ContactFormValues) => {
@@ -71,31 +80,44 @@ const Contacts = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loading ? (
-            // Loading skeletons
-            Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <div className="flex gap-2 mt-4">
-                    <Skeleton className="h-9 flex-1" />
-                    <Skeleton className="h-9 flex-1" />
-                    <Skeleton className="h-9 flex-1" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            filteredContacts.map((contact) => (
-              <ContactCard key={contact.id} contact={contact} />
-            ))
-          )}
-        </div>
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredContacts.map((contact) => (
+                  <TableRow key={contact.id}>
+                    <TableCell className="font-medium">{contact.name}</TableCell>
+                    <TableCell>{contact.email}</TableCell>
+                    <TableCell>{contact.phone}</TableCell>
+                    <TableCell>{contact.company}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <CallFormDialog contact={contact} />
+                        <SendSMSDialog contact={contact} />
+                        <SendEmailDialog contact={contact} />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </div>
   );
