@@ -51,7 +51,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                 selectedContact={selectedContact}
               />
             </PopoverTrigger>
-            <PopoverContent className="w-full p-0">
+            <PopoverContent className="w-full p-0" align="start">
               <Command>
                 <CommandInput placeholder="Search contacts..." />
                 <CommandEmpty>No contact found.</CommandEmpty>

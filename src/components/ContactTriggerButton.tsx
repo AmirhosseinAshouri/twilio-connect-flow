@@ -15,6 +15,7 @@ export function ContactTriggerButton({ loading, selectedContact }: ContactTrigge
       <Button
         variant="outline"
         role="combobox"
+        type="button"
         className={cn(
           "w-full justify-between",
           !selectedContact && "text-muted-foreground"

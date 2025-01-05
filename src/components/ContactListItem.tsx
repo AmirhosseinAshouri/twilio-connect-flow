@@ -14,7 +14,10 @@ export function ContactListItem({ contact, isSelected, onSelect }: ContactListIt
     <CommandItem
       key={contact.id}
       value={contact.id}
-      onSelect={() => onSelect(contact)}
+      onSelect={() => {
+        onSelect(contact);
+      }}
+      className="cursor-pointer"
     >
       <Check
         className={cn(
