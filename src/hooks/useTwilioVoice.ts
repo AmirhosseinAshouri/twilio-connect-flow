@@ -6,7 +6,7 @@ export function useTwilioVoice() {
   const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
 
-  const makeCall = async (to: string) => {
+  const makeCall = async (to: string, contactId: string) => {
     try {
       setIsConnecting(true);
       
@@ -24,11 +24,16 @@ export function useTwilioVoice() {
         throw new Error("Please configure your Twilio settings in the Settings page");
       }
 
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw new Error("Authentication required");
+
       // Create a new call record
       const { data: callData, error: callError } = await supabase
         .from("calls")
         .insert([{
-          to,
+          contact_id: contactId,
+          user_id: user.id,
           status: 'initiated',
           notes: '',
         }])
@@ -50,9 +55,9 @@ export function useTwilioVoice() {
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to initiate call');
+        throw new Error(data.error || 'Failed to initiate call');
       }
 
       toast({

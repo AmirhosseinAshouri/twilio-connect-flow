@@ -30,7 +30,12 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const success = await makeCall(phone);
+    if (!contact?.id) {
+      console.error('Contact ID is required');
+      return;
+    }
+
+    const success = await makeCall(phone, contact.id);
     if (success) {
       setOpen(false);
     }
