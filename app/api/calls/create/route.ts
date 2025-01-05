@@ -26,23 +26,31 @@ export async function POST(request: Request) {
     );
 
     if (userError || !user) {
+      console.error('User authentication error:', userError);
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    // Get the user's settings
+    // Get the user's settings with improved error handling
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
       .single();
 
-    if (settingsError || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
-      console.error('Settings error:', settingsError);
+    if (settingsError) {
+      console.error('Settings fetch error:', settingsError);
       return NextResponse.json(
-        { error: "Twilio settings not found" },
+        { error: "Failed to fetch Twilio settings" },
+        { status: 500 }
+      );
+    }
+
+    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+      return NextResponse.json(
+        { error: "Please configure your Twilio settings in the Settings page" },
         { status: 400 }
       );
     }
@@ -57,7 +65,7 @@ export async function POST(request: Request) {
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
-      from,
+      from: settings.twilio_phone_number,
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });

@@ -20,10 +20,16 @@ export function useTwilioVoice() {
       const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
+        .eq("user_id", session.user.id)
         .single();
 
-      if (settingsError || !settings?.twilio_phone_number) {
-        throw new Error("Please configure your Twilio settings first");
+      if (settingsError) {
+        console.error('Settings fetch error:', settingsError);
+        throw new Error("Failed to fetch Twilio settings");
+      }
+
+      if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+        throw new Error("Please configure your Twilio settings in the Settings page");
       }
 
       // Create a new call record
