@@ -14,8 +14,6 @@ import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
 import { useTwilioVoice } from "@/hooks/useTwilioVoice";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -27,86 +25,35 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
   const { settings, loading: settingsLoading } = useSettings();
-  const { makeCall, hangUp, isReady, isConnecting, hasActiveCall } = useTwilioVoice();
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const { makeCall, isConnecting } = useTwilioVoice();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!contact?.id) {
-      toast({
-        title: "Error",
-        description: "Contact information is missing",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
-      toast({
-        title: "Settings Required",
-        description: "Please configure your Twilio settings in the Settings page",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!isReady) {
-      toast({
-        title: "Error",
-        description: "Voice client not ready. Please try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await makeCall(phone);
-      toast({
-        title: "Call Initiated",
-        description: "Connecting your call...",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to initiate call",
-        variant: "destructive",
-      });
+    const success = await makeCall(phone);
+    if (success) {
+      setOpen(false);
     }
   };
 
-  const handleSettingsClick = () => {
-    setOpen(false);
-    navigate("/settings");
-  };
-
-  const getMissingSettings = () => {
-    if (!settings) return ["Twilio Account SID", "Twilio Auth Token", "Twilio Phone Number"];
-    const missing = [];
-    if (!settings.twilio_account_sid) missing.push("Twilio Account SID");
-    if (!settings.twilio_auth_token) missing.push("Twilio Auth Token");
-    if (!settings.twilio_phone_number) missing.push("Twilio Phone Number");
-    return missing;
-  };
-
-  const missingSettings = getMissingSettings();
-  const isTwilioConfigured = missingSettings.length === 0;
+  const isTwilioConfigured = settings?.twilio_account_sid && 
+                            settings?.twilio_auth_token && 
+                            settings?.twilio_phone_number;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline">
-            <PhoneCall className="mr-2 h-4 w-4" /> {hasActiveCall ? 'End Call' : 'New Call'}
+            <PhoneCall className="mr-2 h-4 w-4" /> New Call
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
           <DialogDescription>
-            Start a new browser-based call with this contact using Twilio Voice.
+            Start a new call with this contact using Twilio.
           </DialogDescription>
         </DialogHeader>
 
@@ -117,16 +64,8 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
         ) : !isTwilioConfigured ? (
           <Alert variant="destructive">
             <AlertTitle>Missing Twilio Settings</AlertTitle>
-            <AlertDescription className="space-y-4">
-              <p>The following Twilio settings need to be configured:</p>
-              <ul className="list-disc pl-4">
-                {missingSettings.map((setting) => (
-                  <li key={setting}>{setting}</li>
-                ))}
-              </ul>
-              <Button onClick={handleSettingsClick} variant="outline" className="mt-2">
-                Configure Settings
-              </Button>
+            <AlertDescription>
+              Please configure your Twilio settings in the Settings page before making calls.
             </AlertDescription>
           </Alert>
         ) : (
