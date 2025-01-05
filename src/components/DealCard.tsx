@@ -81,7 +81,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
             </CardContent>
           </Card>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl w-full">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Deal</DialogTitle>
           </DialogHeader>
