@@ -16,7 +16,7 @@ export function useTwilioVoice() {
         throw new Error("Authentication required");
       }
 
-      // Get user's Twilio settings
+      // Get user's Twilio settings with improved error handling
       const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
