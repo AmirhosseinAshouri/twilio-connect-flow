@@ -11,13 +11,23 @@ export async function POST(request: Request) {
   try {
     const { callId, to, from } = await request.json();
 
-    // Get user's Twilio settings
+    // Get user's Twilio settings from the request headers
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: "No authorization header" },
+        { status: 401 }
+      );
+    }
+
+    // Get the user's settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token")
       .single();
 
     if (settingsError || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+      console.error('Settings error:', settingsError);
       return NextResponse.json(
         { error: "Twilio settings not found" },
         { status: 400 }
