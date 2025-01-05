@@ -10,30 +10,28 @@ export function useTwilioVoice() {
     try {
       setIsConnecting(true);
       
+      // Get current user session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error("Authentication required");
+      }
+
       // Get user's Twilio settings
       const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
         .single();
 
-      if (settingsError) {
-        throw new Error("Failed to fetch Twilio settings");
+      if (settingsError || !settings?.twilio_phone_number) {
+        throw new Error("Please configure your Twilio settings first");
       }
-
-      if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-        throw new Error("Please configure your Twilio settings in the Settings page");
-      }
-
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error("Authentication required");
 
       // Create a new call record
       const { data: callData, error: callError } = await supabase
         .from("calls")
         .insert([{
           contact_id: contactId,
-          user_id: user.id,
+          user_id: session.user.id,
           status: 'initiated',
           notes: '',
         }])
@@ -47,6 +45,7 @@ export function useTwilioVoice() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           callId: callData.id,

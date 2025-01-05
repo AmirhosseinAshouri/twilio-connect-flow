@@ -20,10 +20,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify the session
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     // Get the user's settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
-      .select("twilio_account_sid, twilio_auth_token")
+      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
+      .eq("user_id", user.id)
       .single();
 
     if (settingsError || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
@@ -53,7 +66,8 @@ export async function POST(request: Request) {
     const { error: updateError } = await supabase
       .from("calls")
       .update({ twilio_sid: call.sid })
-      .eq("id", callId);
+      .eq("id", callId)
+      .eq("user_id", user.id);
 
     if (updateError) {
       console.error('Error updating call record:', updateError);
