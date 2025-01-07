@@ -27,7 +27,7 @@ const formSchema = z.object({
   company: z.string().min(1, "Company is required"),
   stage: z.string(),
   notes: z.string().optional(),
-  contact_id: z.string().optional(),
+  contact_id: z.string().min(1, "Contact is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,7 +45,7 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
       company: "",
       stage: "qualify",
       notes: "",
-      contact_id: undefined,
+      contact_id: "",
     },
   });
 
@@ -54,7 +54,10 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
   };
 
   const handleContactSelect = (contact: Contact) => {
-    form.setValue("company", contact.company);
+    if (contact) {
+      form.setValue("company", contact.company || "");
+      form.setValue("contact_id", contact.id);
+    }
   };
 
   return (
@@ -82,7 +85,7 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
             <FormItem>
               <FormLabel>Company</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} readOnly />
               </FormControl>
               <FormMessage />
             </FormItem>
