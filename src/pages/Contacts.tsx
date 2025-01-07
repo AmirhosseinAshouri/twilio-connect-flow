@@ -29,11 +29,14 @@ const Contacts = () => {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredContacts = contacts.filter(contact => 
-    contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.company?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = contacts.filter(contact => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      contact.name.toLowerCase().includes(searchLower) ||
+      (contact.email?.toLowerCase() || '').includes(searchLower) ||
+      (contact.company?.toLowerCase() || '').includes(searchLower)
+    );
+  });
 
   const handleAddContact = async (values: ContactFormValues) => {
     const contactData = {
