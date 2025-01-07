@@ -55,22 +55,22 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
             <PopoverContent className="w-full p-0" align="start">
               <Command>
                 <CommandInput placeholder="Search contacts..." />
-                {loading ? (
-                  <CommandEmpty>Loading contacts...</CommandEmpty>
-                ) : contactsList.length === 0 ? (
-                  <CommandEmpty>No contacts found.</CommandEmpty>
-                ) : (
-                  <CommandGroup>
-                    {contactsList.map((contact) => (
+                <CommandGroup>
+                  {loading ? (
+                    <CommandEmpty>Loading contacts...</CommandEmpty>
+                  ) : contactsList.length === 0 ? (
+                    <CommandEmpty>No contacts found.</CommandEmpty>
+                  ) : (
+                    contactsList.map((contact) => (
                       <ContactListItem
                         key={contact.id}
                         contact={contact}
                         isSelected={value === contact.id}
                         onSelect={handleSelect}
                       />
-                    ))}
-                  </CommandGroup>
-                )}
+                    ))
+                  )}
+                </CommandGroup>
               </Command>
             </PopoverContent>
           </Popover>
