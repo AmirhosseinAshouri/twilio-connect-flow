@@ -1,14 +1,15 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
 import { Input } from "./ui/input";
 import { ContactSelector } from "./ContactSelector";
-import { Contact } from "@/types";
+import { Contact, Deal } from "@/types";
 
 interface DealBasicInfoSectionProps {
   form: any;
   onContactSelect: (contact: Contact) => void;
+  isEditing?: boolean;
 }
 
-export function DealBasicInfoSection({ form, onContactSelect }: DealBasicInfoSectionProps) {
+export function DealBasicInfoSection({ form, onContactSelect, isEditing = false }: DealBasicInfoSectionProps) {
   return (
     <>
       <FormField
@@ -25,7 +26,27 @@ export function DealBasicInfoSection({ form, onContactSelect }: DealBasicInfoSec
         )}
       />
 
-      <ContactSelector form={form} onSelect={onContactSelect} />
+      {isEditing ? (
+        <FormField
+          control={form.control}
+          name="contact_id"
+          render={() => (
+            <FormItem>
+              <FormLabel>Contact</FormLabel>
+              <FormControl>
+                <Input 
+                  value={form.getValues("company")} 
+                  disabled 
+                  className="bg-muted"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      ) : (
+        <ContactSelector form={form} onSelect={onContactSelect} />
+      )}
 
       <FormField
         control={form.control}

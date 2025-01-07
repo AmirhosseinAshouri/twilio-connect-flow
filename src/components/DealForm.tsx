@@ -132,7 +132,11 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <DealBasicInfoSection form={form} onContactSelect={handleContactSelect} />
+        <DealBasicInfoSection 
+          form={form} 
+          onContactSelect={handleContactSelect} 
+          isEditing={Boolean(deal.id)} 
+        />
         <DealNotesSection form={form} notes={notes} />
         <DealAssignedToSection form={form} />
         <Button type="submit" className="w-full">
