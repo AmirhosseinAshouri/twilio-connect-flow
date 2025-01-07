@@ -49,6 +49,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
               <ContactTriggerButton
                 loading={loading}
                 selectedContact={selectedContact}
+                onClick={() => setOpen(!open)}
               />
             </PopoverTrigger>
             <PopoverContent className="w-full p-0" align="start">
