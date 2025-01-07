@@ -25,12 +25,10 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading } = useContacts();
+  const { contacts = [], loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Ensure we always have an array to work with
-  const contactsList = contacts || [];
-  const selectedContact = contactsList.find((contact) => contact.id === value);
+  const selectedContact = contacts.find((contact) => contact.id === value);
 
   const handleSelect = (contact: Contact) => {
     form.setValue("contact_id", contact.id);
@@ -57,12 +55,15 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
               <Command>
                 <CommandInput placeholder="Search contacts..." />
                 <CommandGroup>
-                  {loading && <CommandEmpty>Loading contacts...</CommandEmpty>}
-                  {!loading && contactsList.length === 0 && (
-                    <CommandEmpty>No contacts found.</CommandEmpty>
+                  {loading && (
+                    <CommandItem disabled>Loading contacts...</CommandItem>
+                  )}
+                  {!loading && contacts.length === 0 && (
+                    <CommandItem disabled>No contacts found.</CommandItem>
                   )}
                   {!loading &&
-                    contactsList.map((contact) => (
+                    contacts.length > 0 &&
+                    contacts.map((contact) => (
                       <ContactListItem
                         key={contact.id}
                         contact={contact}
