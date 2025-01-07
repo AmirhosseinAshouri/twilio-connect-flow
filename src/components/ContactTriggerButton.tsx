@@ -3,19 +3,26 @@ import { FormControl } from "@/components/ui/form";
 import { ChevronsUpDown, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Contact } from "@/types";
+import { forwardRef } from "react";
 
 interface ContactTriggerButtonProps {
   loading: boolean;
   selectedContact: Contact | undefined;
+  onClick?: () => void;
 }
 
-export function ContactTriggerButton({ loading, selectedContact }: ContactTriggerButtonProps) {
+export const ContactTriggerButton = forwardRef<
+  HTMLButtonElement,
+  ContactTriggerButtonProps
+>(({ loading, selectedContact, onClick }, ref) => {
   return (
     <FormControl>
       <Button
         variant="outline"
         role="combobox"
         type="button"
+        ref={ref}
+        onClick={onClick}
         className={cn(
           "w-full justify-between",
           !selectedContact && "text-muted-foreground"
@@ -35,4 +42,6 @@ export function ContactTriggerButton({ loading, selectedContact }: ContactTrigge
       </Button>
     </FormControl>
   );
-}
+});
+
+ContactTriggerButton.displayName = "ContactTriggerButton";
