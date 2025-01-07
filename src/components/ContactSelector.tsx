@@ -3,6 +3,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandInput,
+  CommandItem,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -27,8 +28,8 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const { contacts, loading } = useContacts();
   const value = form.watch("contact_id");
 
-  // Initialize contacts list as an empty array if undefined or null
-  const contactsList = contacts ?? [];
+  // Ensure we always have an array to work with
+  const contactsList = contacts || [];
   const selectedContact = contactsList.find((contact) => contact.id === value);
 
   const handleSelect = (contact: Contact) => {
@@ -56,11 +57,11 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
               <Command>
                 <CommandInput placeholder="Search contacts..." />
                 <CommandGroup>
-                  {loading ? (
-                    <CommandEmpty>Loading contacts...</CommandEmpty>
-                  ) : contactsList.length === 0 ? (
+                  {loading && <CommandEmpty>Loading contacts...</CommandEmpty>}
+                  {!loading && contactsList.length === 0 && (
                     <CommandEmpty>No contacts found.</CommandEmpty>
-                  ) : (
+                  )}
+                  {!loading &&
                     contactsList.map((contact) => (
                       <ContactListItem
                         key={contact.id}
@@ -68,8 +69,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                         isSelected={value === contact.id}
                         onSelect={handleSelect}
                       />
-                    ))
-                  )}
+                    ))}
                 </CommandGroup>
               </Command>
             </PopoverContent>
