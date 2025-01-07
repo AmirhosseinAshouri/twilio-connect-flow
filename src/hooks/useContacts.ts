@@ -11,8 +11,19 @@ export function useContacts() {
 
   const fetchContacts = async () => {
     try {
+      setLoading(true);
+      setError(null);
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        setContacts([]);
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to view contacts",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const { data, error } = await supabase
         .from("contacts")
@@ -23,7 +34,6 @@ export function useContacts() {
       if (error) throw error;
 
       setContacts(data || []);
-      setError(null);
     } catch (err) {
       console.error("Error fetching contacts:", err);
       setError(err as Error);
@@ -45,7 +55,14 @@ export function useContacts() {
   const addContact = async (values: Omit<Contact, "id" | "user_id" | "created_at">) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to add contacts",
+          variant: "destructive",
+        });
+        return null;
+      }
 
       const { data, error } = await supabase
         .from("contacts")
@@ -55,7 +72,6 @@ export function useContacts() {
 
       if (error) throw error;
 
-      // Update contacts list
       setContacts(prev => [...prev, data]);
 
       toast({
@@ -74,5 +90,5 @@ export function useContacts() {
     }
   };
 
-  return { contacts: contacts || [], loading, error, addContact };
+  return { contacts, loading, error, addContact };
 }
