@@ -24,14 +24,15 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading, error } = useContacts();
+  const { contacts, loading, error } = useContacts();
   const selectedContactId = form.watch("contact_id");
-  const selectedContact = contacts?.find(
+  
+  // Ensure we have a valid array of contacts
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  
+  const selectedContact = safeContacts.find(
     (contact) => contact.id === selectedContactId
   );
-
-  // Ensure contacts is always an array
-  const safeContacts = contacts || [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -41,7 +42,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
-          type="button" // Prevent form submission
+          type="button"
         >
           {selectedContact ? selectedContact.name : "Select contact..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
