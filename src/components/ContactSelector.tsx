@@ -15,8 +15,9 @@ import { useContacts } from "@/hooks";
 import { FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { Contact } from "@/types";
-import { ContactListItem } from "./ContactListItem";
-import { ContactTriggerButton } from "./ContactTriggerButton";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ContactSelectorProps {
   form: UseFormReturn<any>;
@@ -30,12 +31,6 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
 
   const selectedContact = contacts.find((contact) => contact.id === value);
 
-  const handleSelect = (contact: Contact) => {
-    form.setValue("contact_id", contact.id);
-    onSelect(contact);
-    setOpen(false);
-  };
-
   return (
     <FormField
       control={form.control}
@@ -45,13 +40,23 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
           <FormLabel>Contact</FormLabel>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <ContactTriggerButton
-                loading={loading}
-                selectedContact={selectedContact}
-                onClick={() => setOpen(!open)}
-              />
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between"
+              >
+                {loading ? (
+                  "Loading contacts..."
+                ) : selectedContact ? (
+                  selectedContact.name
+                ) : (
+                  "Select contact..."
+                )}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
+            <PopoverContent className="w-[300px] p-0">
               <Command>
                 <CommandInput placeholder="Search contacts..." />
                 <CommandGroup>
@@ -64,12 +69,23 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
                   {!loading &&
                     contacts.length > 0 &&
                     contacts.map((contact) => (
-                      <ContactListItem
+                      <CommandItem
                         key={contact.id}
-                        contact={contact}
-                        isSelected={value === contact.id}
-                        onSelect={handleSelect}
-                      />
+                        value={contact.id}
+                        onSelect={() => {
+                          form.setValue("contact_id", contact.id);
+                          onSelect(contact);
+                          setOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === contact.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {contact.name}
+                      </CommandItem>
                     ))}
                 </CommandGroup>
               </Command>
