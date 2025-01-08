@@ -24,11 +24,14 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], isLoading } = useContacts();
+  const { contacts = [], loading, error } = useContacts();
   const selectedContactId = form.watch("contact_id");
-  const selectedContact = contacts.find(
+  const selectedContact = contacts?.find(
     (contact) => contact.id === selectedContactId
   );
+
+  // Ensure contacts is always an array
+  const safeContacts = contacts || [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -48,10 +51,10 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
         <Command>
           <CommandInput placeholder="Search contacts..." />
           <CommandEmpty>
-            {isLoading ? "Loading..." : "No contact found."}
+            {loading ? "Loading..." : "No contact found."}
           </CommandEmpty>
           <CommandGroup>
-            {contacts.map((contact) => (
+            {safeContacts.map((contact) => (
               <CommandItem
                 key={contact.id}
                 value={contact.id}
