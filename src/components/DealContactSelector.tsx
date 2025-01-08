@@ -27,6 +27,7 @@ interface DealContactSelectorProps {
 export function DealContactSelector({ form }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts, loading } = useContacts();
+  // Ensure we always have an array, even if contacts is undefined
   const safeContacts = contacts || [];
 
   const selectedContactId = form.watch("contact_id");
@@ -44,10 +45,20 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between"
+              className={cn(
+                "w-full justify-between",
+                !selectedContact && "text-muted-foreground"
+              )}
+              disabled={loading}
               type="button"
             >
-              {selectedContact ? selectedContact.name : "Select contact..."}
+              {loading ? (
+                "Loading contacts..."
+              ) : selectedContact ? (
+                selectedContact.name
+              ) : (
+                "Select contact..."
+              )}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </FormControl>
