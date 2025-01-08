@@ -27,8 +27,8 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const { contacts, loading, error } = useContacts();
   const selectedContactId = form.watch("contact_id");
   
-  // Ensure we have a valid array of contacts
-  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  // Ensure we have a valid array of contacts and handle loading state
+  const safeContacts = loading ? [] : (Array.isArray(contacts) ? contacts : []);
   
   const selectedContact = safeContacts.find(
     (contact) => contact.id === selectedContactId
@@ -52,7 +52,7 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
         <Command>
           <CommandInput placeholder="Search contacts..." />
           <CommandEmpty>
-            {loading ? "Loading..." : "No contact found."}
+            {loading ? "Loading..." : error ? "Error loading contacts." : "No contact found."}
           </CommandEmpty>
           <CommandGroup>
             {safeContacts.map((contact) => (
