@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DragDropContext } from "@hello-pangea/dnd";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,11 +36,12 @@ const Deals = () => {
       ...values,
       user_id: user.id,
       stage: "qualify" as DealStage,
+      contact_id: values.contact_id,
     };
 
     const { data, error } = await supabase
       .from("deals")
-      .insert([newDeal])
+      .insert(newDeal)
       .select()
       .single();
 
