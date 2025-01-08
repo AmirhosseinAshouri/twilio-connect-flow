@@ -28,47 +28,39 @@ const Deals = () => {
   const { deals, setDeals, updateDeal } = useDeals();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('public:deals')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'deals'
-        },
-        (payload) => {
-          console.log('Real-time update:', payload);
-          
-          if (payload.eventType === 'UPDATE') {
-            setDeals((currentDeals) =>
-              currentDeals.map((deal) =>
-                deal.id === payload.new.id ? { ...deal, ...payload.new } : deal
-              )
-            );
-            
-            if (payload.old.stage !== payload.new.stage) {
-              toast({
-                title: "Deal Moved",
-                description: `Deal "${payload.new.title}" moved to ${payload.new.stage}`,
-              });
-            }
-          } else if (payload.eventType === 'INSERT') {
-            setDeals((currentDeals) => [...currentDeals, payload.new as Deal]);
-          } else if (payload.eventType === 'DELETE') {
-            setDeals((currentDeals) =>
-              currentDeals.filter((deal) => deal.id !== payload.old.id)
-            );
-          }
-        }
-      )
-      .subscribe();
+  const handleAddDeal = async (values: Omit<Deal, "id" | "created_at" | "updated_at">) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-    return () => {
-      supabase.removeChannel(channel);
+    const newDeal = {
+      ...values,
+      user_id: user.id,
+      stage: "qualify" as DealStage,
     };
-  }, [setDeals, toast]);
+
+    const { data, error } = await supabase
+      .from("deals")
+      .insert([newDeal])
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error adding deal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data) {
+      setIsAddDealOpen(false);
+      toast({
+        title: "Deal Added",
+        description: `${data.title} has been added successfully.`,
+      });
+    }
+  };
 
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId } = result;
@@ -106,41 +98,6 @@ const Deals = () => {
         variant: "destructive",
       });
       return;
-    }
-  };
-
-  const handleAddDeal = async (values: Omit<Deal, "id" | "created_at" | "updated_at">) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const newDeal = {
-      ...values,
-      user_id: user.id,
-      stage: "qualify" as DealStage,
-      contact_id: values.contact_id || null,
-    };
-
-    const { data, error } = await supabase
-      .from("deals")
-      .insert([newDeal])
-      .select()
-      .single();
-
-    if (error) {
-      toast({
-        title: "Error adding deal",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (data) {
-      setIsAddDealOpen(false);
-      toast({
-        title: "Deal Added",
-        description: `${data.title} has been added successfully.`,
-      });
     }
   };
 

@@ -19,15 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ContactSelector } from "./ContactSelector";
-import { Contact } from "@/types";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
   stage: z.string(),
   notes: z.string().optional(),
-  contact_id: z.string().min(1, "Contact is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -45,7 +42,6 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
       company: "",
       stage: "qualify",
       notes: "",
-      contact_id: "",
     },
   });
 
@@ -53,18 +49,9 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
     onSubmit(values);
   };
 
-  const handleContactSelect = (contact: Contact) => {
-    if (contact) {
-      form.setValue("company", contact.company || "");
-      form.setValue("contact_id", contact.id);
-    }
-  };
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <ContactSelector form={form} onSelect={handleContactSelect} />
-        
         <FormField
           control={form.control}
           name="title"
@@ -85,7 +72,7 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
             <FormItem>
               <FormLabel>Company</FormLabel>
               <FormControl>
-                <Input {...field} readOnly />
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
