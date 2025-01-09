@@ -11,27 +11,47 @@ import {
 } from "@/components/ui/dialog";
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
-  const { contacts, loading, addContact } = useContacts();
+  const { contacts, loading, error, addContact } = useContacts();
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const handleAddContact = async (values: ContactFormValues) => {
-    const contactData = {
-      name: values.name || '',
-      company: values.company || '',
-      email: values.email || '',
-      phone: values.phone || ''
-    };
-    const newContact = await addContact(contactData);
-    if (newContact) {
-      setOpen(false);
+    try {
+      const contactData = {
+        name: values.name || '',
+        company: values.company || '',
+        email: values.email || '',
+        phone: values.phone || ''
+      };
+      const newContact = await addContact(contactData);
+      if (newContact) {
+        setOpen(false);
+        toast({
+          title: "Success",
+          description: "Contact added successfully",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to add contact",
+        variant: "destructive",
+      });
     }
   };
+
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-500">Error loading contacts: {error.message}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-crm-background min-h-screen">
@@ -92,9 +112,6 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
-
-        
-        
       </div>
     </div>
   );
