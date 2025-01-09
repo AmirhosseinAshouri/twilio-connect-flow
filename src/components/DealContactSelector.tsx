@@ -26,10 +26,10 @@ interface DealContactSelectorProps {
 
 export function DealContactSelector({ form }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading, error } = useContacts();
+  const { contacts = [], loading, error } = useContacts();
   
-  // Ensure we have a valid array of contacts and handle loading state
-  const safeContacts = loading ? [] : (Array.isArray(contacts) ? contacts : []);
+  // Ensure we have a valid array of contacts
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
   
   const selectedContactId = form.watch("contact_id");
   const selectedContact = safeContacts.find(
@@ -68,7 +68,13 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
           <Command>
             <CommandInput placeholder="Search contacts..." />
             <CommandEmpty>
-              {loading ? "Loading..." : error ? "Error loading contacts." : "No contact found."}
+              {loading ? (
+                "Loading..."
+              ) : error ? (
+                "Error loading contacts."
+              ) : (
+                "No contact found."
+              )}
             </CommandEmpty>
             <CommandGroup>
               {safeContacts.map((contact) => (

@@ -24,12 +24,12 @@ interface ContactSelectorProps {
 
 export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading, error } = useContacts();
+  const { contacts = [], loading, error } = useContacts();
+  
+  // Ensure we have a valid array of contacts
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  
   const selectedContactId = form.watch("contact_id");
-  
-  // Ensure we have a valid array of contacts and handle loading state
-  const safeContacts = loading ? [] : (Array.isArray(contacts) ? contacts : []);
-  
   const selectedContact = safeContacts.find(
     (contact) => contact.id === selectedContactId
   );
@@ -41,10 +41,20 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className={cn(
+            "w-full justify-between",
+            !selectedContact && "text-muted-foreground"
+          )}
+          disabled={loading}
           type="button"
         >
-          {selectedContact ? selectedContact.name : "Select contact..."}
+          {loading ? (
+            "Loading contacts..."
+          ) : selectedContact ? (
+            selectedContact.name
+          ) : (
+            "Select contact..."
+          )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -52,7 +62,13 @@ export function ContactSelector({ form, onSelect }: ContactSelectorProps) {
         <Command>
           <CommandInput placeholder="Search contacts..." />
           <CommandEmpty>
-            {loading ? "Loading..." : error ? "Error loading contacts." : "No contact found."}
+            {loading ? (
+              "Loading..."
+            ) : error ? (
+              "Error loading contacts."
+            ) : (
+              "No contact found."
+            )}
           </CommandEmpty>
           <CommandGroup>
             {safeContacts.map((contact) => (
