@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/popover";
 import { useState } from "react";
 import { useContacts } from "@/hooks";
-import { Contact } from "@/types";
 import { FormControl, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { DealFormValues } from "@/schemas/dealForm";
@@ -26,15 +25,30 @@ interface DealContactSelectorProps {
 
 export function DealContactSelector({ form }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts, loading, error } = useContacts();
-  
-  // Ensure we always have a valid array to work with
-  const safeContacts = contacts || [];
+  const { contacts = [], loading, error } = useContacts();
   
   const selectedContactId = form.watch("contact_id");
-  const selectedContact = safeContacts.find(
+  const selectedContact = contacts?.find(
     (contact) => contact.id === selectedContactId
   );
+
+  if (error) {
+    return (
+      <FormItem>
+        <FormLabel>Contact</FormLabel>
+        <FormControl>
+          <Button
+            variant="outline"
+            className="w-full text-destructive"
+            disabled
+          >
+            Error loading contacts
+          </Button>
+        </FormControl>
+        <FormMessage>{error.message}</FormMessage>
+      </FormItem>
+    );
+  }
 
   return (
     <FormItem>
@@ -76,7 +90,7 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
                 )}
               </CommandEmpty>
               <CommandGroup>
-                {safeContacts.map((contact) => (
+                {contacts.map((contact) => (
                   <CommandItem
                     key={contact.id}
                     value={contact.id}
