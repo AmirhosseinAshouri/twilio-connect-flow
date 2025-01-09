@@ -60,9 +60,10 @@ export function useTwilioVoice() {
         }),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate call');
+        throw new Error(responseData.error || 'Failed to initiate call');
       }
 
       toast({
