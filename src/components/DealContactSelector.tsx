@@ -1,13 +1,7 @@
-import { Check, ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
+import { Command, CommandInput } from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
@@ -19,13 +13,17 @@ import { FormControl, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { DealFormValues } from "@/schemas/dealForm";
 import { Contact } from "@/types";
+import { DealContactList } from "./DealContactList";
 
 interface DealContactSelectorProps {
   form: UseFormReturn<DealFormValues>;
   onContactSelect: (contact: Contact) => void;
 }
 
-export function DealContactSelector({ form, onContactSelect }: DealContactSelectorProps) {
+export function DealContactSelector({ 
+  form, 
+  onContactSelect 
+}: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts = [], loading, error } = useContacts();
   
@@ -88,32 +86,13 @@ export function DealContactSelector({ form, onContactSelect }: DealContactSelect
           <PopoverContent className="w-full p-0">
             <Command>
               <CommandInput placeholder="Search contacts..." />
-              <CommandEmpty>
-                {loading ? (
-                  "Loading..."
-                ) : error ? (
-                  "Error loading contacts."
-                ) : (
-                  "No contact found."
-                )}
-              </CommandEmpty>
-              <CommandGroup>
-                {contacts.map((contact) => (
-                  <CommandItem
-                    key={contact.id}
-                    value={contact.id}
-                    onSelect={() => handleContactSelect(contact)}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        selectedContactId === contact.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {contact.name}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              <DealContactList
+                contacts={contacts}
+                selectedContactId={selectedContactId}
+                loading={loading}
+                error={error}
+                onSelect={handleContactSelect}
+              />
             </Command>
           </PopoverContent>
         </Popover>
