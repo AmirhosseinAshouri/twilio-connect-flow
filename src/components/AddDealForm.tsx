@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DealContactSelector } from "./DealContactSelector";
 import { DealStageSelector } from "./DealStageSelector";
 import { dealFormSchema, DealFormValues } from "@/schemas/dealForm";
+import { Contact } from "@/types";
 
 interface AddDealFormProps {
   onSubmit: (values: DealFormValues) => void;
@@ -36,13 +37,24 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
     onSubmit(values);
   };
 
+  const handleContactSelect = (contact: Contact) => {
+    if (contact.company) {
+      form.setValue("company", contact.company);
+    }
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="contact_id"
-          render={() => <DealContactSelector form={form} />}
+          render={() => (
+            <DealContactSelector 
+              form={form} 
+              onContactSelect={handleContactSelect}
+            />
+          )}
         />
 
         <FormField

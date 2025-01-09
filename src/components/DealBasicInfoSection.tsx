@@ -9,7 +9,11 @@ interface DealBasicInfoSectionProps {
   isEditing?: boolean;
 }
 
-export function DealBasicInfoSection({ form, onContactSelect, isEditing = false }: DealBasicInfoSectionProps) {
+export function DealBasicInfoSection({ 
+  form, 
+  onContactSelect, 
+  isEditing = false 
+}: DealBasicInfoSectionProps) {
   return (
     <>
       <FormField
@@ -45,7 +49,10 @@ export function DealBasicInfoSection({ form, onContactSelect, isEditing = false 
           )}
         />
       ) : (
-        <DealContactSelector form={form} onContactSelect={onContactSelect} />
+        <DealContactSelector 
+          form={form} 
+          onContactSelect={onContactSelect}
+        />
       )}
 
       <FormField

@@ -34,6 +34,12 @@ export function DealContactSelector({ form, onContactSelect }: DealContactSelect
     (contact) => contact.id === selectedContactId
   );
 
+  const handleContactSelect = (contact: Contact) => {
+    form.setValue("contact_id", contact.id);
+    onContactSelect(contact);
+    setOpen(false);
+  };
+
   if (error) {
     return (
       <FormItem>
@@ -96,12 +102,7 @@ export function DealContactSelector({ form, onContactSelect }: DealContactSelect
                   <CommandItem
                     key={contact.id}
                     value={contact.id}
-                    onSelect={() => {
-                      form.setValue("contact_id", contact.id);
-                      form.setValue("company", contact.company || "");
-                      onContactSelect(contact);
-                      setOpen(false);
-                    }}
+                    onSelect={() => handleContactSelect(contact)}
                   >
                     <Check
                       className={cn(
