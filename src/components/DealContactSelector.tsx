@@ -18,12 +18,14 @@ import { useContacts } from "@/hooks";
 import { FormControl, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { DealFormValues } from "@/schemas/dealForm";
+import { Contact } from "@/types";
 
 interface DealContactSelectorProps {
   form: UseFormReturn<DealFormValues>;
+  onContactSelect: (contact: Contact) => void;
 }
 
-export function DealContactSelector({ form }: DealContactSelectorProps) {
+export function DealContactSelector({ form, onContactSelect }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts = [], loading, error } = useContacts();
   
@@ -97,6 +99,7 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
                     onSelect={() => {
                       form.setValue("contact_id", contact.id);
                       form.setValue("company", contact.company || "");
+                      onContactSelect(contact);
                       setOpen(false);
                     }}
                   >

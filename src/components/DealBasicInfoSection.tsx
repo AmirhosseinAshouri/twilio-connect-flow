@@ -45,7 +45,7 @@ export function DealBasicInfoSection({ form, onContactSelect, isEditing = false 
           )}
         />
       ) : (
-        <DealContactSelector form={form} onSelect={onContactSelect} />
+        <DealContactSelector form={form} onContactSelect={onContactSelect} />
       )}
 
       <FormField
