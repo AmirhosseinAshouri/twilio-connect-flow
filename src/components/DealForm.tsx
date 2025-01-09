@@ -4,7 +4,6 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Deal, Contact } from "@/types";
-import { ContactSelector } from "./ContactSelector";
 import { DealNotesSection } from "./DealNotesSection";
 import { DealAssignedToSection } from "./DealAssignedToSection";
 import { DealBasicInfoSection } from "./DealBasicInfoSection";

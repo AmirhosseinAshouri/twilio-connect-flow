@@ -1,7 +1,7 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
 import { Input } from "./ui/input";
-import { ContactSelector } from "./ContactSelector";
-import { Contact, Deal } from "@/types";
+import { DealContactSelector } from "./DealContactSelector";
+import { Contact } from "@/types";
 
 interface DealBasicInfoSectionProps {
   form: any;
@@ -45,7 +45,7 @@ export function DealBasicInfoSection({ form, onContactSelect, isEditing = false 
           )}
         />
       ) : (
-        <ContactSelector form={form} onSelect={onContactSelect} />
+        <DealContactSelector form={form} onSelect={onContactSelect} />
       )}
 
       <FormField
