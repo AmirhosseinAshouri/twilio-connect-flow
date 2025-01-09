@@ -28,7 +28,7 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
   const { contacts = [], loading, error } = useContacts();
   
   const selectedContactId = form.watch("contact_id");
-  const selectedContact = contacts?.find(
+  const selectedContact = contacts.find(
     (contact) => contact.id === selectedContactId
   );
 
