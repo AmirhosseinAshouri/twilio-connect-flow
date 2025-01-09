@@ -28,8 +28,8 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const { contacts, loading, error } = useContacts();
   
-  // Initialize contacts as an empty array if undefined
-  const safeContacts = contacts ?? [];
+  // Ensure we always have a valid array to work with
+  const safeContacts = contacts || [];
   
   const selectedContactId = form.watch("contact_id");
   const selectedContact = safeContacts.find(
@@ -39,9 +39,9 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
   return (
     <FormItem>
       <FormLabel>Contact</FormLabel>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <FormControl>
+      <FormControl>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
@@ -62,44 +62,44 @@ export function DealContactSelector({ form }: DealContactSelectorProps) {
               )}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
-          </FormControl>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
-          <Command>
-            <CommandInput placeholder="Search contacts..." />
-            <CommandEmpty>
-              {loading ? (
-                "Loading..."
-              ) : error ? (
-                "Error loading contacts."
-              ) : (
-                "No contact found."
-              )}
-            </CommandEmpty>
-            <CommandGroup>
-              {safeContacts.map((contact) => (
-                <CommandItem
-                  key={contact.id}
-                  value={contact.id}
-                  onSelect={() => {
-                    form.setValue("contact_id", contact.id);
-                    form.setValue("company", contact.company || "");
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedContactId === contact.id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {contact.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </Command>
-        </PopoverContent>
-      </Popover>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0">
+            <Command>
+              <CommandInput placeholder="Search contacts..." />
+              <CommandEmpty>
+                {loading ? (
+                  "Loading..."
+                ) : error ? (
+                  "Error loading contacts."
+                ) : (
+                  "No contact found."
+                )}
+              </CommandEmpty>
+              <CommandGroup>
+                {safeContacts.map((contact) => (
+                  <CommandItem
+                    key={contact.id}
+                    value={contact.id}
+                    onSelect={() => {
+                      form.setValue("contact_id", contact.id);
+                      form.setValue("company", contact.company || "");
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedContactId === contact.id ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {contact.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </FormControl>
       <FormMessage />
     </FormItem>
   );
