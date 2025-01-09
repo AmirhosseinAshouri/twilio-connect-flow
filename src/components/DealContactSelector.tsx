@@ -26,10 +26,10 @@ interface DealContactSelectorProps {
 
 export function DealContactSelector({ form }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading, error } = useContacts();
+  const { contacts, loading, error } = useContacts();
   
-  // Ensure we have a valid array of contacts
-  const safeContacts = Array.isArray(contacts) ? contacts : [];
+  // Initialize contacts as an empty array if undefined
+  const safeContacts = contacts ?? [];
   
   const selectedContactId = form.watch("contact_id");
   const selectedContact = safeContacts.find(
