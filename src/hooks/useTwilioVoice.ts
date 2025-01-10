@@ -65,14 +65,13 @@ export function useTwilioVoice() {
         }),
       });
 
-      const responseData = await response.json();
-      
       if (!response.ok) {
-        console.error('Call initiation error:', responseData);
-        throw new Error(responseData.error || 'Failed to initiate call');
+        const errorData = await response.json();
+        console.error('Call initiation error:', errorData);
+        throw new Error(errorData.error || 'Failed to initiate call');
       }
 
-      console.log('Call initiated successfully:', responseData);
+      console.log('Call initiated successfully');
 
       toast({
         title: "Call Initiated",
