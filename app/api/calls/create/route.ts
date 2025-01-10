@@ -10,10 +10,12 @@ const supabase = createClient(
 export async function POST(request: Request) {
   try {
     const { callId, to, from } = await request.json();
+    console.log('Received call request:', { callId, to, from });
 
     // Get user's Twilio settings from the request headers
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       return NextResponse.json(
         { error: "No authorization header" },
         { status: 401 }
@@ -33,6 +35,8 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log('Authenticated user:', user.id);
+
     // Get the user's settings with improved error handling
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
@@ -49,6 +53,7 @@ export async function POST(request: Request) {
     }
 
     if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+      console.error('Missing Twilio settings for user:', user.id);
       return NextResponse.json(
         { error: "Please configure your Twilio settings in the Settings page" },
         { status: 400 }
@@ -61,6 +66,8 @@ export async function POST(request: Request) {
       settings.twilio_auth_token
     );
 
+    console.log('Initializing call with Twilio...');
+
     // Create call using Twilio
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
@@ -69,6 +76,8 @@ export async function POST(request: Request) {
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });
+
+    console.log('Call created with Twilio:', call.sid);
 
     // Update call record with Twilio SID
     const { error: updateError } = await supabase
@@ -84,6 +93,8 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    console.log('Call record updated successfully');
 
     return NextResponse.json({ success: true, sid: call.sid });
   } catch (error) {

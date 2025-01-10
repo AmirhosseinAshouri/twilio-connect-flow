@@ -16,7 +16,7 @@ export function useTwilioVoice() {
         throw new Error("Authentication required");
       }
 
-      // Get user's Twilio settings with improved error handling
+      // Get user's Twilio settings
       const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
@@ -44,7 +44,12 @@ export function useTwilioVoice() {
         .select()
         .single();
 
-      if (callError) throw callError;
+      if (callError) {
+        console.error('Call record creation error:', callError);
+        throw callError;
+      }
+
+      console.log('Created call record:', callData);
 
       // Initiate the call using our API
       const response = await fetch('/api/calls/create', {
@@ -63,8 +68,11 @@ export function useTwilioVoice() {
       const responseData = await response.json();
       
       if (!response.ok) {
+        console.error('Call initiation error:', responseData);
         throw new Error(responseData.error || 'Failed to initiate call');
       }
+
+      console.log('Call initiated successfully:', responseData);
 
       toast({
         title: "Call Initiated",
