@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { CRMSidebar } from "@/components/CRMSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Dashboard from "@/pages/Dashboard";
+import Index from "@/pages/Index";
 import Contacts from "@/pages/Contacts";
 import ContactDetail from "@/pages/ContactDetail";
 import Deals from "@/pages/Deals";
@@ -43,7 +44,8 @@ function App() {
               <CRMSidebar />
               <main className="flex-1 overflow-y-auto">
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/" element={<Index />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/contacts" element={<Contacts />} />
                   <Route path="/contacts/:id" element={<ContactDetail />} />
                   <Route path="/deals" element={<Deals />} />

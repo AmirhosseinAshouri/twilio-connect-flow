@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const Index = () => {
+export default function Index() {
   const { contacts, loading, error, addContact } = useContacts();
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
@@ -23,10 +23,10 @@ const Index = () => {
   const handleAddContact = async (values: ContactFormValues) => {
     try {
       const contactData = {
-        name: values.name || '',
-        company: values.company || '',
-        email: values.email || '',
-        phone: values.phone || ''
+        name: values.name,
+        company: values.company,
+        email: values.email,
+        phone: values.phone
       };
       const newContact = await addContact(contactData);
       if (newContact) {
@@ -54,10 +54,10 @@ const Index = () => {
   }
 
   return (
-    <div className="p-8 bg-crm-background min-h-screen">
+    <div className="p-8 bg-background min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-crm-foreground">Dashboard</h1>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -77,7 +77,7 @@ const Index = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="h-5 w-5 text-crm-primary" />
+                <Users className="h-5 w-5 text-primary" />
                 Total Contacts
               </CardTitle>
             </CardHeader>
@@ -112,9 +112,31 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-24" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </CardContent>
+              </Card>
+            ))
+          ) : contacts.length > 0 ? (
+            contacts.map((contact) => (
+              <ContactCard key={contact.id} contact={contact} />
+            ))
+          ) : (
+            <div className="col-span-full text-center p-8">
+              <p className="text-muted-foreground">No contacts found</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
-};
-
-export default Index;
+}
