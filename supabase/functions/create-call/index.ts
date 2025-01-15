@@ -5,17 +5,36 @@ import twilio from "https://esm.sh/twilio@4.19.0"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    })
   }
 
   try {
     const { callId, to, notes } = await req.json()
     console.log('Received request:', { callId, to, notes })
+
+    // Validate required fields
+    if (!callId || !to) {
+      console.error('Missing required fields:', { callId, to })
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing required fields: callId and to are required' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
     // Get auth user
     const authHeader = req.headers.get('Authorization')
@@ -35,9 +54,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
-    
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    )
+
     if (userError || !user) {
       console.error('User fetch error:', userError)
       return new Response(
@@ -51,20 +71,17 @@ serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
-    // Get Twilio settings with improved error handling
+    // Get Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
-      .maybeSingle()
+      .single()
 
-    if (settingsError) {
+    if (settingsError || !settings) {
       console.error('Settings fetch error:', settingsError)
       return new Response(
-        JSON.stringify({ 
-          error: "Failed to fetch Twilio settings",
-          details: settingsError.message 
-        }),
+        JSON.stringify({ error: "Failed to fetch Twilio settings" }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -72,17 +89,15 @@ serve(async (req) => {
       )
     }
 
-    // Check if settings exist and are complete
-    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      console.error('Missing Twilio settings for user:', user.id)
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      console.error('Incomplete Twilio settings for user:', user.id)
       return new Response(
         JSON.stringify({ 
           error: "Please configure your Twilio settings in the Settings page first",
-          missingSettings: true,
           details: {
-            hasTwilioAccountSid: !!settings?.twilio_account_sid,
-            hasTwilioAuthToken: !!settings?.twilio_auth_token,
-            hasTwilioPhoneNumber: !!settings?.twilio_phone_number
+            hasTwilioAccountSid: !!settings.twilio_account_sid,
+            hasTwilioAuthToken: !!settings.twilio_auth_token,
+            hasTwilioPhoneNumber: !!settings.twilio_phone_number
           }
         }),
         { 
@@ -91,8 +106,6 @@ serve(async (req) => {
         }
       )
     }
-
-    console.log('Retrieved Twilio settings for user:', user.id)
 
     // Initialize Twilio client
     const client = twilio(
@@ -121,20 +134,18 @@ serve(async (req) => {
     console.log('Call created successfully:', call.sid)
 
     // Update call record with Twilio SID
-    if (callId) {
-      const { error: updateError } = await supabaseClient
-        .from("calls")
-        .update({ 
-          twilio_sid: call.sid,
-          status: 'initiated'
-        })
-        .eq("id", callId)
-        .eq("user_id", user.id)
+    const { error: updateError } = await supabaseClient
+      .from("calls")
+      .update({ 
+        twilio_sid: call.sid,
+        status: 'initiated'
+      })
+      .eq("id", callId)
+      .eq("user_id", user.id)
 
-      if (updateError) {
-        console.error('Call update error:', updateError)
-        console.warn('Failed to update call record, but call was created')
-      }
+    if (updateError) {
+      console.error('Call update error:', updateError)
+      console.warn('Failed to update call record, but call was created')
     }
 
     return new Response(

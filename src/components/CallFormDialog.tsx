@@ -59,10 +59,10 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto" aria-describedby="call-form-description">
         <DialogHeader>
           <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="call-form-description">
             Start a new call with this contact using Twilio.
           </DialogDescription>
         </DialogHeader>
