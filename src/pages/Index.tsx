@@ -5,6 +5,7 @@ import { Plus, Users, DollarSign, PhoneCall } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -67,6 +68,9 @@ export default function Index() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New Contact</DialogTitle>
+                <DialogDescription>
+                  Fill in the contact details below.
+                </DialogDescription>
               </DialogHeader>
               <ContactForm onSubmit={handleAddContact} />
             </DialogContent>
@@ -85,7 +89,7 @@ export default function Index() {
               {loading ? (
                 <Skeleton className="h-10 w-16" />
               ) : (
-                <p className="text-3xl font-bold">{contacts.length}</p>
+                <p className="text-3xl font-bold">{contacts?.length || 0}</p>
               )}
             </CardContent>
           </Card>
@@ -126,7 +130,7 @@ export default function Index() {
                 </CardContent>
               </Card>
             ))
-          ) : contacts.length > 0 ? (
+          ) : contacts && contacts.length > 0 ? (
             contacts.map((contact) => (
               <ContactCard key={contact.id} contact={contact} />
             ))
