@@ -14,7 +14,14 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!
 );
 
-app.use(cors());
+// Configure CORS
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+  credentials: true,
+  optionsSuccessStatus: 204,
+}));
+
 app.use(express.json());
 
 // Create call endpoint
@@ -117,4 +124,4 @@ app.get('/api/calls/twiml', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-}); 
+});
