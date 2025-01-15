@@ -10,6 +10,8 @@ interface ContactListItemProps {
 }
 
 export function ContactListItem({ contact, isSelected, onSelect }: ContactListItemProps) {
+  if (!contact || !contact.id) return null;
+
   return (
     <CommandItem
       key={contact.id}

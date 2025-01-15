@@ -10,14 +10,16 @@ interface ContactCardProps {
 }
 
 export function ContactCard({ contact }: ContactCardProps) {
+  if (!contact) return null;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{contact.name}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p>{contact.phone}</p>
-        <p>{contact.email}</p>
+        {contact.phone && <p>{contact.phone}</p>}
+        {contact.email && <p>{contact.email}</p>}
         <div className="flex gap-2">
           <CallFormDialog contact={contact} />
           <SendSMSDialog contact={contact} />

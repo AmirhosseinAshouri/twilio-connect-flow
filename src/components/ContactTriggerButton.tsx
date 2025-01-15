@@ -33,7 +33,7 @@ export const ContactTriggerButton = forwardRef<
             <Loader className="mr-2 h-4 w-4 animate-spin" />
             Loading contacts...
           </div>
-        ) : selectedContact ? (
+        ) : selectedContact?.name ? (
           selectedContact.name
         ) : (
           "Select contact..."
