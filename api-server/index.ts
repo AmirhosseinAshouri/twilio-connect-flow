@@ -21,6 +21,7 @@ app.use(express.json());
 app.post('/api/calls/create', async (req, res) => {
   try {
     const { callId, to, from, notes } = req.body;
+    console.log('Received call request:', { callId, to, from, notes });
 
     // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabase
@@ -28,8 +29,13 @@ app.post('/api/calls/create', async (req, res) => {
       .select("*")
       .single();
 
-    if (settingsError || !settings) {
-      throw new Error("Twilio settings not found");
+    if (settingsError) {
+      console.error('Settings fetch error:', settingsError);
+      throw new Error("Failed to fetch Twilio settings");
+    }
+
+    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error("Please configure your Twilio settings in the Settings page first");
     }
 
     // Initialize Twilio client
@@ -40,20 +46,28 @@ app.post('/api/calls/create', async (req, res) => {
 
     // Create call using Twilio
     const call = await client.calls.create({
-      url: `${process.env.API_URL}/api/calls/twiml`,
+      url: `${process.env.APP_URL}/api/calls/twiml`,
       to,
-      from,
-      statusCallback: `${process.env.API_URL}/api/calls/status`,
+      from: settings.twilio_phone_number,
+      statusCallback: `${process.env.APP_URL}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });
+
+    console.log('Call created successfully:', call.sid);
 
     // Update call record with Twilio SID
     const { error: updateError } = await supabase
       .from("calls")
-      .update({ twilio_sid: call.sid })
+      .update({ 
+        twilio_sid: call.sid,
+        status: 'initiated'
+      })
       .eq("id", callId);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Call update error:', updateError);
+      throw updateError;
+    }
 
     res.json({ success: true, sid: call.sid });
   } catch (error) {

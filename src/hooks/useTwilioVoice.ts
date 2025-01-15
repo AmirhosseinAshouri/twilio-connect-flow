@@ -1,67 +1,67 @@
-import { useState } from 'react';
-import { useToast } from './use-toast';
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Contact } from "@/types";
+
+interface InitiateCallParams {
+  contact: Contact;
+  phone: string;
+  notes: string;
+}
 
 export function useTwilioVoice() {
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const makeCall = async (to: string, contactId: string) => {
+  const initiateCall = async ({ contact, phone, notes }: InitiateCallParams) => {
+    setIsLoading(true);
+
     try {
-      setIsConnecting(true);
-      
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error("Authentication required");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
       }
 
-      // Get user's Twilio settings
+      // First check if Twilio settings exist
       const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
-        .eq("user_id", session.user.id)
         .single();
 
-      if (settingsError) {
-        console.error('Settings fetch error:', settingsError);
-        throw new Error("Failed to fetch Twilio settings");
+      if (settingsError || !settings) {
+        throw new Error("Please configure your Twilio settings in the Settings page first");
       }
 
-      if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-        throw new Error("Please configure your Twilio settings in the Settings page");
+      if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+        throw new Error("Please complete your Twilio settings configuration");
       }
 
-      // Create a new call record
+      // Create call record
       const { data: callData, error: callError } = await supabase
         .from("calls")
         .insert([{
-          contact_id: contactId,
-          user_id: session.user.id,
-          status: 'initiated',
-          notes: '',
+          contact_id: contact.id,
+          user_id: user.id,
+          notes,
+          status: 'initiated'
         }])
         .select()
         .single();
 
       if (callError) {
-        console.error('Call record creation error:', callError);
-        throw callError;
+        throw new Error("Failed to create call record");
       }
 
-      console.log('Created call record:', callData);
-
-      // Initiate the call using our API
+      // Initiate call
       const response = await fetch('/api/calls/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           callId: callData.id,
-          to,
-          from: settings.twilio_phone_number,
+          to: phone,
+          notes,
         }),
       });
 
@@ -75,12 +75,12 @@ export function useTwilioVoice() {
 
       toast({
         title: "Call Initiated",
-        description: "Connecting your call...",
+        description: "Your call is being connected.",
       });
 
       return true;
     } catch (error) {
-      console.error('Error making call:', error);
+      console.error('Error in initiateCall:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to initiate call",
@@ -88,12 +88,12 @@ export function useTwilioVoice() {
       });
       return false;
     } finally {
-      setIsConnecting(false);
+      setIsLoading(false);
     }
   };
 
   return {
-    makeCall,
-    isConnecting,
+    initiateCall,
+    isLoading
   };
 }
