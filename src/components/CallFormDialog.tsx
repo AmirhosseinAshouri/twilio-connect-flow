@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
-import { useTwilioVoice } from "@/hooks/useTwilioVoice";
+import { useInitiateCall } from "@/hooks/useInitiateCall";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -25,7 +25,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
   const { settings, loading: settingsLoading } = useSettings();
-  const { makeCall, isConnecting } = useTwilioVoice();
+  const { initiateCall, isLoading } = useInitiateCall();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +35,12 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
       return;
     }
 
-    const success = await makeCall(phone, contact.id);
+    const success = await initiateCall({
+      contact,
+      phone,
+      notes
+    });
+    
     if (success) {
       setOpen(false);
     }
@@ -77,7 +82,7 @@ export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
           <CallForm
             phone={phone}
             notes={notes}
-            isLoading={isConnecting}
+            isLoading={isLoading}
             settings={settings}
             onPhoneChange={setPhone}
             onNotesChange={setNotes}
