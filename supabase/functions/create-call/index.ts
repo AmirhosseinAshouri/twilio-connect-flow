@@ -1,12 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import twilio from "https://esm.sh/twilio@4.19.0"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
@@ -19,92 +17,41 @@ serve(async (req) => {
   }
 
   try {
-    const { callId, to, notes } = await req.json()
-    console.log('Received request:', { callId, to, notes })
-
-    // Validate required fields
-    if (!callId || !to) {
-      console.error('Missing required fields:', { callId, to })
-      return new Response(
-        JSON.stringify({ 
-          error: 'Missing required fields: callId and to are required' 
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // Get auth user
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('No authorization header provided')
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
+    // Get the JWT token from the request header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
+    // Get the user from the JWT token
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
 
     if (userError || !user) {
-      console.error('User fetch error:', userError)
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+      throw new Error('Invalid token')
     }
 
-    console.log('Authenticated user:', user.id)
+    const { callId, to, notes } = await req.json()
 
-    // Get Twilio settings
+    // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
-      .from("settings")
-      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
-      .eq("user_id", user.id)
+      .from('settings')
+      .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
+      .eq('user_id', user.id)
       .single()
 
     if (settingsError || !settings) {
-      console.error('Settings fetch error:', settingsError)
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch Twilio settings" }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+      throw new Error('Failed to fetch Twilio settings')
     }
 
     if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      console.error('Incomplete Twilio settings for user:', user.id)
-      return new Response(
-        JSON.stringify({ 
-          error: "Please configure your Twilio settings in the Settings page first",
-          details: {
-            hasTwilioAccountSid: !!settings.twilio_account_sid,
-            hasTwilioAuthToken: !!settings.twilio_auth_token,
-            hasTwilioPhoneNumber: !!settings.twilio_phone_number
-          }
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+      throw new Error('Incomplete Twilio settings')
     }
 
     // Initialize Twilio client
@@ -113,59 +60,44 @@ serve(async (req) => {
       settings.twilio_auth_token
     )
 
-    const baseUrl = `${req.url.split('/functions/')[0]}/functions/v1`
-
-    console.log('Creating Twilio call with settings:', {
-      url: `${baseUrl}/twiml`,
-      to,
-      from: settings.twilio_phone_number,
-      statusCallback: `${baseUrl}/call-status`
-    })
-
-    // Create call using Twilio
+    // Create the call
     const call = await client.calls.create({
-      url: `${baseUrl}/twiml`,
+      url: `${Deno.env.get('VITE_APP_URL')}/api/twiml`,
       to,
       from: settings.twilio_phone_number,
-      statusCallback: `${baseUrl}/call-status`,
+      statusCallback: `${Deno.env.get('VITE_APP_URL')}/api/calls/status/${callId}`,
       statusCallbackEvent: ['completed'],
     })
 
-    console.log('Call created successfully:', call.sid)
-
     // Update call record with Twilio SID
     const { error: updateError } = await supabaseClient
-      .from("calls")
+      .from('calls')
       .update({ 
         twilio_sid: call.sid,
         status: 'initiated'
       })
-      .eq("id", callId)
-      .eq("user_id", user.id)
+      .eq('id', callId)
 
     if (updateError) {
-      console.error('Call update error:', updateError)
-      console.warn('Failed to update call record, but call was created')
+      throw new Error('Failed to update call record')
     }
 
     return new Response(
       JSON.stringify({ success: true, sid: call.sid }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
-
   } catch (error) {
-    console.error('Error in create-call function:', error)
+    console.error('Error creating call:', error)
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
       }
     )
   }
