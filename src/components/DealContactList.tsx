@@ -17,17 +17,26 @@ export function DealContactList({
   error,
   onSelect
 }: DealContactListProps) {
+  if (loading) {
+    return (
+      <CommandEmpty>Loading contacts...</CommandEmpty>
+    );
+  }
+
+  if (error) {
+    return (
+      <CommandEmpty>Error loading contacts: {error.message}</CommandEmpty>
+    );
+  }
+
+  if (!contacts || contacts.length === 0) {
+    return (
+      <CommandEmpty>No contacts found.</CommandEmpty>
+    );
+  }
+
   return (
     <>
-      <CommandEmpty>
-        {loading ? (
-          "Loading..."
-        ) : error ? (
-          "Error loading contacts."
-        ) : (
-          "No contact found."
-        )}
-      </CommandEmpty>
       <CommandGroup>
         {contacts.map((contact) => (
           <DealContactListItem

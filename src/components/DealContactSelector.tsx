@@ -1,4 +1,4 @@
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandInput } from "@/components/ui/command";
@@ -28,7 +28,7 @@ export function DealContactSelector({
   const { contacts = [], loading, error } = useContacts();
   
   const selectedContactId = form.watch("contact_id");
-  const selectedContact = contacts.find(
+  const selectedContact = contacts?.find(
     (contact) => contact.id === selectedContactId
   );
 
@@ -38,30 +38,12 @@ export function DealContactSelector({
     setOpen(false);
   };
 
-  if (error) {
-    return (
-      <FormItem>
-        <FormLabel>Contact</FormLabel>
-        <FormControl>
-          <Button
-            variant="outline"
-            className="w-full text-destructive"
-            disabled
-          >
-            Error loading contacts
-          </Button>
-        </FormControl>
-        <FormMessage>{error.message}</FormMessage>
-      </FormItem>
-    );
-  }
-
   return (
     <FormItem>
       <FormLabel>Contact</FormLabel>
-      <FormControl>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <FormControl>
             <Button
               variant="outline"
               role="combobox"
@@ -74,7 +56,10 @@ export function DealContactSelector({
               type="button"
             >
               {loading ? (
-                "Loading contacts..."
+                <div className="flex items-center gap-2">
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Loading contacts...
+                </div>
               ) : selectedContact ? (
                 selectedContact.name
               ) : (
@@ -82,21 +67,21 @@ export function DealContactSelector({
               )}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0">
-            <Command>
-              <CommandInput placeholder="Search contacts..." />
-              <DealContactList
-                contacts={contacts}
-                selectedContactId={selectedContactId}
-                loading={loading}
-                error={error}
-                onSelect={handleContactSelect}
-              />
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </FormControl>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0">
+          <Command>
+            <CommandInput placeholder="Search contacts..." />
+            <DealContactList
+              contacts={contacts || []}
+              selectedContactId={selectedContactId}
+              loading={loading}
+              error={error}
+              onSelect={handleContactSelect}
+            />
+          </Command>
+        </PopoverContent>
+      </Popover>
       <FormMessage />
     </FormItem>
   );
