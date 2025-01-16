@@ -36,17 +36,15 @@ export function DealContactList({
   }
 
   return (
-    <>
-      <CommandGroup>
-        {contacts.map((contact) => (
-          <DealContactListItem
-            key={contact.id}
-            contact={contact}
-            isSelected={selectedContactId === contact.id}
-            onSelect={onSelect}
-          />
-        ))}
-      </CommandGroup>
-    </>
+    <CommandGroup>
+      {contacts.map((contact) => (
+        <DealContactListItem
+          key={contact.id}
+          contact={contact}
+          isSelected={selectedContactId === contact.id}
+          onSelect={onSelect}
+        />
+      ))}
+    </CommandGroup>
   );
 }

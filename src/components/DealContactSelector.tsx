@@ -25,7 +25,7 @@ export function DealContactSelector({
   onContactSelect 
 }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading, error } = useContacts();
+  const { contacts, loading, error } = useContacts();
   
   const selectedContactId = form.watch("contact_id");
   const selectedContact = contacts?.find(
