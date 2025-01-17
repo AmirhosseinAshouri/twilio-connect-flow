@@ -108,11 +108,11 @@ const Contacts = () => {
                     <TableCell>{contact.email}</TableCell>
                     <TableCell>{contact.phone}</TableCell>
                     <TableCell>{contact.company}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       <div className="flex justify-end gap-2">
-                        <CallFormDialog contact={contact} />
-                        <SendSMSDialog contact={contact} />
-                        <SendEmailDialog contact={contact} />
+                        <CallFormDialog contact={contact} variant="ghost" size="icon" />
+                        <SendSMSDialog contact={contact} variant="ghost" size="icon" />
+                        <SendEmailDialog contact={contact} variant="ghost" size="icon" />
                       </div>
                     </TableCell>
                   </TableRow>
