@@ -62,12 +62,14 @@ serve(async (req) => {
 
     console.log('Creating call with Twilio...', { to, from: settings.twilio_phone_number })
 
+    const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://889c289a-2740-4a6a-85df-8188433c14bd.lovableproject.com'
+
     // Create the call
     const call = await client.calls.create({
-      url: `${Deno.env.get('VITE_APP_URL')}/api/twiml`,
+      url: `${baseUrl}/api/calls/twiml`,
       to,
       from: settings.twilio_phone_number,
-      statusCallback: `${Deno.env.get('VITE_APP_URL')}/api/calls/status/${callId}`,
+      statusCallback: `${baseUrl}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     })
 
