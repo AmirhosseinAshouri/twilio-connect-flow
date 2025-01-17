@@ -60,6 +60,8 @@ serve(async (req) => {
       settings.twilio_auth_token
     )
 
+    console.log('Creating call with Twilio...', { to, from: settings.twilio_phone_number })
+
     // Create the call
     const call = await client.calls.create({
       url: `${Deno.env.get('VITE_APP_URL')}/api/twiml`,
@@ -69,6 +71,8 @@ serve(async (req) => {
       statusCallbackEvent: ['completed'],
     })
 
+    console.log('Call created:', call.sid)
+
     // Update call record with Twilio SID
     const { error: updateError } = await supabaseClient
       .from('calls')
@@ -77,6 +81,7 @@ serve(async (req) => {
         status: 'initiated'
       })
       .eq('id', callId)
+      .eq('user_id', user.id)
 
     if (updateError) {
       throw new Error('Failed to update call record')
