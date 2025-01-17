@@ -17,9 +17,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface SendSMSDialogProps {
   contact: Contact;
   trigger?: React.ReactNode;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function SendSMSDialog({ contact, trigger }: SendSMSDialogProps) {
+export function SendSMSDialog({ contact, trigger, variant, size }: SendSMSDialogProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const { toast } = useToast();
@@ -67,9 +69,9 @@ export function SendSMSDialog({ contact, trigger }: SendSMSDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="flex-1">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            SMS
+          <Button variant={variant} size={size}>
+            <MessageSquare className="h-4 w-4" />
+            {size !== "icon" && <span className="ml-2">SMS</span>}
           </Button>
         )}
       </DialogTrigger>

@@ -17,9 +17,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface SendEmailDialogProps {
   contact: Contact;
   trigger?: React.ReactNode;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function SendEmailDialog({ contact, trigger }: SendEmailDialogProps) {
+export function SendEmailDialog({ contact, trigger, variant, size }: SendEmailDialogProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [subject, setSubject] = useState("");
@@ -74,9 +76,9 @@ export function SendEmailDialog({ contact, trigger }: SendEmailDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="flex-1">
-            <Mail className="h-4 w-4 mr-2" />
-            Email
+          <Button variant={variant} size={size}>
+            <Mail className="h-4 w-4" />
+            {size !== "icon" && <span className="ml-2">Email</span>}
           </Button>
         )}
       </DialogTrigger>
