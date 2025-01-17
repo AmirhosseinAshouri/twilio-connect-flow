@@ -64,7 +64,7 @@ serve(async (req) => {
 
     console.log('Creating call with Twilio...', { to, from: settings.twilio_phone_number })
 
-    const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://crm-six-black.vercel.app'
+    const baseUrl = 'https://crm-six-black.vercel.app'
 
     // Create the call
     const call = await client.calls.create({
