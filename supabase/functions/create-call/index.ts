@@ -5,6 +5,8 @@ import twilio from "https://esm.sh/twilio@4.19.0"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
@@ -62,7 +64,7 @@ serve(async (req) => {
 
     console.log('Creating call with Twilio...', { to, from: settings.twilio_phone_number })
 
-    const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://889c289a-2740-4a6a-85df-8188433c14bd.lovableproject.com'
+    const baseUrl = Deno.env.get('VITE_APP_URL') || 'https://crm-six-black.vercel.app'
 
     // Create the call
     const call = await client.calls.create({
