@@ -1,4 +1,4 @@
-import { Home, Users, PhoneCall, Mail, PieChart, Settings } from "lucide-react";
+import { Home, Users, PhoneCall, PieChart, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
