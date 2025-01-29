@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, UserCircle, MessageSquare } from "lucide-react";
+import { User, UserCircle, MessageSquare, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
 import { useContact } from "@/hooks";
 import { Link } from "react-router-dom";
 import { Deal } from "@/types";
+import { formatDistanceToNow } from "date-fns";
 
 interface DealCardProps {
   deal: Deal;
@@ -23,6 +24,16 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
       "3": "John Doe",
     };
     return users[userId] || "Unknown User";
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
   };
 
   return (
@@ -53,6 +64,15 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                     </div>
                   </div>
                 )}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Created
+                  </span>
+                  <span className="text-xs font-medium flex items-center">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {formatDate(deal.created_at)}
+                  </span>
+                </div>
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs text-muted-foreground">
                     Assigned To
