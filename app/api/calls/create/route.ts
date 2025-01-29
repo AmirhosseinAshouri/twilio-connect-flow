@@ -44,27 +44,34 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (settingsError || !settings) {
+    if (settingsError) {
       console.error('Settings fetch error:', settingsError);
       return NextResponse.json(
-        { error: "Twilio settings not found" },
-        { status: 400 }
+        { error: "Failed to fetch Twilio settings" },
+        { status: 500 }
       );
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      console.error('Missing Twilio settings for user:', user.id);
+    if (!settings) {
+      console.error('No Twilio settings found for user:', user.id);
       return NextResponse.json(
         { error: "Please configure your Twilio settings in the Settings page" },
         { status: 400 }
       );
     }
 
+    const { twilio_account_sid, twilio_auth_token, twilio_phone_number } = settings;
+
+    if (!twilio_account_sid || !twilio_auth_token || !twilio_phone_number) {
+      console.error('Incomplete Twilio settings for user:', user.id);
+      return NextResponse.json(
+        { error: "Please complete your Twilio settings configuration in the Settings page" },
+        { status: 400 }
+      );
+    }
+
     // Initialize Twilio client
-    const client = twilio(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token
-    );
+    const client = twilio(twilio_account_sid, twilio_auth_token);
 
     console.log('Initializing call with Twilio...');
 
@@ -72,7 +79,7 @@ export async function POST(request: Request) {
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
-      from: settings.twilio_phone_number,
+      from: twilio_phone_number,
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });
