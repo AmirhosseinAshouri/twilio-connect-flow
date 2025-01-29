@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
+import { SidebarCallForm } from "./SidebarCallForm";
 
 const menuItems = [
   { title: "Dashboard", icon: Home, path: "/" },
@@ -42,6 +43,7 @@ export function CRMSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarCallForm />
       </SidebarContent>
     </Sidebar>
   );
