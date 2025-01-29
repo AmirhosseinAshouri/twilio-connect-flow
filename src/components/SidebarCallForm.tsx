@@ -21,7 +21,8 @@ export function SidebarCallForm() {
     
     const success = await initiateCall({
       phone,
-      notes
+      notes,
+      // contact is now optional, so we can omit it
     });
     
     if (success) {

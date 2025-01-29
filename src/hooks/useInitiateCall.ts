@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
 
 interface InitiateCallParams {
-  contact: Contact;
+  contact?: Contact;
   phone: string;
   notes: string;
 }
@@ -26,7 +26,7 @@ export function useInitiateCall() {
       const { data: callData, error: callError } = await supabase
         .from("calls")
         .insert([{
-          contact_id: contact.id,
+          contact_id: contact?.id, // Now optional
           user_id: user.id,
           notes,
           status: 'initiated'
