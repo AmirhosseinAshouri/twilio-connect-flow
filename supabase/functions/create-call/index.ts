@@ -40,6 +40,7 @@ serve(async (req) => {
     }
 
     const { callId, to, notes } = await req.json()
+    console.log('Received request:', { callId, to, notes })
 
     // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
@@ -49,6 +50,7 @@ serve(async (req) => {
       .single()
 
     if (settingsError || !settings) {
+      console.error('Settings error:', settingsError)
       throw new Error('Failed to fetch Twilio settings')
     }
 
@@ -64,14 +66,12 @@ serve(async (req) => {
 
     console.log('Creating call with Twilio...', { to, from: settings.twilio_phone_number })
 
-    const baseUrl = 'https://crm-six-black.vercel.app'
-
     // Create the call
     const call = await client.calls.create({
-      url: `${baseUrl}/api/calls/twiml`,
+      url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/twiml`,
       to,
       from: settings.twilio_phone_number,
-      statusCallback: `${baseUrl}/api/calls/status`,
+      statusCallback: `${Deno.env.get('SUPABASE_URL')}/functions/v1/call-status`,
       statusCallbackEvent: ['completed'],
     })
 
@@ -88,6 +88,7 @@ serve(async (req) => {
       .eq('user_id', user.id)
 
     if (updateError) {
+      console.error('Update error:', updateError)
       throw new Error('Failed to update call record')
     }
 
