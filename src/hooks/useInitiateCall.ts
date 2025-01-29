@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { createCallRecord, initiateCall } from "@/utils/twilioUtils";
 import { Contact } from "@/types";
 
 interface InitiateCallParams {
@@ -23,27 +22,39 @@ export function useInitiateCall() {
         throw new Error("User not authenticated");
       }
 
-      const callData = await createCallRecord(contact.id, user.id, notes);
-      const response = await initiateCall(callData.id, phone, notes);
+      // Create call record
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contact.id,
+          user_id: user.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
 
-      if (response.error) {
-        let errorMessage = "Failed to initiate call";
-        
-        if (response.error.body) {
-          try {
-            const errorBody = JSON.parse(response.error.body);
-            errorMessage = errorBody.error || errorMessage;
-          } catch (parseError) {
-            console.error('Error parsing response:', parseError);
-          }
-        }
-        
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return false;
+      if (callError) {
+        throw new Error("Failed to create call record");
+      }
+
+      // Initiate call using API route
+      const response = await fetch('/api/calls/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
+          callId: callData.id,
+          to: phone,
+          notes,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initiate call');
       }
 
       toast({

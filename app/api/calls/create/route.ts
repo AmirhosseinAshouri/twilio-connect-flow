@@ -9,8 +9,8 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { callId, to, from } = await request.json();
-    console.log('Received call request:', { callId, to, from });
+    const { callId, to, notes } = await request.json();
+    console.log('Received call request:', { callId, to, notes });
 
     // Get user's Twilio settings from the request headers
     const authHeader = request.headers.get('Authorization');
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     console.log('Authenticated user:', user.id);
 
-    // Get the user's settings with improved error handling
+    // Get the user's settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
