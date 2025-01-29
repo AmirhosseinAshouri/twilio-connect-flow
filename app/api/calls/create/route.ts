@@ -44,15 +44,15 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (settingsError) {
+    if (settingsError || !settings) {
       console.error('Settings fetch error:', settingsError);
       return NextResponse.json(
-        { error: "Failed to fetch Twilio settings" },
-        { status: 500 }
+        { error: "Twilio settings not found" },
+        { status: 400 }
       );
     }
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
       console.error('Missing Twilio settings for user:', user.id);
       return NextResponse.json(
         { error: "Please configure your Twilio settings in the Settings page" },
