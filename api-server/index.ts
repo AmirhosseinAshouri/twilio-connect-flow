@@ -109,15 +109,32 @@ app.post('/api/calls/status', async (req, res) => {
   }
 });
 
-// TwiML endpoint
+// TwiML endpoint with enhanced call flow
 app.get('/api/calls/twiml', (req, res) => {
   const VoiceResponse = twilio.twiml.VoiceResponse;
   const response = new VoiceResponse();
   
-  response.say('Hello! This is a call from your CRM system.');
-  response.pause({ length: 1 });
-  response.say('Connecting you now.');
+  // Add a greeting
+  response.say({
+    voice: 'alice',
+    language: 'en-US'
+  }, 'Welcome to the CRM system call.');
 
+  // Add a brief pause
+  response.pause({ length: 1 });
+
+  // Add some background music while connecting
+  response.play({
+    loop: 1
+  }, 'http://com.twilio.music.classical.s3.amazonaws.com/BusyStrings.mp3');
+
+  // Final message before connecting
+  response.say({
+    voice: 'alice',
+    language: 'en-US'
+  }, 'Connecting you now. Please wait.');
+
+  // Set response headers
   res.type('text/xml');
   res.send(response.toString());
 });

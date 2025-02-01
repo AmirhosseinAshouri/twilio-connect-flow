@@ -11,7 +11,7 @@ export type Database = {
     Tables: {
       calls: {
         Row: {
-          contact_id: string
+          contact_id: string | null
           created_at: string
           duration: number | null
           id: string
@@ -20,7 +20,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          contact_id: string
+          contact_id?: string | null
           created_at?: string
           duration?: number | null
           id?: string
@@ -29,7 +29,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          contact_id?: string
+          contact_id?: string | null
           created_at?: string
           duration?: number | null
           id?: string
