@@ -6,26 +6,27 @@ export async function GET() {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
     
-    // Add a greeting
+    // Add a professional greeting
     response.say({
       voice: 'alice',
       language: 'en-US'
-    }, 'Welcome to the CRM system call.');
+    }, 'Welcome to the CRM system.');
 
     // Add a brief pause
     response.pause({ length: 1 });
 
-    // Add some background music while connecting
+    // Add hold music
     response.play({
       loop: 1
     }, 'http://com.twilio.music.classical.s3.amazonaws.com/BusyStrings.mp3');
 
-    // Final message before connecting
+    // Add connecting message
     response.say({
       voice: 'alice',
       language: 'en-US'
-    }, 'Connecting you now. Please wait.');
+    }, 'Please wait while we connect your call.');
 
+    // Set proper XML headers for Twilio
     return new NextResponse(response.toString(), {
       headers: {
         'Content-Type': 'text/xml',
