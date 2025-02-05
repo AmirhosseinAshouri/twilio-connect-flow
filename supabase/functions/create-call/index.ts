@@ -10,7 +10,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       headers: corsHeaders,
@@ -24,13 +23,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Get the JWT token from the request header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('No authorization header')
     }
 
-    // Get the user from the JWT token
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
@@ -42,10 +39,9 @@ serve(async (req) => {
     const { callId, to, notes } = await req.json()
     console.log('Received request:', { callId, to, notes })
 
-    // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
-      .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
+      .select('twilio_account_sid, twilio_auth_token, twilio_phone_number, twilio_twiml_app_sid')
       .eq('user_id', user.id)
       .single()
 
@@ -54,11 +50,11 @@ serve(async (req) => {
       throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || 
+        !settings.twilio_phone_number || !settings.twilio_twiml_app_sid) {
       throw new Error('Incomplete Twilio settings')
     }
 
-    // Initialize Twilio client
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
@@ -66,18 +62,17 @@ serve(async (req) => {
 
     console.log('Creating call with Twilio...', { to, from: settings.twilio_phone_number })
 
-    // Create the call
     const call = await client.calls.create({
       url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/twiml`,
       to,
       from: settings.twilio_phone_number,
+      applicationSid: settings.twilio_twiml_app_sid,
       statusCallback: `${Deno.env.get('SUPABASE_URL')}/functions/v1/call-status`,
       statusCallbackEvent: ['completed'],
     })
 
     console.log('Call created:', call.sid)
 
-    // Update call record with Twilio SID
     const { error: updateError } = await supabaseClient
       .from('calls')
       .update({ 

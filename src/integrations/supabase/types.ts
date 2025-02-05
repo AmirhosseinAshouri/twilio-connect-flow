@@ -218,24 +218,33 @@ export type Database = {
           created_at: string
           id: string
           twilio_account_sid: string | null
+          twilio_api_key: string | null
+          twilio_api_secret: string | null
           twilio_auth_token: string | null
           twilio_phone_number: string | null
+          twilio_twiml_app_sid: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           twilio_account_sid?: string | null
+          twilio_api_key?: string | null
+          twilio_api_secret?: string | null
           twilio_auth_token?: string | null
           twilio_phone_number?: string | null
+          twilio_twiml_app_sid?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           twilio_account_sid?: string | null
+          twilio_api_key?: string | null
+          twilio_api_secret?: string | null
           twilio_auth_token?: string | null
           twilio_phone_number?: string | null
+          twilio_twiml_app_sid?: string | null
           user_id?: string
         }
         Relationships: []

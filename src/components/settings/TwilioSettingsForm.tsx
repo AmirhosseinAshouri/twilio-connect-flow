@@ -15,6 +15,9 @@ export function TwilioSettingsForm() {
     twilio_account_sid: "",
     twilio_auth_token: "",
     twilio_phone_number: "",
+    twilio_twiml_app_sid: "",
+    twilio_api_secret: "",
+    twilio_api_key: "",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,6 +27,9 @@ export function TwilioSettingsForm() {
         twilio_account_sid: settings.twilio_account_sid || "",
         twilio_auth_token: settings.twilio_auth_token || "",
         twilio_phone_number: settings.twilio_phone_number || "",
+        twilio_twiml_app_sid: settings.twilio_twiml_app_sid || "",
+        twilio_api_secret: settings.twilio_api_secret || "",
+        twilio_api_key: settings.twilio_api_key || "",
       });
     }
   }, [settings]);
@@ -127,6 +133,46 @@ export function TwilioSettingsForm() {
                 twilio_phone_number: e.target.value
               })}
               placeholder="Enter your Twilio Phone Number (e.g., +1234567890)"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="twiml-app-sid">TwiML App SID</Label>
+            <Input
+              id="twiml-app-sid"
+              value={twilioConfig.twilio_twiml_app_sid}
+              onChange={(e) => setTwilioConfig({
+                ...twilioConfig,
+                twilio_twiml_app_sid: e.target.value
+              })}
+              placeholder="Enter your TwiML App SID"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="api-key">API Key</Label>
+            <Input
+              id="api-key"
+              value={twilioConfig.twilio_api_key}
+              onChange={(e) => setTwilioConfig({
+                ...twilioConfig,
+                twilio_api_key: e.target.value
+              })}
+              placeholder="Enter your Twilio API Key"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="api-secret">API Secret</Label>
+            <Input
+              id="api-secret"
+              type="password"
+              value={twilioConfig.twilio_api_secret}
+              onChange={(e) => setTwilioConfig({
+                ...twilioConfig,
+                twilio_api_secret: e.target.value
+              })}
+              placeholder="Enter your Twilio API Secret"
               required
             />
           </div>

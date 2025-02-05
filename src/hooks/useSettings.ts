@@ -5,6 +5,9 @@ export interface TwilioSettings {
   twilio_account_sid: string;
   twilio_auth_token: string;
   twilio_phone_number: string;
+  twilio_twiml_app_sid: string;
+  twilio_api_secret: string;
+  twilio_api_key: string;
 }
 
 export function useSettings() {
