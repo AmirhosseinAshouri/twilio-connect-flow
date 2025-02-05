@@ -14,6 +14,8 @@ import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
 import { useInitiateCall } from "@/hooks/useInitiateCall";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -28,12 +30,15 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const [notes, setNotes] = useState("");
   const { settings, loading: settingsLoading } = useSettings();
   const { initiateCall, isLoading } = useInitiateCall();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!contact?.id) {
-      console.error('Contact ID is required');
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
       return;
     }
 
@@ -50,7 +55,8 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
 
   const isTwilioConfigured = settings?.twilio_account_sid && 
                             settings?.twilio_auth_token && 
-                            settings?.twilio_phone_number;
+                            settings?.twilio_phone_number &&
+                            settings?.twilio_twiml_app_sid;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

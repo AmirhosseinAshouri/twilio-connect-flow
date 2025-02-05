@@ -17,17 +17,19 @@ export function useInitiateCall() {
     setIsLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
+      // Get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error("Please sign in to make calls");
       }
 
       // Create call record
       const { data: callData, error: callError } = await supabase
         .from("calls")
         .insert([{
-          contact_id: contact?.id, // Now optional
-          user_id: user.id,
+          contact_id: contact?.id,
+          user_id: session.user.id,
           notes,
           status: 'initiated'
         }])
@@ -43,7 +45,7 @@ export function useInitiateCall() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           callId: callData.id,
@@ -52,15 +54,17 @@ export function useInitiateCall() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to initiate call');
+        throw new Error(data.error || 'Failed to initiate call');
       }
 
       toast({
         title: "Success",
         description: "Call initiated successfully",
       });
+      
       return true;
     } catch (error) {
       console.error('Call creation error:', error);
