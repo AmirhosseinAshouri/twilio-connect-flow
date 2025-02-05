@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
+import { createCallRecord, initiateCall } from "@/utils/twilioUtils";
 
 interface InitiateCallParams {
   contact?: Contact;
@@ -17,48 +18,14 @@ export function useInitiateCall() {
     setIsLoading(true);
 
     try {
-      // Get the current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !session) {
         throw new Error("Please sign in to make calls");
       }
 
-      // Create call record
-      const { data: callData, error: callError } = await supabase
-        .from("calls")
-        .insert([{
-          contact_id: contact?.id,
-          user_id: session.user.id,
-          notes,
-          status: 'initiated'
-        }])
-        .select()
-        .single();
-
-      if (callError) {
-        throw new Error("Failed to create call record");
-      }
-
-      // Initiate call using API route
-      const response = await fetch('/api/calls/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          callId: callData.id,
-          to: phone,
-          notes,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate call');
-      }
+      const callData = await createCallRecord(contact?.id, session.user.id, notes);
+      await initiateCall(callData.id, phone, notes);
 
       toast({
         title: "Success",

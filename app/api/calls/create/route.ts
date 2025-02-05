@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { createClient } from '@supabase/supabase-js';
+import { validateTwilioSettings } from '@/utils/twilioUtils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +13,6 @@ export async function POST(request: Request) {
     const { callId, to, notes } = await request.json();
     console.log('Received call request:', { callId, to, notes });
 
-    // Get user's Twilio settings from the request headers
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
       console.error('No authorization header provided');
@@ -22,7 +22,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify the session
     const { data: { user }, error: userError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     );
@@ -37,7 +36,6 @@ export async function POST(request: Request) {
 
     console.log('Authenticated user:', user.id);
 
-    // Get the user's settings with all required fields
     const { data: settings, error: settingsError } = await supabase
       .from('settings')
       .select(`
@@ -49,7 +47,7 @@ export async function POST(request: Request) {
       .eq('user_id', user.id)
       .single();
 
-    if (settingsError || !settings) {
+    if (settingsError) {
       console.error('Settings fetch error:', settingsError);
       return NextResponse.json(
         { error: "Failed to fetch Twilio settings" },
@@ -57,24 +55,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate all required Twilio settings
-    const requiredSettings = [
-      'twilio_account_sid',
-      'twilio_auth_token',
-      'twilio_phone_number',
-      'twilio_twiml_app_sid'
-    ];
-
-    const missingSettings = requiredSettings.filter(setting => !settings[setting]);
-    if (missingSettings.length > 0) {
-      console.error('Missing Twilio settings:', missingSettings);
+    const validation = validateTwilioSettings(settings);
+    if (!validation.isValid) {
       return NextResponse.json(
-        { error: `Missing Twilio settings: ${missingSettings.join(', ')}` },
+        { error: validation.error },
         { status: 400 }
       );
     }
 
-    // Initialize Twilio client
     const client = twilio(
       settings.twilio_account_sid,
       settings.twilio_auth_token
@@ -82,7 +70,6 @@ export async function POST(request: Request) {
 
     console.log('Creating call with Twilio...');
 
-    // Create call using Twilio
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
@@ -94,7 +81,6 @@ export async function POST(request: Request) {
 
     console.log('Call created:', call.sid);
 
-    // Update call record with Twilio SID
     const { error: updateError } = await supabase
       .from('calls')
       .update({ 
