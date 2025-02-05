@@ -37,12 +37,19 @@ export async function POST(request: Request) {
 
     console.log('Authenticated user:', user.id);
 
-    // Get the user's settings
+    // Get the user's settings with all required fields
     const { data: settings, error: settingsError } = await supabase
-      .from("settings")
-      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
-      .eq("user_id", user.id)
-      .single();
+      .from('settings')
+      .select(`
+        twilio_account_sid,
+        twilio_auth_token,
+        twilio_phone_number,
+        twilio_twiml_app_sid,
+        twilio_api_key,
+        twilio_api_secret
+      `)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError);
@@ -60,38 +67,52 @@ export async function POST(request: Request) {
       );
     }
 
-    const { twilio_account_sid, twilio_auth_token, twilio_phone_number } = settings;
+    // Validate all required Twilio settings
+    const requiredSettings = [
+      'twilio_account_sid',
+      'twilio_auth_token',
+      'twilio_phone_number',
+      'twilio_twiml_app_sid'
+    ];
 
-    if (!twilio_account_sid || !twilio_auth_token || !twilio_phone_number) {
-      console.error('Incomplete Twilio settings for user:', user.id);
+    const missingSettings = requiredSettings.filter(setting => !settings[setting]);
+    if (missingSettings.length > 0) {
+      console.error('Missing Twilio settings:', missingSettings);
       return NextResponse.json(
-        { error: "Please complete your Twilio settings configuration in the Settings page" },
+        { error: `Please complete your Twilio settings: ${missingSettings.join(', ')}` },
         { status: 400 }
       );
     }
 
     // Initialize Twilio client
-    const client = twilio(twilio_account_sid, twilio_auth_token);
+    const client = twilio(
+      settings.twilio_account_sid,
+      settings.twilio_auth_token
+    );
 
-    console.log('Initializing call with Twilio...');
+    console.log('Creating call with Twilio...');
 
-    // Create call using Twilio
+    // Create call using Twilio with TwiML App SID
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
-      from: twilio_phone_number,
+      from: settings.twilio_phone_number,
+      applicationSid: settings.twilio_twiml_app_sid,
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });
 
-    console.log('Call created with Twilio:', call.sid);
+    console.log('Call created:', call.sid);
 
     // Update call record with Twilio SID
     const { error: updateError } = await supabase
-      .from("calls")
-      .update({ twilio_sid: call.sid })
-      .eq("id", callId)
-      .eq("user_id", user.id);
+      .from('calls')
+      .update({ 
+        twilio_sid: call.sid,
+        status: 'initiated'
+      })
+      .eq('id', callId)
+      .eq('user_id', user.id);
 
     if (updateError) {
       console.error('Error updating call record:', updateError);
