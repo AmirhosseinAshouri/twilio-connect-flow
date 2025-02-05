@@ -14,7 +14,7 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!
 );
 
-// Configure CORS
+// Configure CORS to accept requests from any origin during development
 app.use(cors({
   origin: '*',
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
@@ -27,22 +27,37 @@ app.use(express.json());
 // Create call endpoint
 app.post('/api/calls/create', async (req, res) => {
   try {
-    const { callId, to, from, notes } = req.body;
-    console.log('Received call request:', { callId, to, from, notes });
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "No authorization header" });
+    }
+
+    // Verify the user's session
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { callId, to, notes } = req.body;
+    console.log('Received call request:', { callId, to, notes });
 
     // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("*")
+      .eq("user_id", user.id)
       .single();
 
     if (settingsError) {
       console.error('Settings fetch error:', settingsError);
-      throw new Error("Failed to fetch Twilio settings");
+      return res.status(500).json({ error: "Failed to fetch Twilio settings" });
     }
 
     if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      throw new Error("Please configure your Twilio settings in the Settings page first");
+      return res.status(400).json({ error: "Please configure your Twilio settings in the Settings page first" });
     }
 
     // Initialize Twilio client
@@ -69,11 +84,12 @@ app.post('/api/calls/create', async (req, res) => {
         twilio_sid: call.sid,
         status: 'initiated'
       })
-      .eq("id", callId);
+      .eq("id", callId)
+      .eq("user_id", user.id);
 
     if (updateError) {
       console.error('Call update error:', updateError);
-      throw updateError;
+      return res.status(500).json({ error: "Failed to update call record" });
     }
 
     res.json({ success: true, sid: call.sid });

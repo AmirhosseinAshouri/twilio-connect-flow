@@ -58,7 +58,8 @@ export const initiateCall = async (callId: string, to: string, notes: string) =>
     throw new Error("Not authenticated");
   }
 
-  const response = await fetch('/api/calls/create', {
+  // Use the Express server endpoint
+  const response = await fetch('http://localhost:3000/api/calls/create', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
