@@ -44,26 +44,16 @@ export async function POST(request: Request) {
         twilio_account_sid,
         twilio_auth_token,
         twilio_phone_number,
-        twilio_twiml_app_sid,
-        twilio_api_key,
-        twilio_api_secret
+        twilio_twiml_app_sid
       `)
       .eq('user_id', user.id)
-      .maybeSingle();
+      .single();
 
-    if (settingsError) {
+    if (settingsError || !settings) {
       console.error('Settings fetch error:', settingsError);
       return NextResponse.json(
         { error: "Failed to fetch Twilio settings" },
         { status: 500 }
-      );
-    }
-
-    if (!settings) {
-      console.error('No Twilio settings found for user:', user.id);
-      return NextResponse.json(
-        { error: "Please configure your Twilio settings in the Settings page" },
-        { status: 400 }
       );
     }
 
@@ -79,7 +69,7 @@ export async function POST(request: Request) {
     if (missingSettings.length > 0) {
       console.error('Missing Twilio settings:', missingSettings);
       return NextResponse.json(
-        { error: `Please complete your Twilio settings: ${missingSettings.join(', ')}` },
+        { error: `Missing Twilio settings: ${missingSettings.join(', ')}` },
         { status: 400 }
       );
     }
@@ -92,7 +82,7 @@ export async function POST(request: Request) {
 
     console.log('Creating call with Twilio...');
 
-    // Create call using Twilio with TwiML App SID
+    // Create call using Twilio
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
