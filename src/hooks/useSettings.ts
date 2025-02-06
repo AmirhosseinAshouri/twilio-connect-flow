@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface TwilioSettings {
   twilio_account_sid: string;
@@ -21,16 +22,20 @@ export function useSettings() {
         setLoading(true);
         setError(null);
         
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
+        // First check if user is authenticated
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        if (authError) throw authError;
+        if (!session) {
+          throw new Error("No active session");
+        }
 
-        const { data, error } = await supabase
+        const { data, error: settingsError } = await supabase
           .from("settings")
           .select("*")
-          .eq("user_id", user.id)
+          .eq("user_id", session.user.id)
           .maybeSingle();
 
-        if (error) throw error;
+        if (settingsError) throw settingsError;
 
         if (data) {
           setSettings(data);
@@ -39,7 +44,7 @@ export function useSettings() {
           const { data: newSettings, error: insertError } = await supabase
             .from("settings")
             .insert([{ 
-              user_id: user.id,
+              user_id: session.user.id,
               twilio_account_sid: '',
               twilio_auth_token: '',
               twilio_phone_number: ''
@@ -53,6 +58,7 @@ export function useSettings() {
       } catch (err) {
         console.error('Error fetching settings:', err);
         setError(err as Error);
+        toast.error("Failed to load settings. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -63,20 +69,22 @@ export function useSettings() {
 
   const updateSettings = async (values: TwilioSettings) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session");
 
       const { error } = await supabase
         .from("settings")
         .update(values)
-        .eq("user_id", user.id);
+        .eq("user_id", session.user.id);
 
       if (error) throw error;
 
       setSettings(values);
+      toast.success("Settings updated successfully");
       return true;
     } catch (err) {
       console.error('Error updating settings:', err);
+      toast.error("Failed to update settings. Please try again.");
       throw err;
     }
   };
