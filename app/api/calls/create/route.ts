@@ -1,125 +1,66 @@
-import { NextResponse } from 'next/server';
-import twilio from 'twilio';
-import { createClient } from '@supabase/supabase-js';
-import { validateTwilioSettings } from '@/utils/twilioUtils';
+import { NextResponse } from "next/server";
+import twilio from "twilio";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-try {
-  const call = await client.calls.create({
-    url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
-    to,
-    from: settings.twilio_phone_number,
-    applicationSid: settings.twilio_twiml_app_sid,
-    statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
-    statusCallbackEvent: ["completed"],
-  });
 
-  console.log("Twilio Call Created:", call);
-} catch (error) {
-  console.error("Twilio Call Error:", error);
-}
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { callId, to, notes } = await request.json();
-    console.log('Received call request:', { callId, to, notes });
+    const body = await req.json();
+    console.log("Received Call Request:", body);
 
-    const authHeader = request.headers.get('Authorization');
+    const { callId, to, notes } = body;
+
+    // Check Authorization
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.error('No authorization header provided');
-      return NextResponse.json(
-        { error: "No authorization header" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized - Missing Token" }, { status: 401 });
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
+    const token = authHeader.replace("Bearer ", "");
+    const { data: user, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
-      console.error('User authentication error:', userError);
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      console.log("Supabase Auth Error:", userError);
+      return NextResponse.json({ error: "Unauthorized - Invalid Token" }, { status: 401 });
     }
 
-    console.log('Authenticated user:', user.id);
+    console.log("User Authenticated:", user);
 
+    // Fetch Twilio Settings from Supabase
     const { data: settings, error: settingsError } = await supabase
-      .from('settings')
-      .select(`
-        twilio_account_sid,
-        twilio_auth_token,
-        twilio_phone_number,
-        twilio_twiml_app_sid
-      `)
-      .eq('user_id', user.id)
+      .from("settings")
+      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
+      .eq("user_id", user.id)
       .single();
 
-    if (settingsError) {
-      console.error('Settings fetch error:', settingsError);
-      return NextResponse.json(
-        { error: "Failed to fetch Twilio settings" },
-        { status: 500 }
-      );
+    console.log("Fetched Twilio Settings:", settings);
+    if (!settings || settingsError) {
+      return NextResponse.json({ error: "Twilio settings not found in database" }, { status: 500 });
     }
 
-    const validation = validateTwilioSettings(settings);
-    if (!validation.isValid) {
-      return NextResponse.json(
-        { error: validation.error },
-        { status: 400 }
-      );
-    }
+    // Initialize Twilio Client
+    const client = twilio(settings.twilio_account_sid, settings.twilio_auth_token);
 
-    const client = twilio(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token
-    );
-
-    console.log('Creating call with Twilio...');
-
+    // Create Twilio Call
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
       from: settings.twilio_phone_number,
-      applicationSid: settings.twilio_twiml_app_sid,
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
-      statusCallbackEvent: ['completed'],
+      statusCallbackEvent: ["completed"],
     });
 
-    console.log('Call created:', call.sid);
+    console.log("Twilio Call Created:", call);
 
-    const { error: updateError } = await supabase
-      .from('calls')
-      .update({ 
-        twilio_sid: call.sid,
-        status: 'initiated'
-      })
-      .eq('id', callId)
-      .eq('user_id', user.id);
-
-    if (updateError) {
-      console.error('Error updating call record:', updateError);
-      return NextResponse.json(
-        { error: "Failed to update call record" },
-        { status: 500 }
-      );
-    }
-
-    console.log('Call record updated successfully');
+    // Update Call Status in Supabase
+    await supabase.from("calls").update({ twilio_sid: call.sid, status: "initiated" }).eq("id", callId);
 
     return NextResponse.json({ success: true, sid: call.sid });
   } catch (error) {
-    console.error('Call creation error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create call" },
-      { status: 500 }
-    );
+    console.error("Twilio Call Creation Error:", error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create call" }, { status: 500 });
   }
 }
