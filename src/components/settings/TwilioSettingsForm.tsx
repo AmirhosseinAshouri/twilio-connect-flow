@@ -23,6 +23,15 @@ export function TwilioSettingsForm() {
 
   useEffect(() => {
     if (settings) {
+      console.log('Loaded Twilio settings:', {
+        hasAccountSid: !!settings.twilio_account_sid,
+        hasAuthToken: !!settings.twilio_auth_token,
+        hasPhoneNumber: !!settings.twilio_phone_number,
+        hasTwimlAppSid: !!settings.twilio_twiml_app_sid,
+        hasApiSecret: !!settings.twilio_api_secret,
+        hasApiKey: !!settings.twilio_api_key,
+      });
+      
       setTwilioConfig({
         twilio_account_sid: settings.twilio_account_sid || "",
         twilio_auth_token: settings.twilio_auth_token || "",
@@ -38,16 +47,18 @@ export function TwilioSettingsForm() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      console.log('Attempting to save Twilio settings...');
       await updateSettings(twilioConfig);
+      console.log('Twilio settings saved successfully');
       toast({
         title: "Settings saved",
         description: "Your Twilio settings have been updated successfully.",
       });
     } catch (err) {
-      console.error('Error saving settings:', err);
+      console.error('Error saving Twilio settings:', err);
       toast({
         title: "Error",
-        description: "Failed to save Twilio settings. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to save Twilio settings. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -74,6 +85,7 @@ export function TwilioSettingsForm() {
   }
 
   if (error) {
+    console.error('Settings loading error:', error);
     return (
       <Card>
         <CardHeader>
