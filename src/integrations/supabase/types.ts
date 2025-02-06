@@ -93,29 +93,38 @@ export type Database = {
       }
       contacts: {
         Row: {
+          birth_date: string | null
           company: string | null
           created_at: string
           email: string | null
           id: string
+          job_title: string | null
           name: string
+          notes: string | null
           phone: string | null
           user_id: string
         }
         Insert: {
+          birth_date?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          job_title?: string | null
           name: string
+          notes?: string | null
           phone?: string | null
           user_id: string
         }
         Update: {
+          birth_date?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          job_title?: string | null
           name?: string
+          notes?: string | null
           phone?: string | null
           user_id?: string
         }
