@@ -15,6 +15,11 @@ const routes = [
     href: "/dashboard",
   },
   {
+    label: "TwilioClient",
+    icon: LayoutDashboard,
+    href: "/twilioclient",
+  },
+  {
     label: "Contacts",
     icon: Users,
     href: "/contacts",
