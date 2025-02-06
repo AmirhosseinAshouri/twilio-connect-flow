@@ -7,6 +7,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+try {
+  const call = await client.calls.create({
+    url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
+    to,
+    from: settings.twilio_phone_number,
+    applicationSid: settings.twilio_twiml_app_sid,
+    statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
+    statusCallbackEvent: ["completed"],
+  });
+
+  console.log("Twilio Call Created:", call);
+} catch (error) {
+  console.error("Twilio Call Error:", error);
+}
 
 export async function POST(request: Request) {
   try {
