@@ -24,19 +24,26 @@ export function useInitiateCall() {
         throw new Error("Please sign in to make calls");
       }
 
+      console.log("Fetching Twilio token...");
+
       // Get token for Twilio client
       const tokenResponse = await fetch("/api/twilio/token", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
       });
 
       if (!tokenResponse.ok) {
-        throw new Error("Failed to get Twilio token");
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        console.error("Token fetch error:", errorData);
+        throw new Error(errorData.error || "Failed to get Twilio token");
       }
 
       const { token } = await tokenResponse.json();
+
+      console.log("Creating call...");
 
       // Create the call
       const callResponse = await fetch("/api/calls/create", {
