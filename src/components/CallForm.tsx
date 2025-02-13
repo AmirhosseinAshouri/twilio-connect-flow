@@ -1,8 +1,10 @@
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TwilioSettings } from "@/hooks/useSettings";
+import { PhoneCall } from "lucide-react";
 
 interface CallFormProps {
   phone: string;
@@ -48,7 +50,9 @@ export function CallForm({
       <Button 
         type="submit" 
         disabled={isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token}
+        className="w-full flex items-center justify-center gap-2"
       >
+        <PhoneCall className="h-4 w-4" />
         {isLoading ? "Initiating Call..." : "Start Call"}
       </Button>
     </form>

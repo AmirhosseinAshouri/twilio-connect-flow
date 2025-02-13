@@ -1,8 +1,8 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
-import { createCallRecord, initiateCall } from "@/utils/twilioUtils";
 
 interface InitiateCallParams {
   contact?: Contact;
@@ -24,8 +24,38 @@ export function useInitiateCall() {
         throw new Error("Please sign in to make calls");
       }
 
-      const callData = await createCallRecord(contact?.id, session.user.id, notes);
-      await initiateCall(callData.id, phone, notes);
+      // Get token for Twilio client
+      const tokenResponse = await fetch("/api/twilio/token", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!tokenResponse.ok) {
+        throw new Error("Failed to get Twilio token");
+      }
+
+      const { token } = await tokenResponse.json();
+
+      // Create the call
+      const callResponse = await fetch("/api/calls/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: phone,
+          notes,
+          contact_id: contact?.id,
+        }),
+      });
+
+      if (!callResponse.ok) {
+        const error = await callResponse.json();
+        throw new Error(error.error || "Failed to initiate call");
+      }
 
       toast({
         title: "Success",
