@@ -18,60 +18,68 @@ export function useInitiateCall() {
     setIsLoading(true);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        throw new Error("Please sign in to make calls");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
       }
 
-      console.log("Fetching Twilio token...");
+      // First check if Twilio settings exist
+      const { data: settings, error: settingsError } = await supabase
+        .from("settings")
+        .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
+        .single();
 
-      // Get token for Twilio client
-      const tokenResponse = await fetch("/api/twilio/token", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.json().catch(() => ({}));
-        console.error("Token fetch error:", errorData);
-        throw new Error(errorData.error || "Failed to get Twilio token");
+      if (settingsError || !settings) {
+        throw new Error("Please configure your Twilio settings in the Settings page first");
       }
 
-      const { token } = await tokenResponse.json();
+      if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+        throw new Error("Please complete your Twilio settings configuration");
+      }
 
-      console.log("Creating call...");
+      // Create call record
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contact?.id,
+          user_id: user.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
 
-      // Create the call
-      const callResponse = await fetch("/api/calls/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      if (callError) {
+        throw new Error("Failed to create call record");
+      }
+
+      // Initiate call using our edge function
+      const response = await supabase.functions.invoke('create-call', {
+        body: {
+          callId: callData.id,
           to: phone,
           notes,
-          contact_id: contact?.id,
-        }),
+        }
       });
 
-      if (!callResponse.ok) {
-        const error = await callResponse.json();
-        throw new Error(error.error || "Failed to initiate call");
+      if (response.error) {
+        console.error('Call initiation error:', response.error);
+        throw new Error(response.error.message || 'Failed to initiate call');
       }
 
-      const callData = await callResponse.json();
-      
+      console.log('Call initiated successfully');
+
+      toast({
+        title: "Call Initiated",
+        description: "Your call is being connected.",
+      });
+
       return {
         success: true,
         callId: callData.id
       };
     } catch (error) {
-      console.error('Call creation error:', error);
+      console.error('Error in initiateCall:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to initiate call",
