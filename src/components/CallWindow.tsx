@@ -15,7 +15,7 @@ interface CallWindowProps {
 
 export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: CallWindowProps) {
   const [duration, setDuration] = useState(0);
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timer | null>(null);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (status === 'in-progress' && !timerInterval) {
