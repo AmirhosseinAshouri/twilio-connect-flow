@@ -28,9 +28,15 @@ export function useInitiateCall() {
       const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
-        .single();
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
-      if (settingsError || !settings) {
+      if (settingsError) {
+        console.error('Settings error:', settingsError);
+        throw new Error("Failed to fetch Twilio settings");
+      }
+
+      if (!settings) {
         throw new Error("Please configure your Twilio settings in the Settings page first");
       }
 
@@ -95,15 +101,6 @@ export function useInitiateCall() {
     } catch (error) {
       console.error('Error in initiateCall:', error);
       
-      // Clean up the call record if it was created but the call failed
-      if (error instanceof Error && error.message.includes('Failed to initiate call')) {
-        // We don't need to await this as it's just cleanup
-        supabase
-          .from('calls')
-          .update({ status: 'failed' })
-          .eq('id', error.message.split(':')[1]?.trim());
-      }
-
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to initiate call",
