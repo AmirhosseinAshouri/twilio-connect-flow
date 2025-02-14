@@ -18,8 +18,9 @@ export function useInitiateCall() {
     setIsLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         throw new Error("User not authenticated");
       }
 
@@ -42,7 +43,7 @@ export function useInitiateCall() {
         .from("calls")
         .insert([{
           contact_id: contact?.id,
-          user_id: user.id,
+          user_id: session.user.id,
           notes,
           status: 'initiated'
         }])
@@ -53,21 +54,34 @@ export function useInitiateCall() {
         throw new Error("Failed to create call record");
       }
 
-      // Initiate call using our edge function
-      const response = await supabase.functions.invoke('create-call', {
+      console.log('Initiating call with data:', {
+        callId: callData.id,
+        to: phone,
+        notes,
+      });
+
+      // Initiate call using edge function
+      const { data, error: functionError } = await supabase.functions.invoke('create-call', {
         body: {
           callId: callData.id,
           to: phone,
           notes,
-        }
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
-      if (response.error) {
-        console.error('Call initiation error:', response.error);
-        throw new Error(response.error.message || 'Failed to initiate call');
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw new Error(functionError.message || 'Failed to initiate call');
       }
 
-      console.log('Call initiated successfully');
+      if (!data?.success) {
+        throw new Error('Failed to initiate call: Unknown error');
+      }
+
+      console.log('Call initiated successfully:', data);
 
       toast({
         title: "Call Initiated",
@@ -80,11 +94,22 @@ export function useInitiateCall() {
       };
     } catch (error) {
       console.error('Error in initiateCall:', error);
+      
+      // Clean up the call record if it was created but the call failed
+      if (error instanceof Error && error.message.includes('Failed to initiate call')) {
+        // We don't need to await this as it's just cleanup
+        supabase
+          .from('calls')
+          .update({ status: 'failed' })
+          .eq('id', error.message.split(':')[1]?.trim());
+      }
+
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to initiate call",
         variant: "destructive",
       });
+      
       return {
         success: false,
         callId: undefined
