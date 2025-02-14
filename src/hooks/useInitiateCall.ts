@@ -64,12 +64,12 @@ export function useInitiateCall() {
         throw new Error(error.error || "Failed to initiate call");
       }
 
-      toast({
-        title: "Success",
-        description: "Call initiated successfully",
-      });
+      const callData = await callResponse.json();
       
-      return true;
+      return {
+        success: true,
+        callId: callData.id
+      };
     } catch (error) {
       console.error('Call creation error:', error);
       toast({
@@ -77,14 +77,44 @@ export function useInitiateCall() {
         description: error instanceof Error ? error.message : "Failed to initiate call",
         variant: "destructive",
       });
-      return false;
+      return {
+        success: false,
+        callId: undefined
+      };
     } finally {
       setIsLoading(false);
     }
   };
 
+  const hangUp = async (callId: string) => {
+    try {
+      const { error } = await supabase
+        .from('calls')
+        .update({ 
+          status: 'canceled',
+          end_time: new Date().toISOString()
+        })
+        .eq('id', callId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Call Ended",
+        description: "The call has been terminated",
+      });
+    } catch (error) {
+      console.error('Error hanging up call:', error);
+      toast({
+        title: "Error",
+        description: "Failed to hang up call",
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     initiateCall: handleInitiateCall,
+    hangUp,
     isLoading
   };
 }
