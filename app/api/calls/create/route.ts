@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import twilio from "twilio";
 import { createClient } from "@supabase/supabase-js";
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("Received Call Request:", body);
 
-    const { callId, to, notes } = body;
+    const { to, notes } = body;
 
     // Check Authorization
     const authHeader = req.headers.get("Authorization");
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: user, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       console.log("Supabase Auth Error:", userError);
       return NextResponse.json({ error: "Unauthorized - Invalid Token" }, { status: 401 });
@@ -41,6 +42,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Twilio settings not found in database" }, { status: 500 });
     }
 
+    // Create call record in database first
+    const { data: callData, error: callError } = await supabase
+      .from("calls")
+      .insert([{
+        user_id: user.id,
+        notes,
+        status: 'initiated'
+      }])
+      .select()
+      .single();
+
+    if (callError) {
+      console.error("Call record creation error:", callError);
+      return NextResponse.json({ error: "Failed to create call record" }, { status: 500 });
+    }
+
     // Initialize Twilio Client
     const client = twilio(settings.twilio_account_sid, settings.twilio_auth_token);
 
@@ -55,12 +72,17 @@ export async function POST(req: Request) {
 
     console.log("Twilio Call Created:", call);
 
-    // Update Call Status in Supabase
-    await supabase.from("calls").update({ twilio_sid: call.sid, status: "initiated" }).eq("id", callId);
+    // Update Call Status in Supabase with Twilio SID
+    await supabase
+      .from("calls")
+      .update({ twilio_sid: call.sid })
+      .eq("id", callData.id);
 
     return NextResponse.json({ success: true, sid: call.sid });
   } catch (error) {
     console.error("Twilio Call Creation Error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to create call" }, { status: 500 });
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to create call" 
+    }, { status: 500 });
   }
 }

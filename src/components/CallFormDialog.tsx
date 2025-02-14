@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import { CallForm } from "./CallForm";
 import { useInitiateCall } from "@/hooks/useInitiateCall";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { CallWindow } from "./CallWindow";
+import { useCallStatus } from "@/hooks/useCallStatus";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -28,8 +31,11 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
+  const [callWindowOpen, setCallWindowOpen] = useState(false);
+  const [currentCallId, setCurrentCallId] = useState<string>();
   const { settings, loading: settingsLoading } = useSettings();
-  const { initiateCall, isLoading } = useInitiateCall();
+  const { initiateCall, isLoading, hangUp } = useInitiateCall();
+  const { status } = useCallStatus(currentCallId);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,15 +48,30 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
       return;
     }
 
-    const success = await initiateCall({
+    const { success, callId } = await initiateCall({
       contact,
       phone,
       notes
     });
     
-    if (success) {
+    if (success && callId) {
       setOpen(false);
+      setCallWindowOpen(true);
+      setCurrentCallId(callId);
     }
+  };
+
+  const handleHangUp = async () => {
+    if (currentCallId) {
+      await hangUp(currentCallId);
+    }
+  };
+
+  const handleCallWindowClose = () => {
+    setCallWindowOpen(false);
+    setCurrentCallId(undefined);
+    setPhone("");
+    setNotes("");
   };
 
   const isTwilioConfigured = settings?.twilio_account_sid && 
@@ -59,46 +80,56 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
                             settings?.twilio_twiml_app_sid;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant={variant} size={size}>
-            <PhoneCall className="h-4 w-4" />
-            {size !== "icon" && <span className="ml-2">Call</span>}
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
-          <DialogDescription>
-            Start a new call with this contact using Twilio.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant={variant} size={size}>
+              <PhoneCall className="h-4 w-4" />
+              {size !== "icon" && <span className="ml-2">Call</span>}
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
+            <DialogDescription>
+              Start a new call with this contact using Twilio.
+            </DialogDescription>
+          </DialogHeader>
 
-        {settingsLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-          </div>
-        ) : !isTwilioConfigured ? (
-          <Alert variant="destructive">
-            <AlertTitle>Missing Twilio Settings</AlertTitle>
-            <AlertDescription>
-              Please configure your Twilio settings in the Settings page before making calls.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <CallForm
-            phone={phone}
-            notes={notes}
-            isLoading={isLoading}
-            settings={settings}
-            onPhoneChange={setPhone}
-            onNotesChange={setNotes}
-            onSubmit={handleSubmit}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+          {settingsLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+          ) : !isTwilioConfigured ? (
+            <Alert variant="destructive">
+              <AlertTitle>Missing Twilio Settings</AlertTitle>
+              <AlertDescription>
+                Please configure your Twilio settings in the Settings page before making calls.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <CallForm
+              phone={phone}
+              notes={notes}
+              isLoading={isLoading}
+              settings={settings}
+              onPhoneChange={setPhone}
+              onNotesChange={setNotes}
+              onSubmit={handleSubmit}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <CallWindow
+        open={callWindowOpen}
+        onClose={handleCallWindowClose}
+        status={status}
+        phoneNumber={phone}
+        onHangUp={handleHangUp}
+      />
+    </>
   );
 }

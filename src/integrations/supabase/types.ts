@@ -14,8 +14,10 @@ export type Database = {
           contact_id: string | null
           created_at: string
           duration: number | null
+          end_time: string | null
           id: string
           notes: string | null
+          start_time: string | null
           status: string | null
           user_id: string
         }
@@ -23,8 +25,10 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           duration?: number | null
+          end_time?: string | null
           id?: string
           notes?: string | null
+          start_time?: string | null
           status?: string | null
           user_id: string
         }
@@ -32,8 +36,10 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           duration?: number | null
+          end_time?: string | null
           id?: string
           notes?: string | null
+          start_time?: string | null
           status?: string | null
           user_id?: string
         }
