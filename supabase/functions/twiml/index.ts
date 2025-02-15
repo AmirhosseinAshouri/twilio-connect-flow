@@ -19,9 +19,27 @@ serve(async (req) => {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
     
-    response.say('Hello! This is a call from your CRM system.');
+    // Initial greeting
+    response.say({
+      voice: 'alice',
+      language: 'en-US'
+    }, 'Hello! Please wait while we connect your call.');
+
+    // Add a brief pause
     response.pause({ length: 1 });
-    response.say('Connecting you now.');
+
+    // Add dial instruction to enable two-way communication
+    const dial = response.dial({
+      callerId: req.url.searchParams.get('From') || '',
+      timeout: 30,
+      record: 'record-from-answer',
+      answerOnBridge: true
+    });
+    
+    // Add the number to dial
+    dial.number(req.url.searchParams.get('To') || '');
+
+    console.log('Generated TwiML:', response.toString());
 
     return new Response(response.toString(), {
       headers: {

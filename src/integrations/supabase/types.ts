@@ -19,6 +19,7 @@ export type Database = {
           notes: string | null
           start_time: string | null
           status: string | null
+          twilio_sid: string | null
           user_id: string
         }
         Insert: {
@@ -30,6 +31,7 @@ export type Database = {
           notes?: string | null
           start_time?: string | null
           status?: string | null
+          twilio_sid?: string | null
           user_id: string
         }
         Update: {
@@ -41,6 +43,7 @@ export type Database = {
           notes?: string | null
           start_time?: string | null
           status?: string | null
+          twilio_sid?: string | null
           user_id?: string
         }
         Relationships: [
