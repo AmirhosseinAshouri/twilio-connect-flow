@@ -1,3 +1,4 @@
+
 import { Home, Users, PhoneCall, PieChart, Settings } from "lucide-react";
 import {
   Sidebar,
@@ -10,13 +11,13 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
-import { SidebarCallForm } from "./SidebarCallForm";
 
 const menuItems = [
   { title: "Dashboard", icon: Home, path: "/" },
   { title: "Contacts", icon: Users, path: "/contacts" },
   { title: "Deals", icon: PieChart, path: "/deals" },
   { title: "Communications", icon: PhoneCall, path: "/communications" },
+  { title: "Quick Call", icon: PhoneCall, path: "/quick-call" },
   { title: "Settings", icon: Settings, path: "/settings" },
 ];
 
@@ -43,7 +44,6 @@ export function CRMSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarCallForm />
       </SidebarContent>
     </Sidebar>
   );
