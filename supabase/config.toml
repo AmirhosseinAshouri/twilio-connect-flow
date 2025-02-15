@@ -1,1 +1,40 @@
+
+# project configuration in supabase
 project_id = "fbwxtooicqpqotherube"
+
+[api]
+enabled = true
+# Port to use for the API URL.
+port = 54321
+docs = true
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+shadow_port = 54320
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+port = 54325
+
+[analytics]
+enabled = true
+port = 54327
+
+[realtime]
+enabled = true
+
+[edge_functions]
+[edge_functions.twiml]
+verify_jwt = false
