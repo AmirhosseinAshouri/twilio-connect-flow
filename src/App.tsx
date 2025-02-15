@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { CRMSidebar } from "@/components/CRMSidebar";
@@ -9,6 +10,7 @@ import Deals from "@/pages/Deals";
 import Communications from "@/pages/Communications";
 import Settings from "@/pages/Settings";
 import SignIn from "@/pages/SignIn";
+import QuickCall from "@/pages/QuickCall";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -50,6 +52,7 @@ function App() {
                   <Route path="/deals" element={<Deals />} />
                   <Route path="/communications" element={<Communications />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/quick-call" element={<QuickCall />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </main>
