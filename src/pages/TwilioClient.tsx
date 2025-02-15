@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from "react";
-import { Device } from "@twilio/voice-sdk";
+import { Device, Codec } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -21,7 +21,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ["opus", "pcmu"],
+          codecPreferences: [Codec.Opus, Codec.Pcmu],
           fakeLocalDTMF: true,
           enableRingingState: true,
         });
