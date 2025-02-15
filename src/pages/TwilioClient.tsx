@@ -1,46 +1,131 @@
+
 import React, { useEffect, useState } from "react";
-import { TwilioVoice } from "@twilio/voice-react-native-sdk";
-import { Button, View, Text } from "react-native";
+import { Device } from "@twilio/voice-sdk";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
 
 const TwilioClient = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [twilio, setTwilio] = useState<TwilioVoice | null>(null);
+  const [device, setDevice] = useState<Device | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchToken = async () => {
+    const initializeDevice = async () => {
       try {
-        const res = await fetch("https://crm-six-black.vercel.app/api/twilio/token?identity=JohnDoe");
-        const data = await res.json();
-        setToken(data.token);
+        const response = await fetch("/api/twilio/token");
+        const data = await response.json();
+        
+        if (!data.token) {
+          throw new Error("Failed to get token");
+        }
 
-        // Initialize Twilio Client
-        const client = new TwilioVoice();
-        await client.initWithToken(data.token);
-        setTwilio(client);
+        const newDevice = new Device(data.token, {
+          codecPreferences: ["opus", "pcmu"],
+          fakeLocalDTMF: true,
+          enableRingingState: true,
+        });
+
+        await newDevice.register();
+        setDevice(newDevice);
+
+        // Set up event listeners
+        newDevice.on('error', (error) => {
+          console.error('Twilio device error:', error);
+          toast({
+            title: "Error",
+            description: error.message || "An error occurred with the call device",
+            variant: "destructive",
+          });
+        });
+
+        newDevice.on('registered', () => {
+          console.log('Twilio device registered');
+        });
+
+        newDevice.on('unregistered', () => {
+          console.log('Twilio device unregistered');
+        });
+
       } catch (error) {
-        console.error("Failed to fetch Twilio token:", error);
+        console.error("Failed to initialize Twilio device:", error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to initialize call device",
+          variant: "destructive",
+        });
       }
     };
 
-    fetchToken();
-  }, []);
+    initializeDevice();
+
+    return () => {
+      // Cleanup
+      if (device) {
+        device.destroy();
+      }
+    };
+  }, [toast]);
 
   const makeCall = async () => {
-    if (twilio) {
-      try {
-        const call = await twilio.connect({ params: { To: "+1234567890" } }); // Replace with recipient number
-        console.log("Call started:", call);
-      } catch (error) {
-        console.error("Call error:", error);
-      }
+    if (!device) {
+      toast({
+        title: "Error",
+        description: "Call device not initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsConnecting(true);
+    try {
+      const connection = await device.connect({
+        params: { To: "+1234567890" } // Replace with recipient number
+      });
+
+      connection.on('accept', () => {
+        console.log('Call accepted');
+        toast({
+          title: "Success",
+          description: "Call connected",
+        });
+      });
+
+      connection.on('disconnect', () => {
+        console.log('Call disconnected');
+        setIsConnecting(false);
+        toast({
+          title: "Call Ended",
+          description: "Call has been disconnected",
+        });
+      });
+
+    } catch (error) {
+      console.error("Call error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to make call",
+        variant: "destructive",
+      });
+      setIsConnecting(false);
     }
   };
 
   return (
-    <View>
-      <Text>Twilio Voice Call</Text>
-      <Button title="Call" onPress={makeCall} />
-    </View>
+    <Card className="w-full max-w-md mx-auto mt-8">
+      <CardHeader>
+        <CardTitle>Twilio Voice Call</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button 
+          onClick={makeCall} 
+          disabled={!device || isConnecting}
+          className="w-full"
+        >
+          {isConnecting ? "Connecting..." : "Make Call"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 
