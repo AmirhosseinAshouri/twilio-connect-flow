@@ -19,10 +19,7 @@ const TwilioClient = () => {
           throw new Error("Failed to get token");
         }
 
-        const newDevice = new Device(data.token, {
-          enableRingingState: true,
-        });
-
+        const newDevice = new Device(data.token);
         await newDevice.register();
         setDevice(newDevice);
 
