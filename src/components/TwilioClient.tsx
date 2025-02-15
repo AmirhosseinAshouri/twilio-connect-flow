@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Device } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const TwilioClient = () => {
   const [device, setDevice] = useState<Device | null>(null);
@@ -12,11 +13,10 @@ const TwilioClient = () => {
   useEffect(() => {
     const initializeDevice = async () => {
       try {
-        const response = await fetch("/api/twilio/token");
-        const data = await response.json();
+        const { data, error } = await supabase.functions.invoke('get-twilio-token');
         
-        if (!data.token) {
-          throw new Error("Failed to get token");
+        if (error || !data.token) {
+          throw new Error(error?.message || "Failed to get token");
         }
 
         const newDevice = new Device(data.token);

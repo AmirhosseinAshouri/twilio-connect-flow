@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { AccessToken } from 'https://esm.sh/twilio@4.19.0/lib/jwt/AccessToken'
@@ -42,27 +43,27 @@ serve(async (req) => {
     // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
-      .select('twilio_account_sid, twilio_auth_token')
+      .select('twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid')
       .eq('user_id', user.id)
       .single()
 
-    if (settingsError) {
+    if (settingsError || !settings) {
       console.error('Settings fetch error:', settingsError)
       throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token) {
       console.error('Incomplete Twilio settings:', {
-        hasTwilioAccountSid: !!settings?.twilio_account_sid,
-        hasTwilioAuthToken: !!settings?.twilio_auth_token
+        hasTwilioAccountSid: !!settings.twilio_account_sid,
+        hasTwilioAuthToken: !!settings.twilio_auth_token
       })
       
       return new Response(
         JSON.stringify({
           error: 'Incomplete Twilio settings',
           details: {
-            hasTwilioAccountSid: !!settings?.twilio_account_sid,
-            hasTwilioAuthToken: !!settings?.twilio_auth_token
+            hasTwilioAccountSid: !!settings.twilio_account_sid,
+            hasTwilioAuthToken: !!settings.twilio_auth_token
           }
         }),
         {
@@ -78,13 +79,13 @@ serve(async (req) => {
     const accessToken = new AccessToken(
       settings.twilio_account_sid,
       settings.twilio_auth_token,
-      { identity: user.id }
+      settings.twilio_twiml_app_sid || settings.twilio_account_sid
     )
 
     // Create a Voice grant and add it to the token
     const VoiceGrant = AccessToken.VoiceGrant
     const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: settings.twilio_account_sid,
+      outgoingApplicationSid: settings.twilio_twiml_app_sid || settings.twilio_account_sid,
       incomingAllow: true,
     })
     accessToken.addGrant(voiceGrant)
