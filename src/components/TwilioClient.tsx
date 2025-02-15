@@ -1,13 +1,18 @@
 
 import React, { useEffect, useState } from "react";
-import { Device } from "@twilio/voice-sdk";
+import { Device, Call } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { IncomingCallDialog } from "./IncomingCallDialog";
+import { CallWindow } from "./CallWindow";
 
 const TwilioClient = () => {
   const [device, setDevice] = useState<Device | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [currentCall, setCurrentCall] = useState<Call | null>(null);
+  const [incomingCall, setIncomingCall] = useState<Call | null>(null);
+  const [callStatus, setCallStatus] = useState<'initiated' | 'connecting' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled'>('initiated');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -41,6 +46,18 @@ const TwilioClient = () => {
           console.log('Twilio device unregistered');
         });
 
+        // Handle incoming calls
+        newDevice.on('incoming', (call) => {
+          console.log('Incoming call from:', call.parameters.From);
+          setIncomingCall(call);
+          
+          // Set up call event listeners
+          call.on('cancel', () => {
+            setIncomingCall(null);
+            setCallStatus('canceled');
+          });
+        });
+
       } catch (error) {
         console.error("Failed to initialize Twilio device:", error);
         toast({
@@ -54,12 +71,54 @@ const TwilioClient = () => {
     initializeDevice();
 
     return () => {
-      // Cleanup
       if (device) {
         device.destroy();
       }
     };
   }, [toast]);
+
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      setCallStatus('connecting');
+      await incomingCall.accept();
+      setCurrentCall(incomingCall);
+      setIncomingCall(null);
+      setCallStatus('in-progress');
+
+      incomingCall.on('disconnect', () => {
+        setCurrentCall(null);
+        setCallStatus('completed');
+      });
+
+    } catch (error) {
+      console.error("Error accepting call:", error);
+      toast({
+        title: "Error",
+        description: "Failed to accept call",
+        variant: "destructive",
+      });
+      setCallStatus('failed');
+    }
+  };
+
+  const handleRejectCall = () => {
+    if (!incomingCall) return;
+
+    try {
+      incomingCall.reject();
+      setIncomingCall(null);
+      setCallStatus('canceled');
+    } catch (error) {
+      console.error("Error rejecting call:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject call",
+        variant: "destructive",
+      });
+    }
+  };
 
   const makeCall = async () => {
     if (!device) {
@@ -72,13 +131,17 @@ const TwilioClient = () => {
     }
 
     setIsConnecting(true);
+    setCallStatus('connecting');
     try {
       const connection = await device.connect({
         params: { To: "+1234567890" } // Replace with recipient number
       });
 
+      setCurrentCall(connection);
+
       connection.on('accept', () => {
         console.log('Call accepted');
+        setCallStatus('in-progress');
         toast({
           title: "Success",
           description: "Call connected",
@@ -88,6 +151,8 @@ const TwilioClient = () => {
       connection.on('disconnect', () => {
         console.log('Call disconnected');
         setIsConnecting(false);
+        setCurrentCall(null);
+        setCallStatus('completed');
         toast({
           title: "Call Ended",
           description: "Call has been disconnected",
@@ -102,6 +167,15 @@ const TwilioClient = () => {
         variant: "destructive",
       });
       setIsConnecting(false);
+      setCallStatus('failed');
+    }
+  };
+
+  const handleHangUp = () => {
+    if (currentCall) {
+      currentCall.disconnect();
+      setCurrentCall(null);
+      setCallStatus('completed');
     }
   };
 
@@ -109,11 +183,26 @@ const TwilioClient = () => {
     <div className="space-y-4">
       <Button 
         onClick={makeCall} 
-        disabled={!device || isConnecting}
+        disabled={!device || isConnecting || !!currentCall || !!incomingCall}
         className="w-full"
       >
         {isConnecting ? "Connecting..." : "Make Call"}
       </Button>
+
+      <IncomingCallDialog
+        open={!!incomingCall}
+        phoneNumber={incomingCall?.parameters.From || "Unknown"}
+        onAccept={handleAcceptCall}
+        onReject={handleRejectCall}
+      />
+
+      <CallWindow
+        open={!!currentCall}
+        onClose={() => setCurrentCall(null)}
+        status={callStatus}
+        phoneNumber={currentCall?.parameters.To || incomingCall?.parameters.From || ""}
+        onHangUp={handleHangUp}
+      />
     </div>
   );
 };
