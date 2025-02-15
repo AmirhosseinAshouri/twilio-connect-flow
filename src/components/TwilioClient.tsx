@@ -4,7 +4,7 @@ import { Device } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
-export const TwilioClient = () => {
+const TwilioClient = () => {
   const [device, setDevice] = useState<Device | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const { toast } = useToast();
@@ -20,7 +20,6 @@ export const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ["opus", "pcmu"],
           enableRingingState: true,
         });
 
@@ -121,3 +120,5 @@ export const TwilioClient = () => {
     </div>
   );
 };
+
+export default TwilioClient;

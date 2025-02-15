@@ -1,6 +1,6 @@
 
 import React from "react";
-import { TwilioClient } from "./TwilioClient";
+import TwilioClient from "@/components/TwilioClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const QuickCall = () => {
