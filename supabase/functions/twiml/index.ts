@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/cors.ts"
 import twilio from "https://esm.sh/twilio@4.19.0"
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -16,10 +17,16 @@ serve(async (req) => {
   }
 
   try {
+    const url = new URL(req.url);
+    const to = url.searchParams.get('To');
+    const from = url.searchParams.get('From');
+
+    console.log('Generating TwiML for call:', { to, from });
+
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
     
-    // Initial greeting
+    // Add a greeting
     response.say({
       voice: 'alice',
       language: 'en-US'
@@ -30,14 +37,14 @@ serve(async (req) => {
 
     // Add dial instruction to enable two-way communication
     const dial = response.dial({
-      callerId: req.url.searchParams.get('From') || '',
+      callerId: from || '',
       timeout: 30,
       record: 'record-from-answer',
       answerOnBridge: true
     });
     
     // Add the number to dial
-    dial.number(req.url.searchParams.get('To') || '');
+    dial.number(to || '');
 
     console.log('Generated TwiML:', response.toString());
 
