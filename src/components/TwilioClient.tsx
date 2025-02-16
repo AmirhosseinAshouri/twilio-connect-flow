@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { CallWindow } from "./CallWindow";
+import { Mic, MicOff } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const TwilioClient = () => {
   const [device, setDevice] = useState<Device | null>(null);
@@ -13,18 +15,60 @@ const TwilioClient = () => {
   const [currentCall, setCurrentCall] = useState<Call | null>(null);
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callStatus, setCallStatus] = useState<'initiated' | 'connecting' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled'>('initiated');
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
   const { toast } = useToast();
+
+  // Check for microphone permissions
+  const checkMicrophonePermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Clean up
+      setHasMicrophonePermission(true);
+      return true;
+    } catch (error) {
+      console.error('Microphone permission error:', error);
+      setHasMicrophonePermission(false);
+      return false;
+    }
+  };
+
+  // Request microphone access
+  const requestMicrophoneAccess = async () => {
+    const hasPermission = await checkMicrophonePermission();
+    if (!hasPermission) {
+      toast({
+        title: "Microphone Access Required",
+        description: "Please allow microphone access to make calls.",
+        variant: "destructive",
+      });
+    }
+    return hasPermission;
+  };
 
   useEffect(() => {
     const initializeDevice = async () => {
       try {
+        // First check microphone permission
+        const hasPermission = await checkMicrophonePermission();
+        if (!hasPermission) return;
+
         const { data, error } = await supabase.functions.invoke('get-twilio-token');
         
         if (error || !data.token) {
           throw new Error(error?.message || "Failed to get token");
         }
 
-        const newDevice = new Device(data.token);
+        const newDevice = new Device(data.token, {
+          // Enable sound handling
+          enableRingingState: true,
+          // Set up audio constraints for better voice quality
+          audioConstraints: {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+          }
+        });
+
         await newDevice.register();
         setDevice(newDevice);
 
@@ -40,6 +84,10 @@ const TwilioClient = () => {
 
         newDevice.on('registered', () => {
           console.log('Twilio device registered');
+          toast({
+            title: "Ready",
+            description: "Call device is ready to use",
+          });
         });
 
         newDevice.on('unregistered', () => {
@@ -55,6 +103,16 @@ const TwilioClient = () => {
           call.on('cancel', () => {
             setIncomingCall(null);
             setCallStatus('canceled');
+          });
+
+          // Handle call accept events
+          call.on('accept', () => {
+            setCallStatus('in-progress');
+          });
+
+          // Handle disconnect events
+          call.on('disconnect', () => {
+            setCallStatus('completed');
           });
         });
 
@@ -81,6 +139,10 @@ const TwilioClient = () => {
     if (!incomingCall) return;
 
     try {
+      // Check microphone permission before accepting
+      const hasPermission = await requestMicrophoneAccess();
+      if (!hasPermission) return;
+
       setCallStatus('connecting');
       await incomingCall.accept();
       setCurrentCall(incomingCall);
@@ -120,7 +182,7 @@ const TwilioClient = () => {
     }
   };
 
-  const makeCall = async () => {
+  const makeCall = async (to: string) => {
     if (!device) {
       toast({
         title: "Error",
@@ -130,11 +192,15 @@ const TwilioClient = () => {
       return;
     }
 
+    // Check microphone permission before making call
+    const hasPermission = await requestMicrophoneAccess();
+    if (!hasPermission) return;
+
     setIsConnecting(true);
     setCallStatus('connecting');
     try {
       const connection = await device.connect({
-        params: { To: "+1234567890" } // Replace with recipient number
+        params: { To: to }
       });
 
       setCurrentCall(connection);
@@ -179,10 +245,28 @@ const TwilioClient = () => {
     }
   };
 
+  if (hasMicrophonePermission === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Microphone Access Required</AlertTitle>
+        <AlertDescription>
+          Please allow microphone access in your browser settings to make calls.
+          <Button 
+            className="mt-2" 
+            onClick={() => requestMicrophoneAccess()}
+          >
+            <Mic className="mr-2 h-4 w-4" />
+            Request Microphone Access
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Button 
-        onClick={makeCall} 
+        onClick={() => makeCall("+1234567890")} 
         disabled={!device || isConnecting || !!currentCall || !!incomingCall}
         className="w-full"
       >
