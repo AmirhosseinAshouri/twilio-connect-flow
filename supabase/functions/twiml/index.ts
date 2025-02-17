@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { corsHeaders } from "../_shared/cors.ts"
 import twilio from "https://esm.sh/twilio@4.19.0"
@@ -19,6 +18,22 @@ serve(async (req) => {
     const VoiceResponse = twilio.twiml.VoiceResponse;
     const response = new VoiceResponse();
     
+    // Extract "From" and "To" numbers from the request
+    const url = new URL(req.url);
+    const from = url.searchParams.get("From") || "";
+    const to = url.searchParams.get("To") || "";
+
+    if (!to) {
+      console.error("Missing 'To' number in TwiML request.");
+      return new Response(
+        JSON.stringify({ error: "'To' number is required" }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
+
     // Initial greeting
     response.say({
       voice: 'alice',
@@ -30,14 +45,14 @@ serve(async (req) => {
 
     // Add dial instruction to enable two-way communication
     const dial = response.dial({
-      callerId: req.url.searchParams.get('From') || '',
+      callerId: from,
       timeout: 30,
       record: 'record-from-answer',
       answerOnBridge: true
     });
-    
+
     // Add the number to dial
-    dial.number(req.url.searchParams.get('To') || '');
+    dial.number(to);
 
     console.log('Generated TwiML:', response.toString());
 
@@ -57,4 +72,4 @@ serve(async (req) => {
       }
     )
   }
-})
+});
