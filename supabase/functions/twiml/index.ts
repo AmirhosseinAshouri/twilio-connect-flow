@@ -1,59 +1,54 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders } from "../_shared/cors.ts"
-import twilio from "https://esm.sh/twilio@4.19.0"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
         ...corsHeaders,
-        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-        'Access-Control-Max-Age': '86400',
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Max-Age": "86400",
       },
       status: 204,
-    })
+    });
   }
 
   try {
-    const VoiceResponse = twilio.twiml.VoiceResponse;
-    const response = new VoiceResponse();
-    
-    // Initial greeting
-    response.say({
-      voice: 'alice',
-      language: 'en-US'
-    }, 'Hello! Please wait while we connect your call.');
+    // ✅ Twilio sends form-data, not JSON
+    const formData = await req.formData();
+    const From = formData.get("From") || "+1234567890"; // Default caller
+    const To = formData.get("To") || "+0987654321"; // Default recipient
 
-    // Add a brief pause
-    response.pause({ length: 1 });
+    console.log("Incoming Call From:", From);
+    console.log("Dialing To:", To);
 
-    // Add dial instruction to enable two-way communication
-    const dial = response.dial({
-      callerId: req.url.searchParams.get('From') || '',
-      timeout: 30,
-      record: 'record-from-answer',
-      answerOnBridge: true
-    });
-    
-    // Add the number to dial
-    dial.number(req.url.searchParams.get('To') || '');
+    // ✅ Manually generate TwiML response
+    const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+      <Say>Connecting your call now.</Say>
+      <Pause length="1"/>
+      <Dial callerId="${From}" timeout="30" answerOnBridge="true">
+        <Number>${To}</Number>
+      </Dial>
+    </Response>`;
 
-    console.log('Generated TwiML:', response.toString());
+    console.log("Generated TwiML:", twimlResponse);
 
-    return new Response(response.toString(), {
+    return new Response(twimlResponse, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/xml',
+        "Content-Type": "application/xml",
+        "Access-Control-Allow-Origin": "*", // ✅ Allow public access
       },
-    })
+    });
   } catch (error) {
-    console.error('Error generating TwiML:', error)
+    console.error("❌ Error generating TwiML:", error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate TwiML response' }),
+      JSON.stringify({ error: "Failed to generate TwiML response" }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       }
-    )
+    );
   }
-})
+});
