@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeaders } from "../_shared/cors.ts"; // Ensure this file exists, or remove it
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    // ✅ Twilio sends form-data, not JSON
+    // ✅ Ensure form-data is handled correctly
     const formData = await req.formData();
     const From = formData.get("From") || "+1234567890"; // Default caller
     const To = formData.get("To") || "+0987654321"; // Default recipient
@@ -22,7 +22,7 @@ serve(async (req) => {
     console.log("Incoming Call From:", From);
     console.log("Dialing To:", To);
 
-    // ✅ Manually generate TwiML response (NO `twilio` PACKAGE)
+    // ✅ Manually generate TwiML XML
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
     <Response>
       <Say>Connecting your call now.</Say>
