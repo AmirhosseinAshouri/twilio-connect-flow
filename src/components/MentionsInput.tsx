@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { FormControl } from "./ui/form";
 import { Textarea } from "./ui/textarea";
@@ -60,7 +61,9 @@ export function MentionsInput({ value, onChange, placeholder, className }: Menti
     
     if (lastAtSymbol !== -1) {
       const textAfterAt = textBeforeCursor.substring(lastAtSymbol + 1);
-      if (!textAfterAt.includes(' ')) {
+      const hasSpaceAfterAt = textAfterAt.includes(' ');
+      
+      if (!hasSpaceAfterAt) {
         setMentionFilter(textAfterAt);
         setShowMentions(true);
         setTextareaElement(textarea);
