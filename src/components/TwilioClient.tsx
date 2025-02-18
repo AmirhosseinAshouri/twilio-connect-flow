@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Device, Call } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
@@ -18,11 +17,10 @@ const TwilioClient = () => {
   const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
   const { toast } = useToast();
 
-  // Check for microphone permissions
   const checkMicrophonePermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop()); // Clean up
+      stream.getTracks().forEach(track => track.stop());
       setHasMicrophonePermission(true);
       return true;
     } catch (error) {
@@ -32,7 +30,6 @@ const TwilioClient = () => {
     }
   };
 
-  // Request microphone access
   const requestMicrophoneAccess = async () => {
     const hasPermission = await checkMicrophonePermission();
     if (!hasPermission) {
@@ -48,7 +45,6 @@ const TwilioClient = () => {
   useEffect(() => {
     const initializeDevice = async () => {
       try {
-        // First check microphone permission
         const hasPermission = await checkMicrophonePermission();
         if (!hasPermission) return;
 
@@ -59,9 +55,6 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          // Enable sound handling
-          enableRingingState: true,
-          // Set up audio constraints for better voice quality
           audioConstraints: {
             autoGainControl: true,
             echoCancellation: true,
@@ -72,7 +65,6 @@ const TwilioClient = () => {
         await newDevice.register();
         setDevice(newDevice);
 
-        // Set up event listeners
         newDevice.on('error', (error) => {
           console.error('Twilio device error:', error);
           toast({
@@ -98,23 +90,19 @@ const TwilioClient = () => {
           console.log('Twilio device unregistered');
         });
 
-        // Handle incoming calls
         newDevice.on('incoming', (call) => {
           console.log('Incoming call from:', call.parameters.From);
           setIncomingCall(call);
           
-          // Set up call event listeners
           call.on('cancel', () => {
             setIncomingCall(null);
             setCallStatus('canceled');
           });
 
-          // Handle call accept events
           call.on('accept', () => {
             setCallStatus('in-progress');
           });
 
-          // Handle disconnect events
           call.on('disconnect', () => {
             setCallStatus('completed');
           });
@@ -143,7 +131,6 @@ const TwilioClient = () => {
     if (!incomingCall) return;
 
     try {
-      // Check microphone permission before accepting
       const hasPermission = await requestMicrophoneAccess();
       if (!hasPermission) return;
 
@@ -196,7 +183,6 @@ const TwilioClient = () => {
       return;
     }
 
-    // Check microphone permission before making call
     const hasPermission = await requestMicrophoneAccess();
     if (!hasPermission) return;
 
