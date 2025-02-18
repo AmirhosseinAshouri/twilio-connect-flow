@@ -50,9 +50,9 @@ export function CRMSidebar() {
           <Button 
             variant="ghost" 
             size="lg" 
-            className="fixed z-50 h-14 w-14 rounded-full hover:bg-gray-100 left-4 top-4"
+            className="fixed z-50 h-16 w-16 rounded-full hover:bg-gray-100 left-4 top-4"
           >
-            <Menu className="h-8 w-8" />
+            <Menu className="h-10 w-10" />
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[240px] p-0">

@@ -1,5 +1,3 @@
-
-// Remove the Codec import since it's causing issues
 import React, { useEffect, useState } from "react";
 import { Device, Call } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
@@ -65,7 +63,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ["opus", "PCMU"], // Remove type assertion since Codec type is not available
+          codecPreferences: ["opus", "pcmu"] as string[],
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false
