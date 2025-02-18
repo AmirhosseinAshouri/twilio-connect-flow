@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device } from "@twilio/voice-sdk";
+import { Device, Codec } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -27,9 +27,9 @@ export function TwilioClient() {
           return;
         }
 
-        // Create new device
+        // Create new device with correct codec types
         const newDevice = new Device(token, {
-          codecPreferences: ['opus', 'pcmu'],
+          codecPreferences: [Codec.Opus, Codec.Pcmu],
           fakeLocalDTMF: true,
           enableRingingState: true,
         });
