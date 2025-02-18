@@ -1,9 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as Twilio from "https://esm.sh/twilio@3.82.0"; // ✅ Use Twilio v3.82 for better Deno compatibility
+import Twilio from "https://esm.sh/twilio@4.19.0"; // ✅ Correct Import
 
-const AccessToken = Twilio.jwt.AccessToken; // ✅ Correctly access AccessToken
-const VoiceGrant = Twilio.jwt.VoiceGrant;
+const { AccessToken, VoiceGrant } = Twilio.jwt; // ✅ Correctly load Twilio JWT components
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +11,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // ✅ Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
@@ -26,7 +24,7 @@ serve(async (req) => {
     // ✅ Get the JWT token from the request header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      throw new Error("❌ No authorization header provided.");
     }
 
     // ✅ Get the user from the JWT token
@@ -35,7 +33,7 @@ serve(async (req) => {
     );
 
     if (userError || !user) {
-      throw new Error("Invalid token");
+      throw new Error("❌ Invalid token, user not found.");
     }
 
     console.log("🔍 Fetching Twilio settings for user:", user.id);
@@ -43,19 +41,20 @@ serve(async (req) => {
     // ✅ Get the user's Twilio settings from Supabase
     const { data: settings, error: settingsError } = await supabaseClient
       .from("settings")
-      .select("twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid")
+      .select("twilio_account_sid, twilio_api_key, twilio_api_secret, twilio_twiml_app_sid")
       .eq("user_id", user.id)
       .single();
 
     if (settingsError || !settings) {
       console.error("❌ Settings fetch error:", settingsError);
-      throw new Error("Failed to fetch Twilio settings");
+      throw new Error("❌ Failed to fetch Twilio settings.");
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token) {
+    if (!settings.twilio_account_sid || !settings.twilio_api_key || !settings.twilio_api_secret) {
       console.error("❌ Incomplete Twilio settings:", {
         hasTwilioAccountSid: !!settings.twilio_account_sid,
-        hasTwilioAuthToken: !!settings.twilio_auth_token,
+        hasTwilioApiKey: !!settings.twilio_api_key,
+        hasTwilioApiSecret: !!settings.twilio_api_secret,
       });
 
       return new Response(
@@ -63,7 +62,8 @@ serve(async (req) => {
           error: "Incomplete Twilio settings",
           details: {
             hasTwilioAccountSid: !!settings.twilio_account_sid,
-            hasTwilioAuthToken: !!settings.twilio_auth_token,
+            hasTwilioApiKey: !!settings.twilio_api_key,
+            hasTwilioApiSecret: !!settings.twilio_api_secret,
           },
         }),
         {
@@ -73,31 +73,27 @@ serve(async (req) => {
       );
     }
 
-    console.log("✅ Creating Twilio access token");
+    console.log("✅ Creating Twilio access token...");
 
-    // ✅ Generate Twilio Access Token
-    const accessToken = new AccessToken(
+    // ✅ Generate Twilio Token properly
+    const token = new AccessToken(
       settings.twilio_account_sid,
-      settings.twilio_auth_token,
-      settings.twilio_twiml_app_sid || settings.twilio_account_sid,
+      settings.twilio_api_key,
+      settings.twilio_api_secret,
       { ttl: 3600 } // Token valid for 1 hour
     );
 
-    // ✅ Add Voice Grant
     const voiceGrant = new VoiceGrant({
       outgoingApplicationSid: settings.twilio_twiml_app_sid || settings.twilio_account_sid,
       incomingAllow: true,
     });
 
-    accessToken.addGrant(voiceGrant);
+    token.addGrant(voiceGrant);
 
-    // ✅ Generate JWT Token
-    const token = accessToken.toJwt();
-
-    console.log("✅ Token generated successfully");
+    console.log("✅ Twilio token generated successfully!");
 
     return new Response(
-      JSON.stringify({ token }),
+      JSON.stringify({ token: token.toJwt() }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
