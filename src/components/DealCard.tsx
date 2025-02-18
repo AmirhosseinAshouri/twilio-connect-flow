@@ -6,6 +6,7 @@ import { useContact } from "@/hooks";
 import { Link } from "react-router-dom";
 import { Deal } from "@/types";
 import { formatDistanceToNow } from "date-fns";
+import { useState, useEffect } from "react";
 
 interface DealCardProps {
   deal: Deal;
@@ -15,16 +16,25 @@ interface DealCardProps {
 
 export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
   const { contact } = useContact(deal.contact_id);
+  const [assignedUser, setAssignedUser] = useState<{ full_name: string } | null>(null);
   
-  const getAssignedUserName = (userId?: string) => {
-    if (!userId) return "Unassigned";
-    const users: { [key: string]: string } = {
-      "1": "Admin User",
-      "2": "Jane Smith",
-      "3": "John Doe",
+  useEffect(() => {
+    const fetchAssignedUser = async () => {
+      if (!deal.assigned_to) return;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', deal.assigned_to)
+        .single();
+      
+      if (!error && data) {
+        setAssignedUser(data);
+      }
     };
-    return users[userId] || "Unknown User";
-  };
+
+    fetchAssignedUser();
+  }, [deal.assigned_to]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
@@ -79,7 +89,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                   </span>
                   <span className="text-xs font-medium flex items-center">
                     <User className="h-3 w-3 mr-1" />
-                    {getAssignedUserName(deal.assigned_to)}
+                    {assignedUser ? assignedUser.full_name : 'Unassigned'}
                   </span>
                 </div>
                 {contact && (

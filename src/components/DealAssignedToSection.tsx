@@ -1,3 +1,5 @@
+
+import { useEffect, useState } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
 import {
   Select,
@@ -6,18 +8,46 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-const USERS = [
-  { id: "1", name: "Admin User" },
-  { id: "2", name: "Jane Smith" },
-  { id: "3", name: "John Doe" },
-] as const;
+interface Profile {
+  id: string;
+  full_name: string;
+}
 
 interface DealAssignedToSectionProps {
   form: any;
 }
 
 export function DealAssignedToSection({ form }: DealAssignedToSectionProps) {
+  const [users, setUsers] = useState<Profile[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .order('full_name');
+
+        if (error) throw error;
+
+        setUsers(data || []);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: "Error fetching users",
+          description: error instanceof Error ? error.message : "Failed to load users",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchUsers();
+  }, [toast]);
+
   return (
     <FormField
       control={form.control}
@@ -32,9 +62,9 @@ export function DealAssignedToSection({ form }: DealAssignedToSectionProps) {
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              {USERS.map((user) => (
+              {users.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
-                  {user.name}
+                  {user.full_name || 'Unnamed User'}
                 </SelectItem>
               ))}
             </SelectContent>
