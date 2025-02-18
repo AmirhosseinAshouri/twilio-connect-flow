@@ -14,31 +14,60 @@ serve(async (req) => {
   }
 
   try {
-    // ✅ Twilio sends form-data, not JSON
-    const formData = await req.formData();
-    const From = formData.get("From") || "+1234567890"; // Default caller
-    const To = formData.get("To") || "+0987654321"; // Default recipient
+    let caller = "";
+    let recipient = "";
 
-    console.log("Incoming Call From:", From);
-    console.log("Dialing To:", To);
+    // ✅ Get Content-Type safely
+    const contentType = req.headers.get("content-type") || "";
 
-    // ✅ Manually generate TwiML response
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      // ✅ Parse Twilio's form-data request
+      const formData = new URLSearchParams(await req.text());
+      caller = formData.get("From") || "";
+      recipient = formData.get("To") || "";
+    } else if (contentType.includes("application/json")) {
+      // ✅ Handle JSON payloads
+      const jsonBody = await req.json();
+      caller = jsonBody.From || "";
+      recipient = jsonBody.To || "";
+    } else {
+      console.error("❌ Invalid content type or missing content-type header.");
+      return new Response(
+        JSON.stringify({ error: "Unsupported content type. Use JSON or form-urlencoded." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, // Bad Request
+        }
+      );
+    }
+
+    console.log("📞 Call request received. From:", caller, "To:", recipient);
+
+    if (!caller || !recipient) {
+      return new Response(
+        JSON.stringify({ error: "Missing caller or recipient number" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    // ✅ Manually generate TwiML XML response
     const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-      <Say>Connecting your call now.</Say>
-      <Pause length="1"/>
-      <Dial callerId="${From}" timeout="30" answerOnBridge="true">
-        <Number>${To}</Number>
-      </Dial>
-    </Response>`;
+<Response>
+  <Say voice="alice">Please hold while we connect your call.</Say>
+  <Dial callerId="${caller}" record="record-from-answer" timeout="30" answerOnBridge="true">
+    <Number>${recipient}</Number>
+  </Dial>
+</Response>`;
 
-    console.log("Generated TwiML:", twimlResponse);
+    console.log("📞 Generated TwiML:", twimlResponse);
 
     return new Response(twimlResponse, {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/xml",
-        "Access-Control-Allow-Origin": "*", // ✅ Allow public access
       },
     });
   } catch (error) {

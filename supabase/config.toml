@@ -31,9 +31,6 @@ port = 54327
 [realtime]
 enabled = true
 
-# ✅ Edge functions should be nested inside `[functions]`, not at the root
-[functions]
-enabled = true
-
-[functions.twiml]
+# ✅ Fix functions configuration (correct format)
+[functions.message-webhook]
 verify_jwt = false
