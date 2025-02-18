@@ -1,173 +1,121 @@
 
-import { Device, Call } from '@twilio/voice-sdk';
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { Device } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
+import { IncomingCallDialog } from "./IncomingCallDialog";
+import { useSettings } from "@/hooks/useSettings";
+import { supabase } from "@/integrations/supabase/client";
 
-const TwilioClient = () => {
-  const [token, setToken] = useState<string | null>(null);
+export function TwilioClient() {
   const [device, setDevice] = useState<Device | null>(null);
-  const [currentCall, setCurrentCall] = useState<Call | null>(null);
+  const [incomingCall, setIncomingCall] = useState<any>(null);
+  const { settings } = useSettings();
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchToken = async () => {
+    const setupDevice = async () => {
       try {
-        const response = await fetch('/api/token');
-        const data = await response.json();
-        setToken(data.token);
+        // Get Twilio token from our edge function
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const response = await fetch('/api/twilio/token');
+        const { token } = await response.json();
+
+        if (!token) {
+          console.error('No token received');
+          return;
+        }
+
+        // Create new device
+        const newDevice = new Device(token, {
+          codecPreferences: ['opus', 'pcmu'],
+          fakeLocalDTMF: true,
+          enableRingingState: true,
+        });
+
+        // Set up device event handlers
+        newDevice.on('incoming', (call) => {
+          console.log('Incoming call received');
+          setIncomingCall(call);
+
+          // Set up call event handlers
+          call.on('accept', () => {
+            console.log('Call accepted');
+            toast({
+              title: "Call Connected",
+              description: "You are now connected to the caller",
+            });
+          });
+
+          call.on('disconnect', () => {
+            console.log('Call disconnected');
+            setIncomingCall(null);
+            toast({
+              title: "Call Ended",
+              description: "The call has been disconnected",
+            });
+          });
+
+          call.on('cancel', () => {
+            console.log('Call canceled');
+            setIncomingCall(null);
+            toast({
+              title: "Call Canceled",
+              description: "The incoming call was canceled",
+            });
+          });
+        });
+
+        setDevice(newDevice);
+
+        return () => {
+          newDevice.destroy();
+        };
       } catch (error) {
-        console.error('Error fetching token:', error);
+        console.error('Error setting up Twilio device:', error);
         toast({
           title: "Error",
-          description: "Failed to fetch Twilio token",
+          description: "Failed to set up call handling",
           variant: "destructive",
         });
       }
     };
 
-    fetchToken();
-  }, [toast]);
-
-  useEffect(() => {
-    if (!token) return;
-
-    try {
-      const newDevice = new Device(token);
-      
-      // Handle incoming calls
-      newDevice.on('incoming', (call) => {
-        setCurrentCall(call);
-        
-        // Automatically accept incoming calls
-        call.accept({
-          codecPreferences: ['opus', 'pcmu'] as any[]
-        });
-
-        // Set up call event handlers
-        setupCallHandlers(call);
-      });
-
-      newDevice.on('registered', () => {
-        console.log('Device is ready to make calls');
-        toast({
-          title: "Ready",
-          description: "Device is ready to make calls",
-        });
-      });
-
-      newDevice.on('error', (error) => {
-        console.error('Device error:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Device error occurred",
-          variant: "destructive",
-        });
-      });
-
-      // Register the device
-      newDevice.register();
-      setDevice(newDevice);
-
-      // Cleanup on unmount
-      return () => {
-        newDevice.destroy();
-      };
-    } catch (error) {
-      console.error('Error setting up device:', error);
-      toast({
-        title: "Error",
-        description: "Failed to setup Twilio device",
-        variant: "destructive",
-      });
+    if (settings?.twilio_account_sid) {
+      setupDevice();
     }
-  }, [token, toast]);
 
-  const setupCallHandlers = (call: Call) => {
-    call.on('accept', () => {
-      console.log('Call accepted');
-    });
-
-    call.on('disconnect', () => {
-      console.log('Call ended');
-      setCurrentCall(null);
-      toast({
-        title: "Call Ended",
-        description: "The call has been disconnected",
-      });
-    });
-
-    call.on('error', (error) => {
-      console.error('Call error:', error);
-      toast({
-        title: "Call Error",
-        description: error.message || "An error occurred during the call",
-        variant: "destructive",
-      });
-    });
-  };
-
-  const connect = async () => {
-    try {
-      if (!device) {
-        console.error('No device available');
-        return;
+    return () => {
+      if (device) {
+        device.destroy();
       }
+    };
+  }, [settings?.twilio_account_sid]);
 
-      const params = {
-        // Add any custom parameters you want to pass to your TwiML
-        To: '+1234567890', // Replace with the actual number
-      };
-
-      const call = await device.connect({ params });
-      setCurrentCall(call);
-      setupCallHandlers(call);
-
-      toast({
-        title: "Connecting",
-        description: "Initiating call...",
-      });
-    } catch (error) {
-      console.error('Error connecting:', error);
-      toast({
-        title: "Error",
-        description: "Failed to connect call",
-        variant: "destructive",
-      });
+  const handleAcceptCall = () => {
+    if (incomingCall) {
+      incomingCall.accept();
     }
   };
 
-  const disconnect = () => {
-    if (currentCall) {
-      currentCall.disconnect();
+  const handleRejectCall = () => {
+    if (incomingCall) {
+      incomingCall.reject();
+      setIncomingCall(null);
     }
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex gap-2">
-        <button 
-          onClick={connect}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-          disabled={!device || !!currentCall}
-        >
-          Make Call
-        </button>
-        {currentCall && (
-          <button 
-            onClick={disconnect}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-          >
-            End Call
-          </button>
-        )}
-      </div>
-      {currentCall && (
-        <div className="text-sm text-gray-600">
-          Call in progress...
-        </div>
+    <>
+      {incomingCall && (
+        <IncomingCallDialog
+          open={!!incomingCall}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+          phoneNumber={incomingCall.parameters.From || 'Unknown'}
+        />
       )}
-    </div>
+    </>
   );
-};
-
-export default TwilioClient;
+}

@@ -14,6 +14,7 @@ import SignIn from "@/pages/SignIn";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { TwilioClient } from "@/components/TwilioClient";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -57,6 +58,7 @@ const App = () => {
                 </Routes>
               </main>
             </div>
+            <TwilioClient />
           </SidebarProvider>
         )}
         <Toaster />
