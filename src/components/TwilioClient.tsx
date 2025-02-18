@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device, type Options } from "@twilio/voice-sdk";
+import { Device } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -8,6 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Define the Codec type as per Twilio's Voice SDK
 type Codec = "pcmu" | "opus";
+
+// Define the Device options type based on Twilio's SDK
+interface DeviceOptions {
+  codecPreferences: Codec[];
+  allowIncomingWhileBusy: boolean;
+  enableRingingState: boolean;
+}
 
 export function TwilioClient() {
   const [device, setDevice] = useState<Device | null>(null);
@@ -31,8 +38,8 @@ export function TwilioClient() {
         }
 
         // Create new device with correct options and codec types
-        const deviceOptions: Options = {
-          codecPreferences: ["opus", "pcmu"] as Codec[],
+        const deviceOptions: DeviceOptions = {
+          codecPreferences: ["opus", "pcmu"],
           allowIncomingWhileBusy: true,
           enableRingingState: true,
         };
