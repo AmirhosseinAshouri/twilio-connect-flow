@@ -6,16 +6,6 @@ import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/integrations/supabase/client";
 
-// Define the Codec type as per Twilio's Voice SDK
-type Codec = "pcmu" | "opus";
-
-// Define the Device options type based on Twilio's SDK
-interface DeviceOptions {
-  codecPreferences: Codec[];
-  allowIncomingWhileBusy: boolean;
-  enableRingingState: boolean;
-}
-
 export function TwilioClient() {
   const [device, setDevice] = useState<Device | null>(null);
   const [incomingCall, setIncomingCall] = useState<any>(null);
@@ -37,14 +27,12 @@ export function TwilioClient() {
           return;
         }
 
-        // Create new device with correct options and codec types
-        const deviceOptions: DeviceOptions = {
+        // Create new device with correct options
+        const newDevice = new Device(token, {
           codecPreferences: ["opus", "pcmu"],
           allowIncomingWhileBusy: true,
           enableRingingState: true,
-        };
-
-        const newDevice = new Device(token, deviceOptions);
+        });
 
         // Set up device event handlers
         newDevice.on('incoming', (call) => {
