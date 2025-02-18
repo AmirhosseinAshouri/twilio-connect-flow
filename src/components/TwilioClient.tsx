@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Device, Call } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { IncomingCallDialog } from "./IncomingCallDialog";
 import { CallWindow } from "./CallWindow";
 import { Mic, MicOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLocation } from "react-router-dom";
 
 const TwilioClient = () => {
   const [device, setDevice] = useState<Device | null>(null);
@@ -16,6 +18,7 @@ const TwilioClient = () => {
   const [callStatus, setCallStatus] = useState<'initiated' | 'connecting' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled'>('initiated');
   const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
   const { toast } = useToast();
+  const location = useLocation();
 
   const checkMicrophonePermission = async () => {
     try {
@@ -61,7 +64,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ["pcmu", "opus"],
+          codecPreferences: ['opus', 'pcmu'] as Device.Codec[],
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false
@@ -264,13 +267,16 @@ const TwilioClient = () => {
 
   return (
     <div className="space-y-4">
-      <Button 
-        onClick={() => makeCall("+1234567890")} 
-        disabled={!device || isConnecting || !!currentCall || !!incomingCall}
-        className="w-full"
-      >
-        {isConnecting ? "Connecting..." : "Make Call"}
-      </Button>
+      {/* Only show Make Call button on the Quick Call page */}
+      {location.pathname === '/quick-call' && (
+        <Button 
+          onClick={() => makeCall("+1234567890")} 
+          disabled={!device || isConnecting || !!currentCall || !!incomingCall}
+          className="w-full"
+        >
+          {isConnecting ? "Connecting..." : "Make Call"}
+        </Button>
+      )}
 
       <IncomingCallDialog
         open={!!incomingCall}
