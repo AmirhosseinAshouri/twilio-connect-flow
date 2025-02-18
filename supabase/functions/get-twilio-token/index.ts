@@ -1,7 +1,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import twilio from 'https://esm.sh/twilio@4.19.0/jwt/AccessToken'
+import { AccessToken } from 'https://esm.sh/twilio@4.19.0/lib/jwt/AccessToken.js'
+import { VoiceGrant } from 'https://esm.sh/twilio@4.19.0/lib/jwt/AccessToken.js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,13 +15,11 @@ serve(async (req) => {
   }
 
   try {
-    // Get authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('No authorization header')
     }
 
-    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -31,7 +30,6 @@ serve(async (req) => {
       }
     )
 
-    // Get authenticated user
     const {
       data: { user },
       error: userError,
@@ -41,7 +39,6 @@ serve(async (req) => {
       throw new Error('Not authenticated')
     }
 
-    // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid')
@@ -58,26 +55,23 @@ serve(async (req) => {
 
     console.log('Creating Twilio Access Token...')
 
-    // Create an access token using Twilio's JWT library
-    const token = new twilio.AccessToken(
+    const token = new AccessToken(
       settings.twilio_account_sid,
       settings.twilio_auth_token,
-      settings.twilio_twiml_app_sid,
-      { identity: user.id }
+      settings.twilio_twiml_app_sid
     )
+    
+    token.identity = user.id
 
-    // Create VoiceGrant
-    const voiceGrant = new twilio.VoiceGrant({
+    const grant = new VoiceGrant({
       outgoingApplicationSid: settings.twilio_twiml_app_sid,
       incomingAllow: true,
     })
 
-    // Add the grant to our token
-    token.addGrant(voiceGrant)
+    token.addGrant(grant)
 
     console.log('Token generated successfully')
 
-    // Return the token
     return new Response(
       JSON.stringify({ token: token.toJwt() }),
       {
