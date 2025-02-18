@@ -1,108 +1,91 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { AccessToken } from 'https://esm.sh/twilio@4.19.0/lib/jwt/AccessToken'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const generateTwilioToken = (
-  accountSid: string,
-  apiKey: string,
-  apiSecret: string,
-  identity: string,
-  twimlAppSid?: string
-) => {
-  const AccessToken = (await import("https://esm.sh/twilio@4.19.0/lib/jwt/AccessToken.js")).default;
-  const VoiceGrant = AccessToken.VoiceGrant;
-
-  const token = new AccessToken(
-    accountSid,
-    apiKey,
-    apiSecret,
-    { identity }
-  );
-
-  const grant = new VoiceGrant({
-    outgoingApplicationSid: twimlAppSid,
-    incomingAllow: true,
-  });
-
-  token.addGrant(grant);
-  return token.toJwt();
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders,
-      status: 204,
-    });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    // Get the authorization header from the request
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
+    // Create a Supabase client with the auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      }
+    )
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    // Get the user ID from the JWT
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser()
 
     if (userError || !user) {
-      throw new Error('Invalid token');
+      throw new Error('Not authenticated')
     }
 
-    console.log('Fetching Twilio settings for user:', user.id);
-
+    // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
-      .select('twilio_account_sid, twilio_api_key, twilio_api_secret, twilio_twiml_app_sid')
+      .select('twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid')
       .eq('user_id', user.id)
-      .single();
+      .single()
 
     if (settingsError || !settings) {
-      console.error('Settings fetch error:', settingsError);
-      throw new Error('Failed to fetch Twilio settings');
+      throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings.twilio_api_key || !settings.twilio_api_secret || !settings.twilio_account_sid) {
-      throw new Error('Incomplete Twilio settings');
-    }
-
-    const token = await generateTwilioToken(
+    // Create an access token
+    const token = new AccessToken(
       settings.twilio_account_sid,
-      settings.twilio_api_key,
-      settings.twilio_api_secret,
-      user.id,
-      settings.twilio_twiml_app_sid
-    );
+      settings.twilio_auth_token,
+      settings.twilio_twiml_app_sid,
+      { identity: user.id }
+    )
 
-    console.log('Token generated successfully');
+    // Add Voice grant to token
+    const VoiceGrant = AccessToken.VoiceGrant
+    const grant = new VoiceGrant({
+      outgoingApplicationSid: settings.twilio_twiml_app_sid,
+      incomingAllow: true,
+    })
+    token.addGrant(grant)
 
+    // Return the token
     return new Response(
-      JSON.stringify({ token }),
+      JSON.stringify({
+        token: token.toJwt(),
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
       }
-    );
+    )
   } catch (error) {
-    console.error('Error generating token:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error occurred' }),
+      JSON.stringify({ error: error.message }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    );
+    )
   }
-});
+})

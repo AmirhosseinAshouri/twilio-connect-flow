@@ -64,7 +64,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'] as Device.Codec[],
+          codecPreferences: ['opus', 'pcmu'],
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false
