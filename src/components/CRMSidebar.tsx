@@ -47,15 +47,19 @@ export function CRMSidebar() {
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="fixed top-4 left-4 z-50">
-            <Menu className="h-5 w-5" />
+          <Button 
+            variant="ghost" 
+            size="lg" 
+            className="fixed top-3 left-3 z-50 h-12 w-12 rounded-full hover:bg-gray-100"
+          >
+            <Menu className="h-6 w-6" />
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[240px] p-0">
           <div className="h-full bg-sidebar">
             <SidebarContent>
               <SidebarGroup>
-                <SidebarGroupLabel>
+                <SidebarGroupLabel className="pt-4">
                   <span className="text-xl font-bold text-crm-primary">CRM</span>
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
