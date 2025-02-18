@@ -9,6 +9,8 @@ import { Mic } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLocation } from "react-router-dom";
 
+type Codec = 'opus' | 'pcmu';
+
 const TwilioClient = () => {
   const [device, setDevice] = useState<Device | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -63,7 +65,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ["opus", "pcmu"] as string[],
+          codecPreferences: ['opus', 'pcmu'] as Codec[],
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false
