@@ -1,4 +1,5 @@
-import { Device } from '@twilio/conversations';
+
+import { Device } from '@twilio/voice-sdk';
 import { useEffect, useState } from 'react';
 
 const TwilioClient = () => {
@@ -23,17 +24,19 @@ const TwilioClient = () => {
       }
 
       const device = new Device(token, {
-        // @ts-ignore - Type error with Twilio types, but this works correctly
+        // These are the preferred audio codecs
         codecPreferences: ['opus', 'pcmu']
       });
 
-      device.on('ready', () => {
+      device.on('registered', () => {
         console.log('Device is ready to make calls');
       });
 
       device.on('error', (error) => {
         console.error('Device error:', error);
       });
+
+      await device.register();
     } catch (error) {
       console.error('Error connecting device:', error);
     }
