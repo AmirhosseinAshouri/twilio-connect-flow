@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Device, Call } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
@@ -61,13 +60,11 @@ const TwilioClient = () => {
           throw new Error(error?.message || "Failed to get token");
         }
 
-        // Create device with proper audio settings
         const newDevice = new Device(data.token, {
-          codecPreferences: ["pcmu", "opus"] as any[], // Specify codec preferences
-          maxAverageBitrate: 16000, // Improve audio quality
-          closeProtection: true, // Prevent accidental disconnections
-          disableAudioContextSounds: false, // Enable audio context sounds
-          debug: true // Enable debug mode for troubleshooting
+          codecPreferences: ["pcmu", "opus"],
+          maxAverageBitrate: 16000,
+          closeProtection: true,
+          disableAudioContextSounds: false
         });
 
         await newDevice.register();
@@ -197,14 +194,12 @@ const TwilioClient = () => {
       const connection = await device.connect({
         params: { 
           To: to,
-          // Enable two-way communication
-          enableDscp: true, // QoS for better audio
+          quality: 'high'
         }
       });
 
       setCurrentCall(connection);
 
-      // Set up audio handling for the connection
       connection.on('volume', (inputVolume, outputVolume) => {
         console.log('Input Volume:', inputVolume, 'Output Volume:', outputVolume);
       });
