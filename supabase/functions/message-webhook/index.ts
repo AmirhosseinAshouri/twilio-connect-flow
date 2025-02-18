@@ -4,9 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
 // Environment variables
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // Use service role key instead of anon key
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // Use service role key
 
-// Create Supabase client with service role key for full access
+// Create Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: false,
@@ -14,11 +14,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   },
 });
 
-// ✅ Helper function to parse and normalize Twilio message data
+// ✅ Function to parse and normalize Twilio message data
 function parseTwilioMessage(url: URL): Record<string, string> {
   const params = url.searchParams;
   return {
-    from: params.get("From")?.replace(/\D/g, ""), // Remove non-numeric characters
+    from: params.get("From")?.replace(/\D/g, ""), // Normalize phone number (remove non-numeric characters)
     body: params.get("Body") || "",
     messageSid: params.get("MessageSid") || "",
   };
@@ -36,10 +36,10 @@ serve(async (req) => {
 
     console.log("📩 Incoming message from:", messageData.from);
 
-    // ✅ Find the contact based on the phone number (checking different formats)
+    // ✅ Query only the phone number (No `user_id` selection)
     const { data: contact, error: contactError } = await supabase
       .from("contacts")
-      .select("id, user_id")
+      .select("id") // Only select the `id`, no `user_id`
       .or(`phone.eq.${messageData.from}, phone.eq.+${messageData.from}`)
       .maybeSingle();
 
@@ -61,7 +61,6 @@ serve(async (req) => {
     // ✅ Store the incoming message in Supabase
     const { error: messageError } = await supabase.from("communications").insert({
       contact_id: contact.id,
-      user_id: contact.user_id,
       type: "sms",
       direction: "incoming",
       content: messageData.body,
