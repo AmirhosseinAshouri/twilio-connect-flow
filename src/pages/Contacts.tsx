@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,7 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useNavigate } from "react-router-dom";
 
 const Contacts = () => {
-  const { contacts, loading, addContact } = useContacts();
+  const { contacts, loading, addContact, removeContact } = useContacts();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
@@ -56,6 +56,11 @@ const Contacts = () => {
 
   const handleRowClick = (id: string) => {
     navigate(`/contacts/${id}`);
+  };
+
+  const handleRemoveContact = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Prevent row click when clicking delete button
+    await removeContact(id);
   };
 
   return (
@@ -127,6 +132,14 @@ const Contacts = () => {
                         <CallFormDialog contact={contact} variant="ghost" size="icon" />
                         <SendSMSDialog contact={contact} variant="ghost" size="icon" />
                         <SendEmailDialog contact={contact} variant="ghost" size="icon" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleRemoveContact(e, contact.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

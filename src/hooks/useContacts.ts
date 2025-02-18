@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
@@ -90,5 +91,29 @@ export function useContacts() {
     }
   };
 
-  return { contacts, loading, error, addContact };
+  const removeContact = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("contacts")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setContacts(prev => prev.filter(contact => contact.id !== id));
+
+      toast({
+        title: "Contact Removed",
+        description: "Contact has been removed successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error removing contact",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  return { contacts, loading, error, addContact, removeContact };
 }
