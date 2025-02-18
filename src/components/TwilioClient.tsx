@@ -89,7 +89,11 @@ const TwilioClient = () => {
             description: "Call device is ready to use",
           });
         });
-
+        
+        newDevice.on('error', (error) => {
+          console.error('❌ Twilio Device Registration Error:', error);
+        });
+        
         newDevice.on('unregistered', () => {
           console.log('Twilio device unregistered');
         });

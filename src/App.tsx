@@ -14,6 +14,7 @@ import QuickCall from "@/pages/QuickCall";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import TwilioClient from "@/components/TwilioClient";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -44,6 +45,7 @@ function App() {
             <div className="flex h-screen w-full">
               <CRMSidebar />
               <main className="flex-1 overflow-y-auto">
+              <TwilioClient /> {/* ✅ Always running, so calls will ring anywhere */}
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Dashboard />} />

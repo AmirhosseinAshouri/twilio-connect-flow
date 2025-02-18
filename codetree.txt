@@ -14,18 +14,24 @@ app/
         route.ts
       twiml/
         route.ts
-pages/
-  api/
-    calls/
-      create.ts
-      status.ts
-      twiml.ts
+    twilio/
+      call/
+        route.ts
+      status/
+        route.ts
+      token/
+        route.ts
+      voice/
+        route.ts
+      page.tsx
 public/
   placeholder.svg
 src/
-  api/
-    calls.ts
   components/
+    dashboard/
+      AddContactDialog.tsx
+      ContactsGrid.tsx
+      StatsCard.tsx
     settings/
       EmailSettingsForm.tsx
       TwilioSettingsForm.tsx
@@ -84,6 +90,7 @@ src/
     AddDealForm.tsx
     CallForm.tsx
     CallFormDialog.tsx
+    CallWindow.tsx
     CommunicationHistory.tsx
     ContactCard.tsx
     ContactForm.tsx
@@ -103,16 +110,20 @@ src/
     DealStageSelector.tsx
     ErrorBoundary.tsx
     ErrorState.tsx
+    IncomingCallDialog.tsx
     MentionsInput.tsx
     NewCallDialog.tsx
     SendEmailDialog.tsx
     SendSMSDialog.tsx
     Sidebar.tsx
+    SidebarCallForm.tsx
+    TwilioClient.tsx
   hooks/
     index.ts
     use-mobile.tsx
     use-toast.ts
     useCalls.ts
+    useCallStatus.ts
     useCommunications.ts
     useContact.ts
     useContacts.ts
@@ -132,13 +143,15 @@ src/
     Contacts.tsx
     Dashboard.tsx
     Deals.tsx
-    Index.tsx
+    PhonePage.js
+    QuickCall.tsx
     Settings.tsx
     SignIn.tsx
   schemas/
     dealForm.ts
   server/
     index.ts
+    server.js
   types/
     communication.ts
     contact.ts
@@ -153,6 +166,10 @@ src/
   main.tsx
   vite-env.d.ts
 supabase/
+  .branches/
+    _current_branch
+  .temp/
+    cli-latest
   functions/
     _shared/
       cors.ts
@@ -215,22 +232,50 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY!
 );
 
-app.use(cors());
+// Configure CORS to accept requests from any origin during development
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+  credentials: true,
+  optionsSuccessStatus: 204,
+}));
+
 app.use(express.json());
 
 // Create call endpoint
 app.post('/api/calls/create', async (req, res) => {
   try {
-    const { callId, to, from, notes } = req.body;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "No authorization header" });
+    }
+
+    // Verify the user's session
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { callId, to, notes } = req.body;
+    console.log('Received call request:', { callId, to, notes });
 
     // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("*")
+      .eq("user_id", user.id)
       .single();
 
-    if (settingsError || !settings) {
-      throw new Error("Twilio settings not found");
+    if (settingsError) {
+      console.error('Settings fetch error:', settingsError);
+      return res.status(500).json({ error: "Failed to fetch Twilio settings" });
+    }
+
+    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      return res.status(400).json({ error: "Please configure your Twilio settings in the Settings page first" });
     }
 
     // Initialize Twilio client
@@ -241,20 +286,29 @@ app.post('/api/calls/create', async (req, res) => {
 
     // Create call using Twilio
     const call = await client.calls.create({
-      url: `${process.env.API_URL}/api/calls/twiml`,
+      url: `${process.env.APP_URL}/api/calls/twiml`,
       to,
-      from,
-      statusCallback: `${process.env.API_URL}/api/calls/status`,
+      from: settings.twilio_phone_number,
+      statusCallback: `${process.env.APP_URL}/api/calls/status`,
       statusCallbackEvent: ['completed'],
     });
+
+    console.log('Call created successfully:', call.sid);
 
     // Update call record with Twilio SID
     const { error: updateError } = await supabase
       .from("calls")
-      .update({ twilio_sid: call.sid })
-      .eq("id", callId);
+      .update({ 
+        twilio_sid: call.sid,
+        status: 'initiated'
+      })
+      .eq("id", callId)
+      .eq("user_id", user.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Call update error:', updateError);
+      return res.status(500).json({ error: "Failed to update call record" });
+    }
 
     res.json({ success: true, sid: call.sid });
   } catch (error) {
@@ -289,15 +343,32 @@ app.post('/api/calls/status', async (req, res) => {
   }
 });
 
-// TwiML endpoint
+// TwiML endpoint with enhanced call flow
 app.get('/api/calls/twiml', (req, res) => {
   const VoiceResponse = twilio.twiml.VoiceResponse;
   const response = new VoiceResponse();
   
-  response.say('Hello! This is a call from your CRM system.');
-  response.pause({ length: 1 });
-  response.say('Connecting you now.');
+  // Add a greeting
+  response.say({
+    voice: 'alice',
+    language: 'en-US'
+  }, 'Welcome to the CRM system call.');
 
+  // Add a brief pause
+  response.pause({ length: 1 });
+
+  // Add some background music while connecting
+  response.play({
+    loop: 1
+  }, 'http://com.twilio.music.classical.s3.amazonaws.com/BusyStrings.mp3');
+
+  // Final message before connecting
+  response.say({
+    voice: 'alice',
+    language: 'en-US'
+  }, 'Connecting you now. Please wait.');
+
+  // Set response headers
   res.type('text/xml');
   res.send(response.toString());
 });
@@ -325,279 +396,412 @@ File: api-server/package.json
 ================
 File: app/api/calls/create/route.ts
 ================
-import { NextResponse } from 'next/server';
-import twilio from 'twilio';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from "next/server";
+import twilio from "twilio";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { callId, to, from } = await request.json();
+    const body = await req.json();
+    console.log("Received Call Request:", body);
 
-    // Get user's Twilio settings from the request headers
-    const authHeader = request.headers.get('Authorization');
+    const { to, notes } = body;
+
+    // Check Authorization
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return NextResponse.json(
-        { error: "No authorization header" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized - Missing Token" }, { status: 401 });
     }
 
-    // Verify the session
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
-      console.error('User authentication error:', userError);
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      console.log("Supabase Auth Error:", userError);
+      return NextResponse.json({ error: "Unauthorized - Invalid Token" }, { status: 401 });
     }
 
-    // Get the user's settings with improved error handling
+    console.log("User Authenticated:", user);
+
+    // Fetch Twilio Settings from Supabase
     const { data: settings, error: settingsError } = await supabase
       .from("settings")
       .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
       .eq("user_id", user.id)
       .single();
 
-    if (settingsError) {
-      console.error('Settings fetch error:', settingsError);
-      return NextResponse.json(
-        { error: "Failed to fetch Twilio settings" },
-        { status: 500 }
-      );
+    console.log("Fetched Twilio Settings:", settings);
+    if (!settings || settingsError) {
+      return NextResponse.json({ error: "Twilio settings not found in database" }, { status: 500 });
     }
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-      return NextResponse.json(
-        { error: "Please configure your Twilio settings in the Settings page" },
-        { status: 400 }
-      );
+    // Create call record in database first
+    const { data: callData, error: callError } = await supabase
+      .from("calls")
+      .insert([{
+        user_id: user.id,
+        notes,
+        status: 'initiated'
+      }])
+      .select()
+      .single();
+
+    if (callError) {
+      console.error("Call record creation error:", callError);
+      return NextResponse.json({ error: "Failed to create call record" }, { status: 500 });
     }
 
-    // Initialize Twilio client
-    const client = twilio(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token
-    );
+    // Initialize Twilio Client
+    const client = twilio(settings.twilio_account_sid, settings.twilio_auth_token);
 
-    // Create call using Twilio
+    // Create Twilio Call
     const call = await client.calls.create({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/twiml`,
       to,
       from: settings.twilio_phone_number,
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/calls/status`,
-      statusCallbackEvent: ['completed'],
+      statusCallbackEvent: ["completed"],
     });
 
-    // Update call record with Twilio SID
-    const { error: updateError } = await supabase
+    console.log("Twilio Call Created:", call);
+
+    // Update Call Status in Supabase with Twilio SID
+    await supabase
       .from("calls")
       .update({ twilio_sid: call.sid })
-      .eq("id", callId)
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      console.error('Error updating call record:', updateError);
-      return NextResponse.json(
-        { error: "Failed to update call record" },
-        { status: 500 }
-      );
-    }
+      .eq("id", callData.id);
 
     return NextResponse.json({ success: true, sid: call.sid });
   } catch (error) {
-    console.error('Call creation error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create call" },
-      { status: 500 }
-    );
+    console.error("Twilio Call Creation Error:", error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to create call" 
+    }, { status: 500 });
   }
 }
 
 ================
 File: app/api/calls/status/route.ts
 ================
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from "next/server";
+import { supabase } from "@/integrations/supabase/client";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const formData = await request.formData();
+    const formData = await req.formData();
     const callSid = formData.get('CallSid');
-    const duration = formData.get('CallDuration');
-    const status = formData.get('CallStatus');
+    const callStatus = formData.get('CallStatus');
+    const callDuration = formData.get('CallDuration');
 
-    // Update the call record in the database
-    const { error } = await supabase
-      .from('calls')
+    console.log("Call status update:", {
+      callSid,
+      callStatus,
+      callDuration
+    });
+
+    if (!callSid) {
+      return NextResponse.json({ error: "Missing CallSid" }, { status: 400 });
+    }
+
+    const { error: updateError } = await supabase
+      .from("calls")
       .update({
-        duration: parseInt(duration as string) || 0,
-        status: status as string,
+        status: callStatus?.toString(),
+        duration: parseInt(callDuration?.toString() || "0"),
       })
-      .eq('twilio_sid', callSid);
+      .eq("twilio_sid", callSid);
 
-    if (error) throw error;
+    if (updateError) {
+      console.error("Call status update error:", updateError);
+      return NextResponse.json({ error: "Failed to update call status" }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Status callback error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    console.error("Status callback error:", error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to process status callback" 
+    }, { status: 500 });
   }
 }
 
 ================
 File: app/api/calls/twiml/route.ts
 ================
-import { NextResponse } from 'next/server';
-import twilio from 'twilio';
+import { NextResponse } from "next/server";
+import { twiml } from "twilio";
 
 export async function GET() {
-  const VoiceResponse = twilio.twiml.VoiceResponse;
-  const response = new VoiceResponse();
-  
-  response.say('Hello! This is a call from your CRM system.');
-  response.pause({ length: 1 });
-  response.say('Connecting you now.');
+  try {
+    const response = new twiml.VoiceResponse();
+    
+    // Welcome message
+    response.say({
+      voice: 'alice',
+      language: 'en-US'
+    }, 'Welcome to your CRM system call.');
+    
+    // Add a brief pause
+    response.pause({ length: 1 });
+    
+    // Play hold music
+    response.play({
+      loop: 1
+    }, 'http://com.twilio.music.classical.s3.amazonaws.com/BusyStrings.mp3');
+    
+    // Final message
+    response.say({
+      voice: 'alice',
+      language: 'en-US'
+    }, 'Connecting you now. Please wait.');
 
-  return new NextResponse(response.toString(), {
+    return new Response(response.toString(), { 
+      headers: { "Content-Type": "text/xml" } 
+    });
+  } catch (error) {
+    console.error("TwiML generation error:", error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to generate TwiML" 
+    }, { status: 500 });
+  }
+}
+
+================
+File: app/api/twilio/call/route.ts
+================
+import { NextResponse } from "next/server";
+import twilio from "twilio";
+
+export async function POST(req: Request) {
+  const { to, from } = await req.json();
+
+  if (!to || !from) {
+    return NextResponse.json({ error: "Missing 'to' or 'from' number" }, { status: 400 });
+  }
+
+  const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);
+
+  const call = await client.calls.create({
+    url: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/voice`,
+    to,
+    from,
+  });
+
+  return NextResponse.json({ success: true, callSid: call.sid });
+}
+
+================
+File: app/api/twilio/status/route.ts
+================
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  console.log("Twilio Status Update Received:", body);
+
+  return NextResponse.json({ success: true });
+}
+
+================
+File: app/api/twilio/token/route.ts
+================
+import { NextResponse } from "next/server";
+import twilio from "twilio";
+import { supabase } from "@/integrations/supabase/client";
+
+export async function GET(req: Request) {
+  try {
+    // Get the session
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
+    
+    if (authError || !session) {
+      console.error("Auth error:", authError);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("Fetching Twilio settings for user:", session.user.id);
+
+    // Get user's Twilio settings from Supabase
+    const { data: settings, error: settingsError } = await supabase
+      .from("settings")
+      .select("twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (settingsError || !settings) {
+      console.error("Settings fetch error:", settingsError);
+      return NextResponse.json({ error: "Failed to fetch Twilio settings" }, { status: 500 });
+    }
+
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token) {
+      return NextResponse.json({ error: "Incomplete Twilio settings" }, { status: 400 });
+    }
+
+    console.log("Generating Twilio token...");
+
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
+
+    // Create an access token
+    const token = new AccessToken(
+      settings.twilio_account_sid,
+      settings.twilio_auth_token,
+      settings.twilio_twiml_app_sid || settings.twilio_account_sid, // fallback to account SID if no TwiML app SID
+      { identity: session.user.id }
+    );
+
+    // Create a Voice grant and add it to the token
+    const voiceGrant = new VoiceGrant({
+      outgoingApplicationSid: settings.twilio_twiml_app_sid || settings.twilio_account_sid,
+      incomingAllow: true,
+    });
+
+    token.addGrant(voiceGrant);
+
+    console.log("Token generated successfully");
+
+    return NextResponse.json({ token: token.toJwt() });
+  } catch (error) {
+    console.error("Token generation error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to generate token" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
     headers: {
-      'Content-Type': 'text/xml',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
 }
 
 ================
-File: pages/api/calls/create.ts
+File: app/api/twilio/voice/route.ts
 ================
-import { NextApiRequest, NextApiResponse } from 'next';
-import twilio from 'twilio';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from "next/server";
+import { twiml } from "twilio";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+export async function GET() {
+  const response = new twiml.VoiceResponse();
+  response.say("Welcome to the CRM system call.");
+  response.pause({ length: 1 });
+  response.play("http://com.twilio.music.classical.s3.amazonaws.com/BusyStrings.mp3");
+  response.say("Connecting you now. Please wait.");
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  return new Response(response.toString(), { headers: { "Content-Type": "text/xml" } });
+}
 
-  try {
-    const { callId, to, from, notes } = req.body;
+================
+File: app/api/twilio/page.tsx
+================
+"use client";
 
-    // Get user's Twilio settings
-    const { data: settings, error: settingsError } = await supabase
-      .from("settings")
-      .select("*")
-      .single();
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-    if (settingsError || !settings) {
-      throw new Error("Twilio settings not found");
+export default function TwilioClient() {
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleCall = async () => {
+    if (!phoneNumber) {
+      toast({
+        title: "Error",
+        description: "Please enter a phone number",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // Initialize Twilio client
-    const client = twilio(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token
-    );
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/twilio/token", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-    // Create call using Twilio with the correct TwiML URL
-    const call = await client.calls.create({
-      url: 'https://crm-six-black.vercel.app/api/calls/twiml',
-      to,
-      from,
-      statusCallback: 'https://crm-six-black.vercel.app/api/calls/status',
-      statusCallbackEvent: ['completed'],
-    });
+      if (!response.ok) {
+        throw new Error("Failed to get token");
+      }
 
-    // Update call record with Twilio SID
-    const { error: updateError } = await supabase
-      .from("calls")
-      .update({ twilio_sid: call.sid })
-      .eq("id", callId);
+      const { token } = await response.json();
 
-    if (updateError) throw updateError;
+      const callResponse = await fetch("/api/calls/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: phoneNumber,
+          notes: "Call initiated from Twilio client",
+        }),
+      });
 
-    return res.status(200).json({ success: true, sid: call.sid });
-  } catch (error) {
-    console.error('Call creation error:', error);
-    return res.status(500).json({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    });
-  }
-}
+      if (!callResponse.ok) {
+        const error = await callResponse.json();
+        throw new Error(error.error || "Failed to initiate call");
+      }
 
-================
-File: pages/api/calls/status.ts
-================
-import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+      toast({
+        title: "Success",
+        description: "Call initiated successfully",
+      });
+    } catch (error) {
+      console.error("Call error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to make call",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  try {
-    const { CallSid, CallDuration, CallStatus } = req.body;
-
-    // Update the call record in the database
-    const { error } = await supabase
-      .from('calls')
-      .update({
-        duration: parseInt(CallDuration) || 0,
-        status: CallStatus,
-      })
-      .eq('twilio_sid', CallSid);
-
-    if (error) throw error;
-
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Status callback error:', error);
-    return res.status(500).json({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    });
-  }
-}
-
-================
-File: pages/api/calls/twiml.ts
-================
-import { NextApiRequest, NextApiResponse } from 'next';
-import { twiml } from 'twilio';
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const response = new twiml.VoiceResponse();
-  
-  response.say('Hello! This is a call from your CRM system.');
-  response.pause({ length: 1 });
-  response.say('Connecting you now.');
-
-  res.setHeader('Content-Type', 'text/xml');
-  res.status(200).send(response.toString());
+  return (
+    <Card className="w-full max-w-md mx-auto mt-8">
+      <CardHeader>
+        <CardTitle>Make a Call</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone Number</Label>
+          <Input
+            id="phone"
+            type="tel"
+            placeholder="+1234567890"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+          />
+        </div>
+        <Button 
+          onClick={handleCall} 
+          disabled={isLoading}
+          className="w-full"
+        >
+          {isLoading ? "Initiating Call..." : "Call Now"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 ================
@@ -606,70 +810,126 @@ File: public/placeholder.svg
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" fill="none"><rect width="1200" height="1200" fill="#EAEAEA" rx="3"/><g opacity=".5"><g opacity=".5"><path fill="#FAFAFA" d="M600.709 736.5c-75.454 0-136.621-61.167-136.621-136.62 0-75.454 61.167-136.621 136.621-136.621 75.453 0 136.62 61.167 136.62 136.621 0 75.453-61.167 136.62-136.62 136.62Z"/><path stroke="#C9C9C9" stroke-width="2.418" d="M600.709 736.5c-75.454 0-136.621-61.167-136.621-136.62 0-75.454 61.167-136.621 136.621-136.621 75.453 0 136.62 61.167 136.62 136.621 0 75.453-61.167 136.62-136.62 136.62Z"/></g><path stroke="url(#a)" stroke-width="2.418" d="M0-1.209h553.581" transform="scale(1 -1) rotate(45 1163.11 91.165)"/><path stroke="url(#b)" stroke-width="2.418" d="M404.846 598.671h391.726"/><path stroke="url(#c)" stroke-width="2.418" d="M599.5 795.742V404.017"/><path stroke="url(#d)" stroke-width="2.418" d="m795.717 796.597-391.441-391.44"/><path fill="#fff" d="M600.709 656.704c-31.384 0-56.825-25.441-56.825-56.824 0-31.384 25.441-56.825 56.825-56.825 31.383 0 56.824 25.441 56.824 56.825 0 31.383-25.441 56.824-56.824 56.824Z"/><g clip-path="url(#e)"><path fill="#666" fill-rule="evenodd" d="M616.426 586.58h-31.434v16.176l3.553-3.554.531-.531h9.068l.074-.074 8.463-8.463h2.565l7.18 7.181V586.58Zm-15.715 14.654 3.698 3.699 1.283 1.282-2.565 2.565-1.282-1.283-5.2-5.199h-6.066l-5.514 5.514-.073.073v2.876a2.418 2.418 0 0 0 2.418 2.418h26.598a2.418 2.418 0 0 0 2.418-2.418v-8.317l-8.463-8.463-7.181 7.181-.071.072Zm-19.347 5.442v4.085a6.045 6.045 0 0 0 6.046 6.045h26.598a6.044 6.044 0 0 0 6.045-6.045v-7.108l1.356-1.355-1.282-1.283-.074-.073v-17.989h-38.689v23.43l-.146.146.146.147Z" clip-rule="evenodd"/></g><path stroke="#C9C9C9" stroke-width="2.418" d="M600.709 656.704c-31.384 0-56.825-25.441-56.825-56.824 0-31.384 25.441-56.825 56.825-56.825 31.383 0 56.824 25.441 56.824 56.825 0 31.383-25.441 56.824-56.824 56.824Z"/></g><defs><linearGradient id="a" x1="554.061" x2="-.48" y1=".083" y2=".087" gradientUnits="userSpaceOnUse"><stop stop-color="#C9C9C9" stop-opacity="0"/><stop offset=".208" stop-color="#C9C9C9"/><stop offset=".792" stop-color="#C9C9C9"/><stop offset="1" stop-color="#C9C9C9" stop-opacity="0"/></linearGradient><linearGradient id="b" x1="796.912" x2="404.507" y1="599.963" y2="599.965" gradientUnits="userSpaceOnUse"><stop stop-color="#C9C9C9" stop-opacity="0"/><stop offset=".208" stop-color="#C9C9C9"/><stop offset=".792" stop-color="#C9C9C9"/><stop offset="1" stop-color="#C9C9C9" stop-opacity="0"/></linearGradient><linearGradient id="c" x1="600.792" x2="600.794" y1="403.677" y2="796.082" gradientUnits="userSpaceOnUse"><stop stop-color="#C9C9C9" stop-opacity="0"/><stop offset=".208" stop-color="#C9C9C9"/><stop offset=".792" stop-color="#C9C9C9"/><stop offset="1" stop-color="#C9C9C9" stop-opacity="0"/></linearGradient><linearGradient id="d" x1="404.85" x2="796.972" y1="403.903" y2="796.02" gradientUnits="userSpaceOnUse"><stop stop-color="#C9C9C9" stop-opacity="0"/><stop offset=".208" stop-color="#C9C9C9"/><stop offset=".792" stop-color="#C9C9C9"/><stop offset="1" stop-color="#C9C9C9" stop-opacity="0"/></linearGradient><clipPath id="e"><path fill="#fff" d="M581.364 580.535h38.689v38.689h-38.689z"/></clipPath></defs></svg>
 
 ================
-File: src/api/calls.ts
+File: src/components/dashboard/AddContactDialog.tsx
 ================
-import { supabase } from "@/integrations/supabase/client";
-import twilio from "twilio";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ContactForm, ContactFormValues } from "@/components/ContactForm";
+import { Plus } from "lucide-react";
+import { useState } from "react";
 
-export async function createCall(req: Request) {
-  try {
-    const { callId, to, from, notes } = await req.json();
+interface AddContactDialogProps {
+  onAddContact: (values: ContactFormValues) => Promise<void>;
+}
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not authenticated");
+export function AddContactDialog({ onAddContact }: AddContactDialogProps) {
+  const [open, setOpen] = useState(false);
 
-    // First check if settings exist
-    const { data: settings, error: settingsError } = await supabase
-      .from("settings")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
+  const handleSubmit = async (values: ContactFormValues) => {
+    await onAddContact(values);
+    setOpen(false);
+  };
 
-    if (settingsError) {
-      console.error('Error fetching settings:', settingsError);
-      throw new Error("Failed to fetch Twilio settings");
-    }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" /> Add Contact
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] p-0">
+        <DialogHeader className="px-6 pt-6">
+          <DialogTitle>Add New Contact</DialogTitle>
+          <DialogDescription>
+            Fill in the contact details below.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="max-h-[calc(90vh-8rem)] px-6 pb-6">
+          <ContactForm onSubmit={handleSubmit} />
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      throw new Error("Please configure your Twilio settings in the Settings page before making calls");
-    }
+================
+File: src/components/dashboard/ContactsGrid.tsx
+================
+import { ContactCard } from "@/components/ContactCard";
+import { Contact } from "@/types";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
-    const client = twilio(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token
-    );
+interface ContactsGridProps {
+  contacts: Contact[] | null;
+  loading: boolean;
+}
 
-    const call = await client.calls.create({
-      url: `${process.env.VITE_APP_URL}/api/twiml`,
-      to,
-      from,
-      statusCallback: `${process.env.VITE_APP_URL}/api/calls/status/${callId}`,
-      statusCallbackEvent: ['completed'],
-    });
-
-    await supabase
-      .from("calls")
-      .update({ 
-        twilio_sid: call.sid,
-        status: 'initiated'
-      })
-      .eq("id", callId);
-
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error('Call creation error:', error);
-    return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error" 
-      }),
-      { 
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+export function ContactsGrid({ contacts, loading }: ContactsGridProps) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <Skeleton className="h-[200px]" />
+          </Card>
+        ))}
+      </div>
     );
   }
+
+  if (!contacts || contacts.length === 0) {
+    return (
+      <div className="col-span-full text-center p-8">
+        <p className="text-muted-foreground">No contacts found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {contacts.map((contact) => (
+        <ContactCard key={contact.id} contact={contact} />
+      ))}
+    </div>
+  );
+}
+
+================
+File: src/components/dashboard/StatsCard.tsx
+================
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LucideIcon } from "lucide-react";
+
+interface StatsCardProps {
+  title: string;
+  value: number | string;
+  icon: LucideIcon;
+  iconColor?: string;
+}
+
+export function StatsCard({ title, value, icon: Icon, iconColor = "text-primary" }: StatsCardProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Icon className={`h-5 w-5 ${iconColor}`} />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-3xl font-bold">{value}</p>
+      </CardContent>
+    </Card>
+  );
 }
 
 ================
@@ -733,15 +993,30 @@ export function TwilioSettingsForm() {
     twilio_account_sid: "",
     twilio_auth_token: "",
     twilio_phone_number: "",
+    twilio_twiml_app_sid: "",
+    twilio_api_secret: "",
+    twilio_api_key: "",
   });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (settings) {
+      console.log('Loaded Twilio settings:', {
+        hasAccountSid: !!settings.twilio_account_sid,
+        hasAuthToken: !!settings.twilio_auth_token,
+        hasPhoneNumber: !!settings.twilio_phone_number,
+        hasTwimlAppSid: !!settings.twilio_twiml_app_sid,
+        hasApiSecret: !!settings.twilio_api_secret,
+        hasApiKey: !!settings.twilio_api_key,
+      });
+      
       setTwilioConfig({
         twilio_account_sid: settings.twilio_account_sid || "",
         twilio_auth_token: settings.twilio_auth_token || "",
         twilio_phone_number: settings.twilio_phone_number || "",
+        twilio_twiml_app_sid: settings.twilio_twiml_app_sid || "",
+        twilio_api_secret: settings.twilio_api_secret || "",
+        twilio_api_key: settings.twilio_api_key || "",
       });
     }
   }, [settings]);
@@ -750,16 +1025,18 @@ export function TwilioSettingsForm() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      console.log('Attempting to save Twilio settings...');
       await updateSettings(twilioConfig);
+      console.log('Twilio settings saved successfully');
       toast({
         title: "Settings saved",
         description: "Your Twilio settings have been updated successfully.",
       });
     } catch (err) {
-      console.error('Error saving settings:', err);
+      console.error('Error saving Twilio settings:', err);
       toast({
         title: "Error",
-        description: "Failed to save Twilio settings. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to save Twilio settings. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -786,6 +1063,7 @@ export function TwilioSettingsForm() {
   }
 
   if (error) {
+    console.error('Settings loading error:', error);
     return (
       <Card>
         <CardHeader>
@@ -845,6 +1123,46 @@ export function TwilioSettingsForm() {
                 twilio_phone_number: e.target.value
               })}
               placeholder="Enter your Twilio Phone Number (e.g., +1234567890)"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="twiml-app-sid">TwiML App SID</Label>
+            <Input
+              id="twiml-app-sid"
+              value={twilioConfig.twilio_twiml_app_sid}
+              onChange={(e) => setTwilioConfig({
+                ...twilioConfig,
+                twilio_twiml_app_sid: e.target.value
+              })}
+              placeholder="Enter your TwiML App SID"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="api-key">API Key</Label>
+            <Input
+              id="api-key"
+              value={twilioConfig.twilio_api_key}
+              onChange={(e) => setTwilioConfig({
+                ...twilioConfig,
+                twilio_api_key: e.target.value
+              })}
+              placeholder="Enter your Twilio API Key"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="api-secret">API Secret</Label>
+            <Input
+              id="api-secret"
+              type="password"
+              value={twilioConfig.twilio_api_secret}
+              onChange={(e) => setTwilioConfig({
+                ...twilioConfig,
+                twilio_api_secret: e.target.value
+              })}
+              placeholder="Enter your Twilio API Secret"
               required
             />
           </div>
@@ -2370,7 +2688,7 @@ const CommandDialog = ({ children, ...props }: CommandDialogProps) => {
     <Dialog {...props}>
       <DialogContent className="overflow-hidden p-0 shadow-lg">
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
-          {children || <CommandList />}
+          {children}
         </Command>
       </DialogContent>
     </Dialog>
@@ -6063,6 +6381,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { TwilioSettings } from "@/hooks/useSettings";
+import { PhoneCall } from "lucide-react";
 
 interface CallFormProps {
   phone: string;
@@ -6108,7 +6427,9 @@ export function CallForm({
       <Button 
         type="submit" 
         disabled={isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token}
+        className="w-full flex items-center justify-center gap-2"
       >
+        <PhoneCall className="h-4 w-4" />
         {isLoading ? "Initiating Call..." : "Start Call"}
       </Button>
     </form>
@@ -6133,77 +6454,237 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useSettings } from "@/hooks";
 import { Contact } from "@/types";
 import { CallForm } from "./CallForm";
-import { useTwilioVoice } from "@/hooks/useTwilioVoice";
+import { useInitiateCall } from "@/hooks/useInitiateCall";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { CallWindow } from "./CallWindow";
+import { useCallStatus } from "@/hooks/useCallStatus";
 
 interface CallFormDialogProps {
   contact?: Contact;
   trigger?: React.ReactNode;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function CallFormDialog({ contact, trigger }: CallFormDialogProps) {
+export function CallFormDialog({ contact, trigger, variant, size }: CallFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(contact?.phone || "");
   const [notes, setNotes] = useState("");
+  const [callWindowOpen, setCallWindowOpen] = useState(false);
+  const [currentCallId, setCurrentCallId] = useState<string>();
   const { settings, loading: settingsLoading } = useSettings();
-  const { makeCall, isConnecting } = useTwilioVoice();
+  const { initiateCall, isLoading, hangUp } = useInitiateCall();
+  const { status } = useCallStatus(currentCallId);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!contact?.id) {
-      console.error('Contact ID is required');
+    // Check authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate('/auth');
       return;
     }
 
-    const success = await makeCall(phone, contact.id);
-    if (success) {
+    const { success, callId } = await initiateCall({
+      contact,
+      phone,
+      notes
+    });
+    
+    if (success && callId) {
       setOpen(false);
+      setCallWindowOpen(true);
+      setCurrentCallId(callId);
     }
+  };
+
+  const handleHangUp = async () => {
+    if (currentCallId) {
+      await hangUp(currentCallId);
+    }
+  };
+
+  const handleCallWindowClose = () => {
+    setCallWindowOpen(false);
+    setCurrentCallId(undefined);
+    setPhone("");
+    setNotes("");
   };
 
   const isTwilioConfigured = settings?.twilio_account_sid && 
                             settings?.twilio_auth_token && 
-                            settings?.twilio_phone_number;
+                            settings?.twilio_phone_number &&
+                            settings?.twilio_twiml_app_sid;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline">
-            <PhoneCall className="mr-2 h-4 w-4" /> New Call
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
-          <DialogDescription>
-            Start a new call with this contact using Twilio.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant={variant} size={size}>
+              <PhoneCall className="h-4 w-4" />
+              {size !== "icon" && <span className="ml-2">Call</span>}
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Call{contact ? ` with ${contact.name}` : ''}</DialogTitle>
+            <DialogDescription>
+              Start a new call with this contact using Twilio.
+            </DialogDescription>
+          </DialogHeader>
 
-        {settingsLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          {settingsLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+          ) : !isTwilioConfigured ? (
+            <Alert variant="destructive">
+              <AlertTitle>Missing Twilio Settings</AlertTitle>
+              <AlertDescription>
+                Please configure your Twilio settings in the Settings page before making calls.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <CallForm
+              phone={phone}
+              notes={notes}
+              isLoading={isLoading}
+              settings={settings}
+              onPhoneChange={setPhone}
+              onNotesChange={setNotes}
+              onSubmit={handleSubmit}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <CallWindow
+        open={callWindowOpen}
+        onClose={handleCallWindowClose}
+        status={status}
+        phoneNumber={phone}
+        onHangUp={handleHangUp}
+      />
+    </>
+  );
+}
+
+================
+File: src/components/CallWindow.tsx
+================
+import { useEffect, useState } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Phone, PhoneOff, Timer } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface CallWindowProps {
+  open: boolean;
+  onClose: () => void;
+  status: 'initiated' | 'connecting' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled';
+  phoneNumber: string;
+  onHangUp: () => void;
+}
+
+export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: CallWindowProps) {
+  const [duration, setDuration] = useState(0);
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (status === 'in-progress' && !timerInterval) {
+      const interval = setInterval(() => {
+        setDuration(prev => prev + 1);
+      }, 1000);
+      setTimerInterval(interval);
+    } else if (status !== 'in-progress' && timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+
+    if (status === 'completed' || status === 'failed' || status === 'canceled') {
+      setTimeout(() => {
+        onClose();
+        setDuration(0);
+      }, 2000);
+    }
+
+    return () => {
+      if (timerInterval) clearInterval(timerInterval);
+    };
+  }, [status, timerInterval, onClose]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getStatusDisplay = () => {
+    switch (status) {
+      case 'initiated':
+      case 'connecting':
+        return 'Connecting...';
+      case 'ringing':
+        return 'Ringing...';
+      case 'in-progress':
+        return 'Call in Progress';
+      case 'completed':
+        return 'Call Ended';
+      case 'failed':
+        return 'Call Failed';
+      case 'busy':
+        return 'Line Busy';
+      case 'no-answer':
+        return 'No Answer';
+      case 'canceled':
+        return 'Call Canceled';
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <div className="flex flex-col items-center justify-center gap-6 p-6">
+          <div className="flex flex-col items-center gap-2">
+            <div className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center",
+              status === 'in-progress' ? "bg-green-100" : "bg-gray-100"
+            )}>
+              <Phone className={cn(
+                "w-8 h-8",
+                status === 'in-progress' ? "text-green-600" : "text-gray-600"
+              )} />
+            </div>
+            <h2 className="text-lg font-semibold">{phoneNumber}</h2>
           </div>
-        ) : !isTwilioConfigured ? (
-          <Alert variant="destructive">
-            <AlertTitle>Missing Twilio Settings</AlertTitle>
-            <AlertDescription>
-              Please configure your Twilio settings in the Settings page before making calls.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <CallForm
-            phone={phone}
-            notes={notes}
-            isLoading={isConnecting}
-            settings={settings}
-            onPhoneChange={setPhone}
-            onNotesChange={setNotes}
-            onSubmit={handleSubmit}
-          />
-        )}
+
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm text-muted-foreground">{getStatusDisplay()}</p>
+            {status === 'in-progress' && (
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{formatDuration(duration)}</span>
+              </div>
+            )}
+          </div>
+
+          {(status === 'connecting' || status === 'ringing' || status === 'in-progress') && (
+            <Button
+              variant="destructive"
+              className="w-12 h-12 rounded-full p-0"
+              onClick={onHangUp}
+            >
+              <PhoneOff className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -6351,14 +6832,16 @@ interface ContactCardProps {
 }
 
 export function ContactCard({ contact }: ContactCardProps) {
+  if (!contact) return null;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>{contact.name}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p>{contact.phone}</p>
-        <p>{contact.email}</p>
+        {contact.phone && <p>{contact.phone}</p>}
+        {contact.email && <p>{contact.email}</p>}
         <div className="flex gap-2">
           <CallFormDialog contact={contact} />
           <SendSMSDialog contact={contact} />
@@ -6382,6 +6865,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -6391,6 +6875,9 @@ const formSchema = z.object({
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 characters"),
   company: z.string().min(2, "Company must be at least 2 characters"),
+  job_title: z.string().optional(),
+  birth_date: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export type ContactFormValues = z.infer<typeof formSchema>;
@@ -6407,6 +6894,9 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
       email: "",
       phone: "",
       company: "",
+      job_title: "",
+      birth_date: "",
+      notes: "",
     },
   });
 
@@ -6465,6 +6955,49 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="job_title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Job Title</FormLabel>
+              <FormControl>
+                <Input placeholder="Software Engineer" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="birth_date"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Birth Date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Add any additional notes here..."
+                  className="min-h-[100px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button type="submit" className="w-full">Save Contact</Button>
       </form>
     </Form>
@@ -6486,6 +7019,8 @@ interface ContactListItemProps {
 }
 
 export function ContactListItem({ contact, isSelected, onSelect }: ContactListItemProps) {
+  if (!contact || !contact.id) return null;
+
   return (
     <CommandItem
       key={contact.id}
@@ -6544,7 +7079,7 @@ export const ContactTriggerButton = forwardRef<
             <Loader className="mr-2 h-4 w-4 animate-spin" />
             Loading contacts...
           </div>
-        ) : selectedContact ? (
+        ) : selectedContact?.name ? (
           selectedContact.name
         ) : (
           "Select contact..."
@@ -6560,7 +7095,7 @@ ContactTriggerButton.displayName = "ContactTriggerButton";
 ================
 File: src/components/CRMSidebar.tsx
 ================
-import { Home, Users, PhoneCall, Mail, PieChart, Settings } from "lucide-react";
+import { Home, Users, PhoneCall, PieChart, Settings } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -6578,6 +7113,7 @@ const menuItems = [
   { title: "Contacts", icon: Users, path: "/contacts" },
   { title: "Deals", icon: PieChart, path: "/deals" },
   { title: "Communications", icon: PhoneCall, path: "/communications" },
+  { title: "Quick Call", icon: PhoneCall, path: "/quick-call" },
   { title: "Settings", icon: Settings, path: "/settings" },
 ];
 
@@ -6741,12 +7277,13 @@ export function DealBasicInfoSection({
 File: src/components/DealCard.tsx
 ================
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, UserCircle, MessageSquare } from "lucide-react";
+import { User, UserCircle, MessageSquare, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DealForm } from "./DealForm";
 import { useContact } from "@/hooks";
 import { Link } from "react-router-dom";
 import { Deal } from "@/types";
+import { formatDistanceToNow } from "date-fns";
 
 interface DealCardProps {
   deal: Deal;
@@ -6765,6 +7302,16 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
       "3": "John Doe",
     };
     return users[userId] || "Unknown User";
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
   };
 
   return (
@@ -6795,6 +7342,15 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                     </div>
                   </div>
                 )}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Created
+                  </span>
+                  <span className="text-xs font-medium flex items-center">
+                    <Calendar className="h-3 w-3 mr-1" />
+                    {formatDate(deal.created_at)}
+                  </span>
+                </div>
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs text-muted-foreground">
                     Assigned To
@@ -6911,28 +7467,35 @@ export function DealContactList({
   error,
   onSelect
 }: DealContactListProps) {
+  if (loading) {
+    return (
+      <CommandEmpty>Loading contacts...</CommandEmpty>
+    );
+  }
+
+  if (error) {
+    return (
+      <CommandEmpty>Error loading contacts: {error.message}</CommandEmpty>
+    );
+  }
+
+  if (!contacts || contacts.length === 0) {
+    return (
+      <CommandEmpty>No contacts found.</CommandEmpty>
+    );
+  }
+
   return (
-    <>
-      <CommandEmpty>
-        {loading ? (
-          "Loading..."
-        ) : error ? (
-          "Error loading contacts."
-        ) : (
-          "No contact found."
-        )}
-      </CommandEmpty>
-      <CommandGroup>
-        {contacts.map((contact) => (
-          <DealContactListItem
-            key={contact.id}
-            contact={contact}
-            isSelected={selectedContactId === contact.id}
-            onSelect={onSelect}
-          />
-        ))}
-      </CommandGroup>
-    </>
+    <CommandGroup>
+      {contacts.map((contact) => (
+        <DealContactListItem
+          key={contact.id}
+          contact={contact}
+          isSelected={selectedContactId === contact.id}
+          onSelect={onSelect}
+        />
+      ))}
+    </CommandGroup>
   );
 }
 
@@ -6975,7 +7538,7 @@ export function DealContactListItem({
 ================
 File: src/components/DealContactSelector.tsx
 ================
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Loader } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandInput } from "@/components/ui/command";
@@ -7002,10 +7565,10 @@ export function DealContactSelector({
   onContactSelect 
 }: DealContactSelectorProps) {
   const [open, setOpen] = useState(false);
-  const { contacts = [], loading, error } = useContacts();
+  const { contacts, loading, error } = useContacts();
   
   const selectedContactId = form.watch("contact_id");
-  const selectedContact = contacts.find(
+  const selectedContact = contacts?.find(
     (contact) => contact.id === selectedContactId
   );
 
@@ -7015,30 +7578,12 @@ export function DealContactSelector({
     setOpen(false);
   };
 
-  if (error) {
-    return (
-      <FormItem>
-        <FormLabel>Contact</FormLabel>
-        <FormControl>
-          <Button
-            variant="outline"
-            className="w-full text-destructive"
-            disabled
-          >
-            Error loading contacts
-          </Button>
-        </FormControl>
-        <FormMessage>{error.message}</FormMessage>
-      </FormItem>
-    );
-  }
-
   return (
     <FormItem>
       <FormLabel>Contact</FormLabel>
-      <FormControl>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <FormControl>
             <Button
               variant="outline"
               role="combobox"
@@ -7051,7 +7596,10 @@ export function DealContactSelector({
               type="button"
             >
               {loading ? (
-                "Loading contacts..."
+                <div className="flex items-center gap-2">
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Loading contacts...
+                </div>
               ) : selectedContact ? (
                 selectedContact.name
               ) : (
@@ -7059,21 +7607,21 @@ export function DealContactSelector({
               )}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0">
-            <Command>
-              <CommandInput placeholder="Search contacts..." />
-              <DealContactList
-                contacts={contacts}
-                selectedContactId={selectedContactId}
-                loading={loading}
-                error={error}
-                onSelect={handleContactSelect}
-              />
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </FormControl>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0">
+          <Command>
+            <CommandInput placeholder="Search contacts..." />
+            <DealContactList
+              contacts={contacts || []}
+              selectedContactId={selectedContactId}
+              loading={loading}
+              error={error}
+              onSelect={handleContactSelect}
+            />
+          </Command>
+        </PopoverContent>
+      </Popover>
       <FormMessage />
     </FormItem>
   );
@@ -7454,6 +8002,56 @@ export function ErrorState({ title = "Error", message, onRetry }: ErrorStateProp
 }
 
 ================
+File: src/components/IncomingCallDialog.tsx
+================
+import React from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Phone, PhoneOff } from "lucide-react";
+
+interface IncomingCallProps {
+  open: boolean;
+  phoneNumber: string;
+  onAccept: () => void;
+  onReject: () => void;
+}
+
+export function IncomingCallDialog({ open, phoneNumber, onAccept, onReject }: IncomingCallProps) {
+  return (
+    <Dialog open={open}>
+      <DialogContent className="sm:max-w-[425px]">
+        <div className="flex flex-col items-center justify-center gap-6 p-6">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center animate-pulse">
+              <Phone className="w-8 h-8 text-blue-600" />
+            </div>
+            <h2 className="text-lg font-semibold">Incoming Call</h2>
+            <p className="text-sm text-muted-foreground">{phoneNumber}</p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button
+              variant="destructive"
+              className="w-12 h-12 rounded-full p-0"
+              onClick={onReject}
+            >
+              <PhoneOff className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="default"
+              className="w-12 h-12 rounded-full p-0 bg-green-500 hover:bg-green-600"
+              onClick={onAccept}
+            >
+              <Phone className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+================
 File: src/components/MentionsInput.tsx
 ================
 import { useState, useEffect } from "react";
@@ -7767,9 +8365,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface SendEmailDialogProps {
   contact: Contact;
   trigger?: React.ReactNode;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function SendEmailDialog({ contact, trigger }: SendEmailDialogProps) {
+export function SendEmailDialog({ contact, trigger, variant, size }: SendEmailDialogProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [subject, setSubject] = useState("");
@@ -7824,9 +8424,9 @@ export function SendEmailDialog({ contact, trigger }: SendEmailDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="flex-1">
-            <Mail className="h-4 w-4 mr-2" />
-            Email
+          <Button variant={variant} size={size}>
+            <Mail className="h-4 w-4" />
+            {size !== "icon" && <span className="ml-2">Email</span>}
           </Button>
         )}
       </DialogTrigger>
@@ -7882,9 +8482,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface SendSMSDialogProps {
   contact: Contact;
   trigger?: React.ReactNode;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function SendSMSDialog({ contact, trigger }: SendSMSDialogProps) {
+export function SendSMSDialog({ contact, trigger, variant, size }: SendSMSDialogProps) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const { toast } = useToast();
@@ -7932,9 +8534,9 @@ export function SendSMSDialog({ contact, trigger }: SendSMSDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="sm" className="flex-1">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            SMS
+          <Button variant={variant} size={size}>
+            <MessageSquare className="h-4 w-4" />
+            {size !== "icon" && <span className="ml-2">SMS</span>}
           </Button>
         )}
       </DialogTrigger>
@@ -7977,6 +8579,11 @@ const routes = [
     label: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+  },
+  {
+    label: "TwilioClient",
+    icon: LayoutDashboard,
+    href: "/twilioclient",
   },
   {
     label: "Contacts",
@@ -8034,6 +8641,379 @@ export function Sidebar() {
     </div>
   );
 }
+
+================
+File: src/components/SidebarCallForm.tsx
+================
+import { Phone } from "lucide-react";
+import { useState } from "react";
+import { useSettings } from "@/hooks";
+import { CallForm } from "./CallForm";
+import { useInitiateCall } from "@/hooks/useInitiateCall";
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+} from "@/components/ui/sidebar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+export function SidebarCallForm() {
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const { settings, loading: settingsLoading } = useSettings();
+  const { initiateCall, isLoading } = useInitiateCall();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const success = await initiateCall({
+      phone,
+      notes,
+      // contact is now optional, so we can omit it
+    });
+    
+    if (success) {
+      setPhone("");
+      setNotes("");
+    }
+  };
+
+  const isTwilioConfigured = settings?.twilio_account_sid && 
+                            settings?.twilio_auth_token && 
+                            settings?.twilio_phone_number;
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>
+        <div className="flex items-center gap-2">
+          <Phone className="h-4 w-4" />
+          <span>Quick Call</span>
+        </div>
+      </SidebarGroupLabel>
+      <SidebarGroupContent className="px-2">
+        {settingsLoading ? (
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+          </div>
+        ) : !isTwilioConfigured ? (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Missing Twilio Settings</AlertTitle>
+            <AlertDescription>
+              Configure Twilio settings first.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <CallForm
+            phone={phone}
+            notes={notes}
+            isLoading={isLoading}
+            settings={settings}
+            onPhoneChange={setPhone}
+            onNotesChange={setNotes}
+            onSubmit={handleSubmit}
+          />
+        )}
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
+================
+File: src/components/TwilioClient.tsx
+================
+import React, { useEffect, useState } from "react";
+import { Device, Call } from "@twilio/voice-sdk";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { IncomingCallDialog } from "./IncomingCallDialog";
+import { CallWindow } from "./CallWindow";
+import { Mic, MicOff } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const TwilioClient = () => {
+  const [device, setDevice] = useState<Device | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [currentCall, setCurrentCall] = useState<Call | null>(null);
+  const [incomingCall, setIncomingCall] = useState<Call | null>(null);
+  const [callStatus, setCallStatus] = useState<'initiated' | 'connecting' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled'>('initiated');
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
+  const { toast } = useToast();
+
+  // Check for microphone permissions
+  const checkMicrophonePermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Clean up
+      setHasMicrophonePermission(true);
+      return true;
+    } catch (error) {
+      console.error('Microphone permission error:', error);
+      setHasMicrophonePermission(false);
+      return false;
+    }
+  };
+
+  // Request microphone access
+  const requestMicrophoneAccess = async () => {
+    const hasPermission = await checkMicrophonePermission();
+    if (!hasPermission) {
+      toast({
+        title: "Microphone Access Required",
+        description: "Please allow microphone access to make calls.",
+        variant: "destructive",
+      });
+    }
+    return hasPermission;
+  };
+
+  useEffect(() => {
+    const initializeDevice = async () => {
+      try {
+        // First check microphone permission
+        const hasPermission = await checkMicrophonePermission();
+        if (!hasPermission) return;
+
+        const { data, error } = await supabase.functions.invoke('get-twilio-token');
+        
+        if (error || !data.token) {
+          throw new Error(error?.message || "Failed to get token");
+        }
+
+        const newDevice = new Device(data.token, {
+          // Enable sound handling
+          enableRingingState: true,
+          // Set up audio constraints for better voice quality
+          audioConstraints: {
+            autoGainControl: true,
+            echoCancellation: true,
+            noiseSuppression: true,
+          }
+        });
+
+        await newDevice.register();
+        setDevice(newDevice);
+
+        // Set up event listeners
+        newDevice.on('error', (error) => {
+          console.error('Twilio device error:', error);
+          toast({
+            title: "Error",
+            description: error.message || "An error occurred with the call device",
+            variant: "destructive",
+          });
+        });
+
+        newDevice.on('registered', () => {
+          console.log('Twilio device registered');
+          toast({
+            title: "Ready",
+            description: "Call device is ready to use",
+          });
+        });
+
+        newDevice.on('unregistered', () => {
+          console.log('Twilio device unregistered');
+        });
+
+        // Handle incoming calls
+        newDevice.on('incoming', (call) => {
+          console.log('Incoming call from:', call.parameters.From);
+          setIncomingCall(call);
+          
+          // Set up call event listeners
+          call.on('cancel', () => {
+            setIncomingCall(null);
+            setCallStatus('canceled');
+          });
+
+          // Handle call accept events
+          call.on('accept', () => {
+            setCallStatus('in-progress');
+          });
+
+          // Handle disconnect events
+          call.on('disconnect', () => {
+            setCallStatus('completed');
+          });
+        });
+
+      } catch (error) {
+        console.error("Failed to initialize Twilio device:", error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to initialize call device",
+          variant: "destructive",
+        });
+      }
+    };
+
+    initializeDevice();
+
+    return () => {
+      if (device) {
+        device.destroy();
+      }
+    };
+  }, [toast]);
+
+  const handleAcceptCall = async () => {
+    if (!incomingCall) return;
+
+    try {
+      // Check microphone permission before accepting
+      const hasPermission = await requestMicrophoneAccess();
+      if (!hasPermission) return;
+
+      setCallStatus('connecting');
+      await incomingCall.accept();
+      setCurrentCall(incomingCall);
+      setIncomingCall(null);
+      setCallStatus('in-progress');
+
+      incomingCall.on('disconnect', () => {
+        setCurrentCall(null);
+        setCallStatus('completed');
+      });
+
+    } catch (error) {
+      console.error("Error accepting call:", error);
+      toast({
+        title: "Error",
+        description: "Failed to accept call",
+        variant: "destructive",
+      });
+      setCallStatus('failed');
+    }
+  };
+
+  const handleRejectCall = () => {
+    if (!incomingCall) return;
+
+    try {
+      incomingCall.reject();
+      setIncomingCall(null);
+      setCallStatus('canceled');
+    } catch (error) {
+      console.error("Error rejecting call:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject call",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const makeCall = async (to: string) => {
+    if (!device) {
+      toast({
+        title: "Error",
+        description: "Call device not initialized",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check microphone permission before making call
+    const hasPermission = await requestMicrophoneAccess();
+    if (!hasPermission) return;
+
+    setIsConnecting(true);
+    setCallStatus('connecting');
+    try {
+      const connection = await device.connect({
+        params: { To: to }
+      });
+
+      setCurrentCall(connection);
+
+      connection.on('accept', () => {
+        console.log('Call accepted');
+        setCallStatus('in-progress');
+        toast({
+          title: "Success",
+          description: "Call connected",
+        });
+      });
+
+      connection.on('disconnect', () => {
+        console.log('Call disconnected');
+        setIsConnecting(false);
+        setCurrentCall(null);
+        setCallStatus('completed');
+        toast({
+          title: "Call Ended",
+          description: "Call has been disconnected",
+        });
+      });
+
+    } catch (error) {
+      console.error("Call error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to make call",
+        variant: "destructive",
+      });
+      setIsConnecting(false);
+      setCallStatus('failed');
+    }
+  };
+
+  const handleHangUp = () => {
+    if (currentCall) {
+      currentCall.disconnect();
+      setCurrentCall(null);
+      setCallStatus('completed');
+    }
+  };
+
+  if (hasMicrophonePermission === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Microphone Access Required</AlertTitle>
+        <AlertDescription>
+          Please allow microphone access in your browser settings to make calls.
+          <Button 
+            className="mt-2" 
+            onClick={() => requestMicrophoneAccess()}
+          >
+            <Mic className="mr-2 h-4 w-4" />
+            Request Microphone Access
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Button 
+        onClick={() => makeCall("+1234567890")} 
+        disabled={!device || isConnecting || !!currentCall || !!incomingCall}
+        className="w-full"
+      >
+        {isConnecting ? "Connecting..." : "Make Call"}
+      </Button>
+
+      <IncomingCallDialog
+        open={!!incomingCall}
+        phoneNumber={incomingCall?.parameters.From || "Unknown"}
+        onAccept={handleAcceptCall}
+        onReject={handleRejectCall}
+      />
+
+      <CallWindow
+        open={!!currentCall}
+        onClose={() => setCurrentCall(null)}
+        status={callStatus}
+        phoneNumber={currentCall?.parameters.To || incomingCall?.parameters.From || ""}
+        onHangUp={handleHangUp}
+      />
+    </div>
+  );
+};
+
+export default TwilioClient;
 
 ================
 File: src/hooks/index.ts
@@ -8402,6 +9382,47 @@ export function useCalls() {
 }
 
 ================
+File: src/hooks/useCallStatus.ts
+================
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+type CallStatus = 'initiated' | 'connecting' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer' | 'canceled';
+
+export function useCallStatus(callId?: string) {
+  const [status, setStatus] = useState<CallStatus>('initiated');
+
+  useEffect(() => {
+    if (!callId) return;
+
+    // Subscribe to changes in the call status
+    const channel = supabase
+      .channel('call_status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'calls',
+          filter: `id=eq.${callId}`,
+        },
+        (payload) => {
+          if (payload.new && 'status' in payload.new) {
+            setStatus(payload.new.status as CallStatus);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [callId]);
+
+  return { status, setStatus };
+}
+
+================
 File: src/hooks/useCommunications.ts
 ================
 import { useState, useEffect } from "react";
@@ -8731,11 +9752,10 @@ File: src/hooks/useInitiateCall.ts
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { createCallRecord, initiateCall } from "@/utils/twilioUtils";
 import { Contact } from "@/types";
 
 interface InitiateCallParams {
-  contact: Contact;
+  contact?: Contact;
   phone: string;
   notes: string;
 }
@@ -8748,41 +9768,356 @@ export function useInitiateCall() {
     setIsLoading(true);
 
     try {
+      // Get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("User not authenticated");
+      }
+
+      // First check if Twilio settings exist
+      const { data: settings, error: settingsError } = await supabase
+        .from("settings")
+        .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (settingsError) {
+        console.error('Settings error:', settingsError);
+        throw new Error("Failed to fetch Twilio settings");
+      }
+
+      if (!settings) {
+        throw new Error("Please configure your Twilio settings in the Settings page first");
+      }
+
+      if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+        throw new Error("Please complete your Twilio settings configuration");
+      }
+
+      // Create call record
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contact?.id,
+          user_id: session.user.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
+
+      if (callError) {
+        throw new Error("Failed to create call record");
+      }
+
+      console.log('Initiating call with data:', {
+        callId: callData.id,
+        to: phone,
+        notes,
+      });
+
+      // Initiate call using edge function
+      const { data, error: functionError } = await supabase.functions.invoke('create-call', {
+        body: {
+          callId: callData.id,
+          to: phone,
+          notes,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw new Error(functionError.message || 'Failed to initiate call');
+      }
+
+      if (!data?.success) {
+        throw new Error('Failed to initiate call: Unknown error');
+      }
+
+      console.log('Call initiated successfully:', data);
+
+      toast({
+        title: "Call Initiated",
+        description: "Your call is being connected.",
+      });
+
+      return {
+        success: true,
+        callId: callData.id
+      };
+    } catch (error) {
+      console.error('Error in initiateCall:', error);
+      
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to initiate call",
+        variant: "destructive",
+      });
+      
+      return {
+        success: false,
+        callId: undefined
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const hangUp = async (callId: string) => {
+    try {
+      const { error } = await supabase
+        .from('calls')
+        .update({ 
+          status: 'canceled',
+          end_time: new Date().toISOString()
+        })
+        .eq('id', callId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Call Ended",
+        description: "The call has been terminated",
+      });
+    } catch (error) {
+      console.error('Error hanging up call:', error);
+      toast({
+        title: "Error",
+        description: "Failed to hang up call",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return {
+    initiateCall: handleInitiateCall,
+    hangUp,
+    isLoading
+  };
+}
+
+================
+File: src/hooks/useSettings.ts
+================
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export interface TwilioSettings {
+  twilio_account_sid: string;
+  twilio_auth_token: string;
+  twilio_phone_number: string;
+  twilio_twiml_app_sid: string;
+  twilio_api_secret: string;
+  twilio_api_key: string;
+}
+
+export function useSettings() {
+  const [settings, setSettings] = useState<TwilioSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        console.log('Fetching settings...');
+        setLoading(true);
+        setError(null);
+        
+        // First check if user is authenticated
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        if (authError) {
+          console.error('Authentication error:', authError);
+          throw authError;
+        }
+        if (!session) {
+          console.error('No active session found');
+          throw new Error("No active session");
+        }
+
+        console.log('User authenticated, fetching settings for user:', session.user.id);
+
+        const { data, error: settingsError } = await supabase
+          .from("settings")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+
+        if (settingsError) {
+          console.error('Settings fetch error:', settingsError);
+          throw settingsError;
+        }
+
+        if (data) {
+          console.log('Settings found:', {
+            hasAccountSid: !!data.twilio_account_sid,
+            hasAuthToken: !!data.twilio_auth_token,
+            hasPhoneNumber: !!data.twilio_phone_number,
+            hasTwimlAppSid: !!data.twilio_twiml_app_sid,
+            hasApiSecret: !!data.twilio_api_secret,
+            hasApiKey: !!data.twilio_api_key,
+          });
+          setSettings(data);
+        } else {
+          console.log('No settings found, creating default settings...');
+          // No settings exist yet, create empty settings
+          const { data: newSettings, error: insertError } = await supabase
+            .from("settings")
+            .insert([{ 
+              user_id: session.user.id,
+              twilio_account_sid: '',
+              twilio_auth_token: '',
+              twilio_phone_number: '',
+              twilio_twiml_app_sid: '',
+              twilio_api_secret: '',
+              twilio_api_key: ''
+            }])
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Settings creation error:', insertError);
+            throw insertError;
+          }
+          console.log('Default settings created successfully');
+          setSettings(newSettings);
+        }
+      } catch (err) {
+        console.error('Error in fetchSettings:', err);
+        setError(err as Error);
+        toast.error("Failed to load settings. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  const updateSettings = async (values: TwilioSettings) => {
+    try {
+      console.log('Updating settings...');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No active session found during settings update');
+        throw new Error("No active session");
+      }
+
+      console.log('Updating settings for user:', session.user.id);
+
+      const { error } = await supabase
+        .from("settings")
+        .update(values)
+        .eq("user_id", session.user.id);
+
+      if (error) {
+        console.error('Settings update error:', error);
+        throw error;
+      }
+
+      console.log('Settings updated successfully');
+      setSettings(values);
+      toast.success("Settings updated successfully");
+      return true;
+    } catch (err) {
+      console.error('Error in updateSettings:', err);
+      toast.error("Failed to update settings. Please try again.");
+      throw err;
+    }
+  };
+
+  return { settings, loading, error, updateSettings };
+}
+
+================
+File: src/hooks/useTwilioVoice.ts
+================
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Contact } from "@/types";
+
+interface InitiateCallParams {
+  contact: Contact;
+  phone: string;
+  notes: string;
+}
+
+export function useTwilioVoice() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const initiateCall = async ({ contact, phone, notes }: InitiateCallParams) => {
+    setIsLoading(true);
+
+    try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("User not authenticated");
       }
 
-      const callData = await createCallRecord(contact.id, user.id, notes);
-      const response = await initiateCall(callData.id, phone, notes);
+      // First check if Twilio settings exist
+      const { data: settings, error: settingsError } = await supabase
+        .from("settings")
+        .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
+        .single();
 
-      if (response.error) {
-        let errorMessage = "Failed to initiate call";
-        
-        if (response.error.body) {
-          try {
-            const errorBody = JSON.parse(response.error.body);
-            errorMessage = errorBody.error || errorMessage;
-          } catch (parseError) {
-            console.error('Error parsing response:', parseError);
-          }
-        }
-        
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        return false;
+      if (settingsError || !settings) {
+        throw new Error("Please configure your Twilio settings in the Settings page first");
       }
 
-      toast({
-        title: "Success",
-        description: "Call initiated successfully",
+      if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+        throw new Error("Please complete your Twilio settings configuration");
+      }
+
+      // Create call record
+      const { data: callData, error: callError } = await supabase
+        .from("calls")
+        .insert([{
+          contact_id: contact.id,
+          user_id: user.id,
+          notes,
+          status: 'initiated'
+        }])
+        .select()
+        .single();
+
+      if (callError) {
+        throw new Error("Failed to create call record");
+      }
+
+      // Initiate call
+      const response = await fetch('/api/calls/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          callId: callData.id,
+          to: phone,
+          notes,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Call initiation error:', errorData);
+        throw new Error(errorData.error || 'Failed to initiate call');
+      }
+
+      console.log('Call initiated successfully');
+
+      toast({
+        title: "Call Initiated",
+        description: "Your call is being connected.",
+      });
+
       return true;
     } catch (error) {
-      console.error('Call creation error:', error);
+      console.error('Error in initiateCall:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to initiate call",
@@ -8795,190 +10130,8 @@ export function useInitiateCall() {
   };
 
   return {
-    initiateCall: handleInitiateCall,
+    initiateCall,
     isLoading
-  };
-}
-
-================
-File: src/hooks/useSettings.ts
-================
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-
-export interface TwilioSettings {
-  twilio_account_sid: string;
-  twilio_auth_token: string;
-  twilio_phone_number: string;
-}
-
-export function useSettings() {
-  const [settings, setSettings] = useState<TwilioSettings | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
-
-        const { data, error } = await supabase
-          .from("settings")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (data) {
-          setSettings(data);
-        } else {
-          // No settings exist yet, create empty settings
-          const { data: newSettings, error: insertError } = await supabase
-            .from("settings")
-            .insert([{ 
-              user_id: user.id,
-              twilio_account_sid: '',
-              twilio_auth_token: '',
-              twilio_phone_number: ''
-            }])
-            .select()
-            .single();
-
-          if (insertError) throw insertError;
-          setSettings(newSettings);
-        }
-      } catch (err) {
-        console.error('Error fetching settings:', err);
-        setError(err as Error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings();
-  }, []);
-
-  const updateSettings = async (values: TwilioSettings) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
-      const { error } = await supabase
-        .from("settings")
-        .update(values)
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      setSettings(values);
-      return true;
-    } catch (err) {
-      console.error('Error updating settings:', err);
-      throw err;
-    }
-  };
-
-  return { settings, loading, error, updateSettings };
-}
-
-================
-File: src/hooks/useTwilioVoice.ts
-================
-import { useState } from 'react';
-import { useToast } from './use-toast';
-import { supabase } from "@/integrations/supabase/client";
-
-export function useTwilioVoice() {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const { toast } = useToast();
-
-  const makeCall = async (to: string, contactId: string) => {
-    try {
-      setIsConnecting(true);
-      
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error("Authentication required");
-      }
-
-      // Get user's Twilio settings with improved error handling
-      const { data: settings, error: settingsError } = await supabase
-        .from("settings")
-        .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
-        .eq("user_id", session.user.id)
-        .single();
-
-      if (settingsError) {
-        console.error('Settings fetch error:', settingsError);
-        throw new Error("Failed to fetch Twilio settings");
-      }
-
-      if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_phone_number) {
-        throw new Error("Please configure your Twilio settings in the Settings page");
-      }
-
-      // Create a new call record
-      const { data: callData, error: callError } = await supabase
-        .from("calls")
-        .insert([{
-          contact_id: contactId,
-          user_id: session.user.id,
-          status: 'initiated',
-          notes: '',
-        }])
-        .select()
-        .single();
-
-      if (callError) throw callError;
-
-      // Initiate the call using our API
-      const response = await fetch('/api/calls/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          callId: callData.id,
-          to,
-          from: settings.twilio_phone_number,
-        }),
-      });
-
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.error || 'Failed to initiate call');
-      }
-
-      toast({
-        title: "Call Initiated",
-        description: "Connecting your call...",
-      });
-
-      return true;
-    } catch (error) {
-      console.error('Error making call:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to initiate call",
-        variant: "destructive",
-      });
-      return false;
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  return {
-    makeCall,
-    isConnecting,
   };
 }
 
@@ -8988,17 +10141,27 @@ File: src/integrations/supabase/client.ts
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://fbwxtooicqpqotherube.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZid3h0b29pY3FwcW90aGVydWJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ5Mzc2NzYsImV4cCI6MjA1MDUxMzY3Nn0.ocomiXScS7tresXsQP9M0LlyoSd4BMZWJ2C0ySzIhAI";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables');
+}
 
 export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'supabase-js-web'
+      }
     }
   }
 );
@@ -9019,30 +10182,39 @@ export type Database = {
     Tables: {
       calls: {
         Row: {
-          contact_id: string
+          contact_id: string | null
           created_at: string
           duration: number | null
+          end_time: string | null
           id: string
           notes: string | null
+          start_time: string | null
           status: string | null
+          twilio_sid: string | null
           user_id: string
         }
         Insert: {
-          contact_id: string
+          contact_id?: string | null
           created_at?: string
           duration?: number | null
+          end_time?: string | null
           id?: string
           notes?: string | null
+          start_time?: string | null
           status?: string | null
+          twilio_sid?: string | null
           user_id: string
         }
         Update: {
-          contact_id?: string
+          contact_id?: string | null
           created_at?: string
           duration?: number | null
+          end_time?: string | null
           id?: string
           notes?: string | null
+          start_time?: string | null
           status?: string | null
+          twilio_sid?: string | null
           user_id?: string
         }
         Relationships: [
@@ -9101,29 +10273,38 @@ export type Database = {
       }
       contacts: {
         Row: {
+          birth_date: string | null
           company: string | null
           created_at: string
           email: string | null
           id: string
+          job_title: string | null
           name: string
+          notes: string | null
           phone: string | null
           user_id: string
         }
         Insert: {
+          birth_date?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          job_title?: string | null
           name: string
+          notes?: string | null
           phone?: string | null
           user_id: string
         }
         Update: {
+          birth_date?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          job_title?: string | null
           name?: string
+          notes?: string | null
           phone?: string | null
           user_id?: string
         }
@@ -9226,24 +10407,33 @@ export type Database = {
           created_at: string
           id: string
           twilio_account_sid: string | null
+          twilio_api_key: string | null
+          twilio_api_secret: string | null
           twilio_auth_token: string | null
           twilio_phone_number: string | null
+          twilio_twiml_app_sid: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           twilio_account_sid?: string | null
+          twilio_api_key?: string | null
+          twilio_api_secret?: string | null
           twilio_auth_token?: string | null
           twilio_phone_number?: string | null
+          twilio_twiml_app_sid?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           twilio_account_sid?: string | null
+          twilio_api_key?: string | null
+          twilio_api_secret?: string | null
           twilio_auth_token?: string | null
           twilio_phone_number?: string | null
+          twilio_twiml_app_sid?: string | null
           user_id?: string
         }
         Relationships: []
@@ -9707,11 +10897,11 @@ const Contacts = () => {
                     <TableCell>{contact.email}</TableCell>
                     <TableCell>{contact.phone}</TableCell>
                     <TableCell>{contact.company}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       <div className="flex justify-end gap-2">
-                        <CallFormDialog contact={contact} />
-                        <SendSMSDialog contact={contact} />
-                        <SendEmailDialog contact={contact} />
+                        <CallFormDialog contact={contact} variant="ghost" size="icon" />
+                        <SendSMSDialog contact={contact} variant="ghost" size="icon" />
+                        <SendEmailDialog contact={contact} variant="ghost" size="icon" />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -10032,128 +11222,208 @@ const Deals = () => {
 export default Deals;
 
 ================
-File: src/pages/Index.tsx
+File: src/pages/PhonePage.js
 ================
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from 'react';
+import { Device } from '@twilio/voice-sdk';
+
+const PhonePage = () => {
+    const [device, setDevice] = useState(null);
+    const [call, setCall] = useState(null);
+    const [callStatus, setCallStatus] = useState('Idle');
+    const [toNumber, setToNumber] = useState('');
+
+    useEffect(() => {
+        fetchToken();
+    }, []);
+
+    const fetchToken = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientName: 'user' })
+            });
+
+            const data = await response.json();
+            setupTwilioDevice(data.token);
+        } catch (error) {
+            console.error('Error fetching token:', error);
+        }
+    };
+
+    const setupTwilioDevice = async (token) => {
+        try {
+            const twilioDevice = new Device(token, { enableIceRestart: true });
+
+            twilioDevice.on('registered', () => setCallStatus('Ready to Call'));
+            twilioDevice.on('error', (error) => console.error('Twilio Error:', error));
+            twilioDevice.on('incoming', (incomingCall) => {
+                setCall(incomingCall);
+                incomingCall.accept();
+                setCallStatus('In Call');
+            });
+            twilioDevice.on('disconnect', () => setCallStatus('Idle'));
+
+            await twilioDevice.register();
+            setDevice(twilioDevice);
+        } catch (error) {
+            console.error('Error setting up Twilio Device:', error);
+        }
+    };
+
+    const makeCall = () => {
+        if (device) {
+            const outgoingCall = device.connect({ params: { To: toNumber } });
+            setCall(outgoingCall);
+            setCallStatus('Calling...');
+        }
+    };
+
+    const hangUp = () => {
+        if (call) {
+            call.disconnect();
+            setCallStatus('Idle');
+        }
+    };
+
+    return (
+        <div style={{ padding: 20 }}>
+            <h2>Twilio Web Phone</h2>
+            <p>Status: {callStatus}</p>
+            <input
+                type="text"
+                placeholder="Enter phone number"
+                value={toNumber}
+                onChange={(e) => setToNumber(e.target.value)}
+            />
+            <button onClick={makeCall} disabled={!device}>Call</button>
+            <button onClick={hangUp}>Hang Up</button>
+        </div>
+    );
+};
+
+export default PhonePage;
+
+================
+File: src/pages/QuickCall.tsx
+================
+import React, { useState } from "react";
+import { useInitiateCall } from "@/hooks/useInitiateCall";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ContactCard } from "@/components/ContactCard";
-import { Plus, Users, DollarSign, PhoneCall } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ContactForm, ContactFormValues } from "@/components/ContactForm";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useContacts } from "@/hooks/useContacts";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useSettings } from "@/hooks";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CallWindow } from "@/components/CallWindow";
+import { PhoneCall } from "lucide-react";
 
-const Index = () => {
-  const { contacts, loading, error, addContact } = useContacts();
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
+const QuickCall = () => {
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const [callWindowOpen, setCallWindowOpen] = useState(false);
+  const [currentCallId, setCurrentCallId] = useState<string>();
+  const { settings, loading: settingsLoading } = useSettings();
+  const { initiateCall, isLoading, hangUp } = useInitiateCall();
 
-  const handleAddContact = async (values: ContactFormValues) => {
-    try {
-      const contactData = {
-        name: values.name || '',
-        company: values.company || '',
-        email: values.email || '',
-        phone: values.phone || ''
-      };
-      const newContact = await addContact(contactData);
-      if (newContact) {
-        setOpen(false);
-        toast({
-          title: "Success",
-          description: "Contact added successfully",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to add contact",
-        variant: "destructive",
-      });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { success, callId } = await initiateCall({
+      phone,
+      notes
+    });
+
+    if (success && callId) {
+      setCallWindowOpen(true);
+      setCurrentCallId(callId);
     }
   };
 
-  if (error) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-red-500">Error loading contacts: {error.message}</p>
-      </div>
-    );
-  }
+  const handleHangUp = async () => {
+    if (currentCallId) {
+      await hangUp(currentCallId);
+      setCallWindowOpen(false);
+      setCurrentCallId(undefined);
+    }
+  };
+
+  const isTwilioConfigured = settings?.twilio_account_sid && 
+                            settings?.twilio_auth_token && 
+                            settings?.twilio_phone_number &&
+                            settings?.twilio_twiml_app_sid;
 
   return (
-    <div className="p-8 bg-crm-background min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-crm-foreground">Dashboard</h1>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Contact
+    <div className="container mx-auto p-6">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Quick Call</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {settingsLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+          ) : !isTwilioConfigured ? (
+            <Alert variant="destructive">
+              <AlertTitle>Missing Twilio Settings</AlertTitle>
+              <AlertDescription>
+                Please configure your Twilio settings in the Settings page before making calls.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1234567890"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Call notes..."
+                />
+              </div>
+              <Button 
+                type="submit" 
+                disabled={isLoading || !isTwilioConfigured}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <PhoneCall className="h-4 w-4" />
+                {isLoading ? "Initiating Call..." : "Start Call"}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Contact</DialogTitle>
-              </DialogHeader>
-              <ContactForm onSubmit={handleAddContact} />
-            </DialogContent>
-          </Dialog>
-        </div>
+            </form>
+          )}
+        </CardContent>
+      </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Users className="h-5 w-5 text-crm-primary" />
-                Total Contacts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-10 w-16" />
-              ) : (
-                <p className="text-3xl font-bold">{contacts.length}</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5 text-green-500" />
-                Active Deals
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">8</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <PhoneCall className="h-5 w-5 text-blue-500" />
-                Recent Calls
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">12</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      {currentCallId && (
+        <CallWindow
+          open={callWindowOpen}
+          onClose={() => {
+            setCallWindowOpen(false);
+            setCurrentCallId(undefined);
+          }}
+          status="initiated"
+          phoneNumber={phone}
+          onHangUp={handleHangUp}
+        />
+      )}
     </div>
   );
 };
 
-export default Index;
+export default QuickCall;
 
 ================
 File: src/pages/Settings.tsx
@@ -10361,6 +11631,45 @@ export const setupApiServer = (app: express.Application) => {
 };
 
 ================
+File: src/server/server.js
+================
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const twilio = require('twilio');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const apiKey = process.env.TWILIO_API_KEY;
+const apiSecret = process.env.TWILIO_API_SECRET;
+const twimlAppSid = process.env.TWILIO_TWIML_APP_SID;
+
+app.post('/token', (req, res) => {
+    const clientName = req.body.clientName || 'defaultUser';
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
+
+    const token = new AccessToken(accountSid, apiKey, apiSecret, { ttl: 3600 });
+    token.identity = clientName;
+
+    const voiceGrant = new VoiceGrant({
+        outgoingApplicationSid: twimlAppSid,
+        incomingAllow: true
+    });
+
+    token.addGrant(voiceGrant);
+
+    res.json({ token: token.toJwt() });
+});
+
+app.listen(5000, () => {
+    console.log('Token server running on port 5000');
+});
+
+================
 File: src/types/communication.ts
 ================
 export interface Call {
@@ -10400,6 +11709,9 @@ export interface Contact {
   email: string;
   phone: string;
   company: string;
+  job_title?: string;
+  birth_date?: string;
+  notes?: string;
   user_id: string;
   created_at: string;
 }
@@ -10464,42 +11776,85 @@ export * from './communication';
 File: src/utils/twilioUtils.ts
 ================
 import { supabase } from "@/integrations/supabase/client";
-import { TwilioSettings } from "@/hooks/useSettings";
 
-export const validateTwilioSettings = async (settings: TwilioSettings | null) => {
-  if (!settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token) {
-    return {
-      isValid: false,
-      error: "Please configure your Twilio settings in the Settings page first"
+export interface TwilioSettings {
+  twilio_account_sid: string;
+  twilio_auth_token: string;
+  twilio_phone_number: string;
+  twilio_twiml_app_sid: string;
+}
+
+export const validateTwilioSettings = (settings: TwilioSettings | null): { 
+  isValid: boolean;
+  error?: string;
+  missingSettings?: string[];
+} => {
+  if (!settings) {
+    return { isValid: false, error: "Twilio settings not found" };
+  }
+
+  const requiredSettings = [
+    'twilio_account_sid',
+    'twilio_auth_token',
+    'twilio_phone_number',
+    'twilio_twiml_app_sid'
+  ];
+
+  const missingSettings = requiredSettings.filter(setting => !settings[setting]);
+  
+  if (missingSettings.length > 0) {
+    return { 
+      isValid: false, 
+      error: `Missing Twilio settings: ${missingSettings.join(', ')}`,
+      missingSettings 
     };
   }
-  return { isValid: true, error: null };
+
+  return { isValid: true };
 };
 
-export const createCallRecord = async (contactId: string, userId: string, notes: string) => {
+export const createCallRecord = async (contactId: string | undefined, userId: string, notes: string) => {
   const { data, error } = await supabase
     .from("calls")
-    .insert({
+    .insert([{
       contact_id: contactId,
       user_id: userId,
       notes,
       status: 'initiated'
-    })
+    }])
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) throw new Error("Failed to create call record");
   return data;
 };
 
-export const initiateCall = async (callId: string, phone: string, notes: string) => {
-  return await supabase.functions.invoke('create-call', {
-    body: {
+export const initiateCall = async (callId: string, to: string, notes: string) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error("Not authenticated");
+  }
+
+  // Use relative URL that will be handled by the Express middleware
+  const response = await fetch('/api/calls/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({
       callId,
-      to: phone,
+      to,
       notes,
-    }
+    }),
   });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to initiate call');
+  }
+
+  return response.json();
 };
 
 ================
@@ -10562,6 +11917,7 @@ import Deals from "@/pages/Deals";
 import Communications from "@/pages/Communications";
 import Settings from "@/pages/Settings";
 import SignIn from "@/pages/SignIn";
+import QuickCall from "@/pages/QuickCall";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -10597,11 +11953,13 @@ function App() {
               <main className="flex-1 overflow-y-auto">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/contacts" element={<Contacts />} />
                   <Route path="/contacts/:id" element={<ContactDetail />} />
                   <Route path="/deals" element={<Deals />} />
                   <Route path="/communications" element={<Communications />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/quick-call" element={<QuickCall />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </main>
@@ -10736,6 +12094,16 @@ File: src/vite-env.d.ts
 /// <reference types="vite/client" />
 
 ================
+File: supabase/.branches/_current_branch
+================
+main
+
+================
+File: supabase/.temp/cli-latest
+================
+v2.12.1
+
+================
 File: supabase/functions/_shared/cors.ts
 ================
 export const corsHeaders = {
@@ -10752,7 +12120,14 @@ import { corsHeaders } from "../_shared/cors.ts"
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, {
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Max-Age': '86400',
+      },
+      status: 204,
+    })
   }
 
   try {
@@ -10784,7 +12159,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ success: true }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
@@ -10795,7 +12170,7 @@ serve(async (req) => {
         error: error instanceof Error ? error.message : "Unknown error" 
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       }
     )
@@ -10806,8 +12181,7 @@ serve(async (req) => {
 File: supabase/functions/create-call/index.ts
 ================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import twilio from "https://esm.sh/twilio@4.19.0"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10815,153 +12189,119 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    });
   }
 
   try {
-    const { callId, to, notes } = await req.json()
-    console.log('Received request:', { callId, to, notes })
-
-    // Get auth user
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('No authorization header provided')
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
-    
-    if (userError || !user) {
-      console.error('User fetch error:', userError)
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+    // Get the JWT token from the request header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
     }
 
-    console.log('Authenticated user:', user.id)
+    // Get the user from the JWT token
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    )
 
-    // Get Twilio settings with improved error handling
+    if (userError || !user) {
+      throw new Error('Invalid token')
+    }
+
+    const { callId, to, notes } = await req.json()
+    console.log('Received request:', { callId, to, notes })
+
+    // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
-      .from("settings")
-      .select("twilio_account_sid, twilio_auth_token, twilio_phone_number")
-      .eq("user_id", user.id)
+      .from('settings')
+      .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
+      .eq('user_id', user.id)
       .maybeSingle()
 
     if (settingsError) {
-      console.error('Settings fetch error:', settingsError)
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to fetch Twilio settings",
-          details: settingsError.message 
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+      console.error('Settings error:', settingsError)
+      throw new Error('Failed to fetch Twilio settings')
     }
 
-    // Check if settings exist and are complete
-    if (!settings || !settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      console.error('Missing Twilio settings for user:', user.id)
-      return new Response(
-        JSON.stringify({ 
-          error: "Please configure your Twilio settings in the Settings page first",
-          missingSettings: true,
-          details: {
-            hasTwilioAccountSid: !!settings?.twilio_account_sid,
-            hasTwilioAuthToken: !!settings?.twilio_auth_token,
-            hasTwilioPhoneNumber: !!settings?.twilio_phone_number
-          }
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
+    if (!settings) {
+      throw new Error('Twilio settings not found')
     }
 
-    console.log('Retrieved Twilio settings for user:', user.id)
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
+      throw new Error('Incomplete Twilio settings')
+    }
 
-    // Initialize Twilio client
-    const client = twilio(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token
+    const twimlUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twiml?To=${encodeURIComponent(to)}&From=${encodeURIComponent(settings.twilio_phone_number)}`
+    const statusCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/call-status`
+
+    // Make request to Twilio API directly
+    const twilioResponse = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${settings.twilio_account_sid}/Calls.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + btoa(`${settings.twilio_account_sid}:${settings.twilio_auth_token}`),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          To: to,
+          From: settings.twilio_phone_number,
+          Url: twimlUrl,
+          StatusCallback: statusCallbackUrl,
+          StatusCallbackEvent: JSON.stringify(['completed']),
+        }).toString(),
+      }
     )
 
-    const baseUrl = `${req.url.split('/functions/')[0]}/functions/v1`
+    if (!twilioResponse.ok) {
+      const twilioError = await twilioResponse.json()
+      console.error('Twilio API error:', twilioError)
+      throw new Error(`Twilio API error: ${twilioError.message || 'Unknown error'}`)
+    }
 
-    console.log('Creating Twilio call with settings:', {
-      url: `${baseUrl}/twiml`,
-      to,
-      from: settings.twilio_phone_number,
-      statusCallback: `${baseUrl}/call-status`
-    })
-
-    // Create call using Twilio
-    const call = await client.calls.create({
-      url: `${baseUrl}/twiml`,
-      to,
-      from: settings.twilio_phone_number,
-      statusCallback: `${baseUrl}/call-status`,
-      statusCallbackEvent: ['completed'],
-    })
-
-    console.log('Call created successfully:', call.sid)
+    const twilioData = await twilioResponse.json()
+    console.log('Twilio call created:', twilioData)
 
     // Update call record with Twilio SID
-    if (callId) {
-      const { error: updateError } = await supabaseClient
-        .from("calls")
-        .update({ 
-          twilio_sid: call.sid,
-          status: 'initiated'
-        })
-        .eq("id", callId)
-        .eq("user_id", user.id)
+    const { error: updateError } = await supabaseClient
+      .from('calls')
+      .update({ 
+        twilio_sid: twilioData.sid,
+        status: 'initiated'
+      })
+      .eq('id', callId)
+      .eq('user_id', user.id)
 
-      if (updateError) {
-        console.error('Call update error:', updateError)
-        console.warn('Failed to update call record, but call was created')
-      }
+    if (updateError) {
+      console.error('Update error:', updateError)
+      throw new Error('Failed to update call record')
     }
 
     return new Response(
-      JSON.stringify({ success: true, sid: call.sid }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      JSON.stringify({ success: true, sid: twilioData.sid }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
-
   } catch (error) {
-    console.error('Error in create-call function:', error)
+    console.error('Error creating call:', error)
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
       }
     )
   }
@@ -11014,27 +12354,27 @@ serve(async (req) => {
     // Get the user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
-      .select('twilio_account_sid, twilio_auth_token')
+      .select('twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid')
       .eq('user_id', user.id)
       .single()
 
-    if (settingsError) {
+    if (settingsError || !settings) {
       console.error('Settings fetch error:', settingsError)
       throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token) {
+    if (!settings.twilio_account_sid || !settings.twilio_auth_token) {
       console.error('Incomplete Twilio settings:', {
-        hasTwilioAccountSid: !!settings?.twilio_account_sid,
-        hasTwilioAuthToken: !!settings?.twilio_auth_token
+        hasTwilioAccountSid: !!settings.twilio_account_sid,
+        hasTwilioAuthToken: !!settings.twilio_auth_token
       })
       
       return new Response(
         JSON.stringify({
           error: 'Incomplete Twilio settings',
           details: {
-            hasTwilioAccountSid: !!settings?.twilio_account_sid,
-            hasTwilioAuthToken: !!settings?.twilio_auth_token
+            hasTwilioAccountSid: !!settings.twilio_account_sid,
+            hasTwilioAuthToken: !!settings.twilio_auth_token
           }
         }),
         {
@@ -11050,13 +12390,13 @@ serve(async (req) => {
     const accessToken = new AccessToken(
       settings.twilio_account_sid,
       settings.twilio_auth_token,
-      { identity: user.id }
+      settings.twilio_twiml_app_sid || settings.twilio_account_sid
     )
 
     // Create a Voice grant and add it to the token
     const VoiceGrant = AccessToken.VoiceGrant
     const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: settings.twilio_account_sid,
+      outgoingApplicationSid: settings.twilio_twiml_app_sid || settings.twilio_account_sid,
       incomingAllow: true,
     })
     accessToken.addGrant(voiceGrant)
@@ -11091,97 +12431,133 @@ serve(async (req) => {
 ================
 File: supabase/functions/message-webhook/index.ts
 ================
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders } from "../_shared/cors.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
-// Environment variables
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')! // Use service role key instead of anon key
+// ✅ Environment variables
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // Use service role key
 
-// Create Supabase client with service role key for full access
+// ✅ Create Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
-})
+    persistSession: false,
+  },
+});
 
-// Helper function to parse message data
-function parseTwilioMessage(url: URL): Record<string, string> {
-  const params = url.searchParams
-  return {
-    from: params.get('From') || '',
-    body: params.get('Body') || '',
-    messageSid: params.get('MessageSid') || '',
+// ✅ Function to parse and normalize Twilio message data
+async function parseTwilioMessage(req: Request): Promise<Record<string, string>> {
+  let from = "";
+  let body = "";
+  let messageSid = "";
+
+  if (req.method === "GET") {
+    // ✅ Extract from URL params (GET request)
+    const url = new URL(req.url);
+    from = url.searchParams.get("From") || "";
+    body = url.searchParams.get("Body") || "";
+    messageSid = url.searchParams.get("MessageSid") || "";
+  } else if (req.method === "POST") {
+    // ✅ Extract from form-data (POST request)
+    const formData = await req.formData();
+    from = formData.get("From")?.toString() || "";
+    body = formData.get("Body")?.toString() || "";
+    messageSid = formData.get("MessageSid")?.toString() || "";
   }
+
+  return {
+    from: from.replace(/\D/g, ""), // Normalize phone number (remove non-numeric characters)
+    body,
+    messageSid,
+  };
 }
 
 serve(async (req) => {
-  // Handle CORS
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  // ✅ Handle CORS
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const url = new URL(req.url)
-    const messageData = parseTwilioMessage(url)
+    const messageData = await parseTwilioMessage(req);
 
-    // Find the contact based on the phone number
-    const { data: contact, error: contactError } = await supabase
-      .from('contacts')
-      .select('id, user_id')
-      .eq('phone', messageData.from)
-      .maybeSingle()
+    console.log("📩 Incoming message from:", messageData.from);
+
+    if (!messageData.from) {
+      console.error("❌ Error: No phone number found in the request!");
+      return new Response(
+        JSON.stringify({ error: "No phone number provided" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, // Bad request
+        }
+      );
+    }
+
+    // ✅ Normalize the phone number for query
+    const incomingPhoneNumber = messageData.from.replace(/\D/g, ""); // Remove all non-numeric characters
+    console.log("📞 Normalized incoming number:", incomingPhoneNumber);
+
+    // ✅ Query Supabase for matching contact (limit to 1)
+    const { data: contacts, error: contactError } = await supabase
+    .from("contacts")
+    .select("id, user_id") // ✅ Fetch both `id` and `user_id`
+    .or(`phone.eq.${incomingPhoneNumber}, phone.eq.+${incomingPhoneNumber}`)
+    .limit(1);
+  
 
     if (contactError) {
-      throw contactError
+      console.error("🛑 Supabase Query Error:", contactError);
+      throw contactError;
     }
 
-    if (!contact) {
-      console.error('No contact found for phone number:', messageData.from)
+    if (!contacts || contacts.length === 0) {
+      console.warn(`⚠️ No contact found for: ${incomingPhoneNumber}`);
       return new Response(
-        JSON.stringify({ error: 'Contact not found' }),
-        { 
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        JSON.stringify({ warning: "No matching contact found. Storing as unknown sender." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, // ✅ Prevents Twilio from retrying
         }
-      )
+      );
     }
 
-    // Store the incoming message
-    const { error: messageError } = await supabase
-      .from('communications')
-      .insert({
-        contact_id: contact.id,
-        user_id: contact.user_id,
-        type: 'sms',
-        direction: 'incoming',
-        content: messageData.body,
-        twilio_sid: messageData.messageSid,
-        created_at: new Date().toISOString()
-      })
+    const contact = contacts[0]; // ✅ Now we have exactly one contact
+
+    // ✅ Store the incoming message in Supabase
+    const { error: messageError } = await supabase.from("communications").insert({
+      contact_id: contact.id,
+      user_id: contact.user_id, // ✅ Ensure `user_id` is included
+      type: "sms",
+      direction: "received",
+      content: messageData.body,
+      twilio_sid: messageData.messageSid,
+      created_at: new Date().toISOString(),
+    });
 
     if (messageError) {
-      throw messageError
+      throw messageError;
     }
+
+    console.log("✅ Message stored successfully for contact:", contact.id);
 
     return new Response(
       JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    console.error("❌ Error processing Twilio webhook:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
+      JSON.stringify({ error: error.message || "Unknown error occurred" }),
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
-    )
+    );
   }
-})
+});
 
 ================
 File: supabase/functions/send-email/index.ts
@@ -11352,45 +12728,129 @@ serve(async (req: Request) => {
 ================
 File: supabase/functions/twiml/index.ts
 ================
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders } from "../_shared/cors.ts"
-import twilio from "https://esm.sh/twilio@4.19.0"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        ...corsHeaders,
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+        "Access-Control-Max-Age": "86400",
+      },
+      status: 204,
+    });
   }
 
   try {
-    const VoiceResponse = twilio.twiml.VoiceResponse;
-    const response = new VoiceResponse();
-    
-    response.say('Hello! This is a call from your CRM system.');
-    response.pause({ length: 1 });
-    response.say('Connecting you now.');
+    let caller = "";
+    let recipient = "";
 
-    return new Response(response.toString(), {
+    // ✅ Get Content-Type safely
+    const contentType = req.headers.get("content-type") || "";
+
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      // ✅ Parse Twilio's form-data request
+      const formData = new URLSearchParams(await req.text());
+      caller = formData.get("From") || "";
+      recipient = formData.get("To") || "";
+    } else if (contentType.includes("application/json")) {
+      // ✅ Handle JSON payloads
+      const jsonBody = await req.json();
+      caller = jsonBody.From || "";
+      recipient = jsonBody.To || "";
+    } else {
+      console.error("❌ Invalid content type or missing content-type header.");
+      return new Response(
+        JSON.stringify({ error: "Unsupported content type. Use JSON or form-urlencoded." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, // Bad Request
+        }
+      );
+    }
+
+    console.log("📞 Call request received. From:", caller, "To:", recipient);
+
+    if (!caller || !recipient) {
+      return new Response(
+        JSON.stringify({ error: "Missing caller or recipient number" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    // ✅ Manually generate TwiML XML response
+    const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Please hold while we connect your call.</Say>
+  <Dial callerId="${caller}" record="record-from-answer" timeout="30" answerOnBridge="true">
+    <Number>${recipient}</Number>
+  </Dial>
+</Response>`;
+
+    console.log("📞 Generated TwiML:", twimlResponse);
+
+    return new Response(twimlResponse, {
       headers: {
         ...corsHeaders,
-        'Content-Type': 'application/xml',
+        "Content-Type": "application/xml",
       },
-    })
+    });
   } catch (error) {
-    console.error('Error generating TwiML:', error)
+    console.error("❌ Error generating TwiML:", error);
     return new Response(
-      JSON.stringify({ error: 'Failed to generate TwiML response' }),
+      JSON.stringify({ error: "Failed to generate TwiML response" }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       }
-    )
+    );
   }
-})
+});
 
 ================
 File: supabase/config.toml
 ================
+# Supabase Project Configuration
 project_id = "fbwxtooicqpqotherube"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+shadow_port = 54320
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[analytics]
+enabled = true
+port = 54327
+
+[realtime]
+enabled = true
+
+# ✅ Fix functions configuration (correct format)
+[functions.message-webhook]
+verify_jwt = false
 
 ================
 File: .gitignore
@@ -11419,6 +12879,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+codetree.txt
 
 ================
 File: components.json
@@ -11546,7 +13007,9 @@ File: package.json
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-query": "^5.56.2",
-    "@twilio/voice-sdk": "^2.12.3",
+    "@twilio/voice-react-native-sdk": "^1.3.0",
+    "@twilio/voice-sdk": "^2.9.0",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/twilio": "^3.19.2",
     "class-variance-authority": "^0.7.1",
@@ -11571,8 +13034,10 @@ File: package.json
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
-    "twilio": "^5.4.0",
+    "twilio": "^5.4.3",
+    "twilio-client": "^1.14.0",
     "vaul": "^0.9.3",
+    "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -11588,7 +13053,7 @@ File: package.json
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
-    "lovable-tagger": "^1.0.19",
+    "lovable-tagger": "^1.1.3",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
@@ -11866,12 +13331,26 @@ import { componentTagger } from "lovable-tagger";
 import express from 'express';
 import { setupApiServer } from './src/server';
 import type { ViteDevServer } from 'vite';
+import cors from 'cors';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    cors: true,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    },
+    proxy: {
+      '/api': {
+        target: 'https://crm-six-black.vercel.app',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   },
   plugins: [
     react(),
@@ -11881,6 +13360,12 @@ export default defineConfig(({ mode }) => ({
       name: 'api-server',
       configureServer(server: ViteDevServer) {
         const app = express();
+        app.use(cors({
+          origin: '*',
+          methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+          credentials: true,
+          optionsSuccessStatus: 204,
+        }));
         app.use(express.json());
         setupApiServer(app);
         server.middlewares.use(app);
