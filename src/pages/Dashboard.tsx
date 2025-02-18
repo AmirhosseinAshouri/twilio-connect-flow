@@ -6,64 +6,56 @@ import { DollarSign, Phone, Users, AtSign } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Deal } from "@/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DealForm } from "@/components/DealForm";
-
 export default function Dashboard() {
-  const { contacts } = useContacts();
-  const { deals, updateDeal } = useDeals();
-  const { calls } = useCalls();
+  const {
+    contacts
+  } = useContacts();
+  const {
+    deals,
+    updateDeal
+  } = useDeals();
+  const {
+    calls
+  } = useCalls();
   const [mentionedDeals, setMentionedDeals] = useState<Deal[]>([]);
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-
   useEffect(() => {
     const fetchMentionedDeals = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { data: mentions } = await supabase
-        .from('mentions')
-        .select('deal_id')
-        .eq('mentioned_user_id', user.id);
-
+      const {
+        data: mentions
+      } = await supabase.from('mentions').select('deal_id').eq('mentioned_user_id', user.id);
       if (mentions && mentions.length > 0) {
         const dealIds = mentions.map(mention => mention.deal_id);
-        const { data: dealsData } = await supabase
-          .from('deals')
-          .select('*')
-          .in('id', dealIds)
-          .order('updated_at', { ascending: false });
-
+        const {
+          data: dealsData
+        } = await supabase.from('deals').select('*').in('id', dealIds).order('updated_at', {
+          ascending: false
+        });
         if (dealsData) {
           setMentionedDeals(dealsData as Deal[]);
         }
       }
     };
-
     fetchMentionedDeals();
   }, []);
-
   const handleDealUpdate = (updatedDeal: Deal) => {
     updateDeal(updatedDeal);
     setSelectedDeal(null);
     // Update the mentioned deals list
-    setMentionedDeals(prev => 
-      prev.map(deal => deal.id === updatedDeal.id ? updatedDeal : deal)
-    );
+    setMentionedDeals(prev => prev.map(deal => deal.id === updatedDeal.id ? updatedDeal : deal));
   };
-
-  return (
-    <div className="p-8 space-y-8">
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+  return <div className="p-8 space-y-8">
+      <h1 className="text-3xl font-bold mb-8 mx-[8px] my-[36px]">Dashboard</h1>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -97,8 +89,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {mentionedDeals.length > 0 && (
-        <div className="space-y-4">
+      {mentionedDeals.length > 0 && <div className="space-y-4">
           <div className="flex items-center gap-2">
             <AtSign className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Deals You're Mentioned In</h2>
@@ -113,12 +104,7 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mentionedDeals.map((deal) => (
-                  <TableRow 
-                    key={deal.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setSelectedDeal(deal)}
-                  >
+                {mentionedDeals.map(deal => <TableRow key={deal.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedDeal(deal)}>
                     <TableCell className="font-medium">{deal.title}</TableCell>
                     <TableCell>
                       <div className="max-w-md truncate">
@@ -126,26 +112,23 @@ export default function Dashboard() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(deal.updated_at), {
+                  addSuffix: true
+                })}
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>)}
               </TableBody>
             </Table>
           </div>
-        </div>
-      )}
+        </div>}
 
-      <Dialog open={!!selectedDeal} onOpenChange={(open) => !open && setSelectedDeal(null)}>
+      <Dialog open={!!selectedDeal} onOpenChange={open => !open && setSelectedDeal(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Deal</DialogTitle>
           </DialogHeader>
-          {selectedDeal && (
-            <DealForm deal={selectedDeal} onSubmit={handleDealUpdate} />
-          )}
+          {selectedDeal && <DealForm deal={selectedDeal} onSubmit={handleDealUpdate} />}
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 }
