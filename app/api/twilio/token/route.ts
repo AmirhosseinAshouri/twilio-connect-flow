@@ -1,11 +1,17 @@
 
 import { NextResponse } from "next/server";
 import twilio from "twilio";
-import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export async function GET(req: Request) {
   try {
-    // Get the session
+    // Get the session from the request
     const { data: { session }, error: authError } = await supabase.auth.getSession();
     
     if (authError || !session) {
@@ -33,6 +39,7 @@ export async function GET(req: Request) {
 
     console.log("Generating Twilio token...");
 
+    // Initialize Twilio AccessToken
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
 
@@ -54,6 +61,7 @@ export async function GET(req: Request) {
 
     console.log("Token generated successfully");
 
+    // Return the token
     return NextResponse.json({ token: token.toJwt() });
   } catch (error) {
     console.error("Token generation error:", error);
@@ -64,6 +72,7 @@ export async function GET(req: Request) {
   }
 }
 
+// Handle CORS preflight requests
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,

@@ -20,6 +20,11 @@ export function TwilioClient() {
         if (!user) return;
 
         const response = await fetch('/api/twilio/token');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to get token');
+        }
+
         const { token } = await response.json();
 
         if (!token) {
@@ -29,7 +34,7 @@ export function TwilioClient() {
 
         // Create new device with correct options
         const newDevice = new Device(token, {
-          codecPreferences: ["opus", "pcmu"],
+          edge: 'sydney', // Using a specific edge location
           allowIncomingWhileBusy: true,
           enableRingingState: true,
         });
