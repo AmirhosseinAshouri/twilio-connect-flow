@@ -1,12 +1,9 @@
-
-# project configuration in supabase
+# Supabase Project Configuration
 project_id = "fbwxtooicqpqotherube"
 
 [api]
 enabled = true
-# Port to use for the API URL.
 port = 54321
-docs = true
 schemas = ["public", "storage", "graphql_public"]
 
 [db]
@@ -26,7 +23,6 @@ enabled = true
 
 [auth]
 enabled = true
-port = 54325
 
 [analytics]
 enabled = true
@@ -35,6 +31,9 @@ port = 54327
 [realtime]
 enabled = true
 
-[edge_functions]
-[edge_functions.twiml]
+# ✅ Edge functions should be nested inside `[functions]`, not at the root
+[functions]
+enabled = true
+
+[functions.twiml]
 verify_jwt = false
