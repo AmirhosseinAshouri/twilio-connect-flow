@@ -55,11 +55,8 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          audioConstraints: {
-            autoGainControl: true,
-            echoCancellation: true,
-            noiseSuppression: true,
-          }
+          codecPreferences: ['opus', 'pcmu'],
+          edge: 'singapore'
         });
 
         await newDevice.register();
@@ -80,10 +77,6 @@ const TwilioClient = () => {
             title: "Ready",
             description: "Call device is ready to use",
           });
-        });
-        
-        newDevice.on('error', (error) => {
-          console.error('❌ Twilio Device Registration Error:', error);
         });
         
         newDevice.on('unregistered', () => {
