@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Device, Call } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
@@ -64,8 +63,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          // Use type-safe codec values
-          codecPreferences: ["opus", "pcmu"] as Array<"opus" | "pcmu">,
+          codecPreferences: ["opus", "pcmu"],
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false
