@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Contact } from "@/types";
@@ -45,5 +46,33 @@ export function useContact(id: string | undefined) {
     fetchContact();
   }, [id, toast]);
 
-  return { contact, loading, error };
+  const updateContact = async (updatedContact: Partial<Contact>) => {
+    try {
+      const { data, error } = await supabase
+        .from("contacts")
+        .update(updatedContact)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setContact(data);
+      toast({
+        title: "Contact updated",
+        description: "The contact has been successfully updated.",
+      });
+
+      return data;
+    } catch (err) {
+      toast({
+        title: "Error updating contact",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
+
+  return { contact, loading, error, updateContact };
 }

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,11 +24,13 @@ import {
 import { CallFormDialog } from "@/components/CallFormDialog";
 import { SendSMSDialog } from "@/components/SendSMSDialog";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
+import { useNavigate } from "react-router-dom";
 
 const Contacts = () => {
   const { contacts, loading, addContact } = useContacts();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const filteredContacts = contacts.filter(contact => {
     const searchLower = searchQuery.toLowerCase();
@@ -49,6 +52,10 @@ const Contacts = () => {
     if (newContact) {
       setOpen(false);
     }
+  };
+
+  const handleRowClick = (id: string) => {
+    navigate(`/contacts/${id}`);
   };
 
   return (
@@ -103,13 +110,20 @@ const Contacts = () => {
               </TableHeader>
               <TableBody>
                 {filteredContacts.map((contact) => (
-                  <TableRow key={contact.id}>
+                  <TableRow 
+                    key={contact.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleRowClick(contact.id)}
+                  >
                     <TableCell className="font-medium">{contact.name}</TableCell>
                     <TableCell>{contact.email}</TableCell>
                     <TableCell>{contact.phone}</TableCell>
                     <TableCell>{contact.company}</TableCell>
                     <TableCell>
-                      <div className="flex justify-end gap-2">
+                      <div 
+                        className="flex justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()} // Prevent row click when clicking actions
+                      >
                         <CallFormDialog contact={contact} variant="ghost" size="icon" />
                         <SendSMSDialog contact={contact} variant="ghost" size="icon" />
                         <SendEmailDialog contact={contact} variant="ghost" size="icon" />

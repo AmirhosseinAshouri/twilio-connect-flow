@@ -1,17 +1,33 @@
-import { useParams } from "react-router-dom";
+
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Phone, Mail, MessageSquare, ArrowLeft, Building2, Calendar } from "lucide-react";
+import { Phone, Mail, MessageSquare, ArrowLeft, Building2, Calendar, PenSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useContact } from "@/hooks/useContact";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ErrorState";
 import { NewCallDialog } from "@/components/NewCallDialog";
 import { CommunicationHistory } from "@/components/CommunicationHistory";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ContactForm, ContactFormValues } from "@/components/ContactForm";
 
 export default function ContactDetail() {
   const { id } = useParams();
-  const { contact, loading, error } = useContact(id || '');
+  const navigate = useNavigate();
+  const { contact, loading, error, updateContact } = useContact(id || '');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const handleUpdateContact = async (values: ContactFormValues) => {
+    if (contact && updateContact) {
+      await updateContact({
+        ...values,
+        id: contact.id,
+      });
+      setEditDialogOpen(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -58,14 +74,20 @@ export default function ContactDetail() {
   return (
     <div className="p-8 bg-background min-h-screen">
       <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex items-center gap-4">
-          <Link
-            to="/contacts"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <h1 className="text-3xl font-bold">{contact.name}</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link
+              to="/contacts"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <h1 className="text-3xl font-bold">{contact.name}</h1>
+          </div>
+          <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
+            <PenSquare className="h-4 w-4 mr-2" />
+            Edit Contact
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -130,6 +152,26 @@ export default function ContactDetail() {
         </div>
 
         <CommunicationHistory contactId={contact.id} />
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Contact</DialogTitle>
+            </DialogHeader>
+            <ContactForm 
+              onSubmit={handleUpdateContact}
+              defaultValues={{
+                name: contact.name,
+                email: contact.email || '',
+                phone: contact.phone || '',
+                company: contact.company || '',
+                job_title: contact.job_title || '',
+                birth_date: contact.birth_date || '',
+                notes: contact.notes || '',
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

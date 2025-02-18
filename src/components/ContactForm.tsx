@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -27,9 +28,10 @@ export type ContactFormValues = z.infer<typeof formSchema>;
 
 interface ContactFormProps {
   onSubmit: (values: ContactFormValues) => void;
+  defaultValues?: Partial<ContactFormValues>;
 }
 
-export function ContactForm({ onSubmit }: ContactFormProps) {
+export function ContactForm({ onSubmit, defaultValues }: ContactFormProps) {
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -40,6 +42,7 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
       job_title: "",
       birth_date: "",
       notes: "",
+      ...defaultValues,
     },
   });
 
