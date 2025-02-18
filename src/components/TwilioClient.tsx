@@ -1,7 +1,7 @@
 
+// Remove the Codec import since it's causing issues
 import React, { useEffect, useState } from "react";
 import { Device, Call } from "@twilio/voice-sdk";
-import type { Codec } from "@twilio/voice-sdk";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,7 +65,7 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ["opus", "PCMU"] as Codec[],
+          codecPreferences: ["opus", "PCMU"], // Remove type assertion since Codec type is not available
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false

@@ -50,7 +50,7 @@ export function CRMSidebar() {
           <Button 
             variant="ghost" 
             size="lg" 
-            className="fixed top-2 left-2 z-50 h-14 w-14 rounded-full hover:bg-gray-100"
+            className="fixed z-50 h-14 w-14 rounded-full hover:bg-gray-100 left-4 top-4"
           >
             <Menu className="h-8 w-8" />
           </Button>
