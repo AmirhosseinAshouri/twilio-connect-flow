@@ -16,24 +16,18 @@ export function TwilioClient() {
     const setupDevice = async () => {
       try {
         // Get Twilio token from our edge function
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const response = await fetch('/api/twilio/token');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to get token');
+        const { data, error } = await supabase.functions.invoke('get-twilio-token');
+        
+        if (error) {
+          throw error;
         }
 
-        const { token } = await response.json();
-
-        if (!token) {
-          console.error('No token received');
-          return;
+        if (!data?.token) {
+          throw new Error('No token received');
         }
 
         // Create new device with correct options
-        const newDevice = new Device(token, {
+        const newDevice = new Device(data.token, {
           edge: 'sydney',
           allowIncomingWhileBusy: true,
         });
