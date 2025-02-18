@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { CallWindow } from "./CallWindow";
-import { Mic, MicOff } from "lucide-react";
+import { Mic } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLocation } from "react-router-dom";
 
@@ -64,7 +64,8 @@ const TwilioClient = () => {
         }
 
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
+          // Use type-safe codec values
+          codecPreferences: ["opus", "pcmu"] as Array<"opus" | "pcmu">,
           maxAverageBitrate: 16000,
           closeProtection: true,
           disableAudioContextSounds: false
@@ -267,7 +268,6 @@ const TwilioClient = () => {
 
   return (
     <div className="space-y-4">
-      {/* Only show Make Call button on the Quick Call page */}
       {location.pathname === '/quick-call' && (
         <Button 
           onClick={() => makeCall("+1234567890")} 
