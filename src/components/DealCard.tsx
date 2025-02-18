@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, UserCircle, MessageSquare, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -7,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Deal } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DealCardProps {
   deal: Deal;
@@ -20,7 +22,10 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
   
   useEffect(() => {
     const fetchAssignedUser = async () => {
-      if (!deal.assigned_to) return;
+      if (!deal.assigned_to) {
+        setAssignedUser(null);
+        return;
+      }
       
       const { data, error } = await supabase
         .from('profiles')

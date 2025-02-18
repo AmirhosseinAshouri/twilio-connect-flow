@@ -1,3 +1,4 @@
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -77,39 +78,41 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
   }, [deal.id, toast]);
 
   const handleSubmit = async (values: FormValues) => {
-    // Process mentions in notes
-    const mentionRegex = /@(\w+)/g;
-    const mentions = values.notes?.match(mentionRegex) || [];
-    
-    // Create mentions records if any mentions found
-    if (mentions.length > 0) {
-      const mentionPromises = mentions.map(async (mention) => {
-        const username = mention.slice(1); // Remove @ symbol
-        const { data: userData } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('full_name', username)
-          .single();
+    // Create the updated deal object with all fields
+    const updatedDeal = {
+      ...deal,
+      title: values.title,
+      company: values.company,
+      contact_id: values.contact_id,
+      assigned_to: values.assigned_to || null, // Ensure we handle null case
+      notes: values.notes || deal.notes, // Keep existing notes if no new note
+    };
 
-        if (userData) {
-          await supabase.from('mentions').insert({
-            deal_id: deal.id,
-            user_id: (await supabase.auth.getUser()).data.user?.id,
-            mentioned_user_id: userData.id,
-          });
-        }
-      });
-
-      await Promise.all(mentionPromises);
-    }
-
-    // Update deal with new note
+    // Process mentions if there are new notes
     if (values.notes) {
-      const updatedDeal = {
-        ...deal,
-        ...values,
-      };
-      onSubmit(updatedDeal);
+      const mentionRegex = /@(\w+)/g;
+      const mentions = values.notes.match(mentionRegex) || [];
+      
+      if (mentions.length > 0) {
+        const mentionPromises = mentions.map(async (mention) => {
+          const username = mention.slice(1);
+          const { data: userData } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('full_name', username)
+            .single();
+
+          if (userData) {
+            await supabase.from('mentions').insert({
+              deal_id: deal.id,
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              mentioned_user_id: userData.id,
+            });
+          }
+        });
+
+        await Promise.all(mentionPromises);
+      }
 
       // Add new note to the list
       setNotes(prev => [{
@@ -120,6 +123,9 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
       // Clear notes field after submission
       form.setValue('notes', '');
     }
+
+    // Submit the updated deal
+    onSubmit(updatedDeal);
   };
 
   const handleContactSelect = (contact: Contact) => {
