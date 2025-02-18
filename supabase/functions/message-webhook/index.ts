@@ -2,11 +2,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.1";
 
-// Environment variables
+// ✅ Environment variables
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // Use service role key
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // Service role key for full access
 
-// Create Supabase client
+// ✅ Create Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: false,
@@ -18,7 +18,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 function parseTwilioMessage(url: URL): Record<string, string> {
   const params = url.searchParams;
   return {
-    from: params.get("From")?.replace(/\D/g, ""), // Normalize phone number (remove non-numeric characters)
+    from: params.get("From")?.replace(/\D/g, ""), // Remove all non-numeric characters
     body: params.get("Body") || "",
     messageSid: params.get("MessageSid") || "",
   };
@@ -36,19 +36,35 @@ serve(async (req) => {
 
     console.log("📩 Incoming message from:", messageData.from);
 
-    // ✅ Query only the phone number (No `user_id` selection)
+    if (!messageData.from) {
+      console.error("❌ Error: No phone number found in the request!");
+      return new Response(
+        JSON.stringify({ error: "No phone number provided" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400, // Bad request
+        }
+      );
+    }
+
+    // ✅ Normalize the phone number for query
+    const incomingPhoneNumber = messageData.from.replace(/\D/g, ""); // Remove all non-numeric characters
+    console.log("📞 Normalized incoming number:", incomingPhoneNumber);
+
+    // ✅ Query Supabase for matching contact
     const { data: contact, error: contactError } = await supabase
       .from("contacts")
-      .select("id") // Only select the `id`, no `user_id`
-      .or(`phone.eq.${messageData.from}, phone.eq.+${messageData.from}`)
+      .select("id") // Only select the `id`
+      .or(`phone.eq.${incomingPhoneNumber}, phone.eq.+${incomingPhoneNumber}`)
       .maybeSingle();
 
     if (contactError) {
+      console.error("🛑 Supabase Query Error:", contactError);
       throw contactError;
     }
 
     if (!contact) {
-      console.warn(`⚠️ No contact found for phone number: ${messageData.from}`);
+      console.warn(`⚠️ No contact found for: ${incomingPhoneNumber}`);
       return new Response(
         JSON.stringify({ warning: "No matching contact found. Storing as unknown sender." }),
         {
