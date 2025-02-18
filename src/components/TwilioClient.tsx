@@ -34,9 +34,8 @@ export function TwilioClient() {
 
         // Create new device with correct options
         const newDevice = new Device(token, {
-          edge: 'sydney', // Using a specific edge location
+          edge: 'sydney',
           allowIncomingWhileBusy: true,
-          enableRingingState: true,
         });
 
         // Set up device event handlers
