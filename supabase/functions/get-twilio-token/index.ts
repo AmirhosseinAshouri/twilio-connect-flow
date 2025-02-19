@@ -1,7 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { AccessToken } from 'https://esm.sh/twilio@4.19.0'
+import twilio from 'https://esm.sh/twilio@4.19.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,6 +72,8 @@ serve(async (req) => {
 
     // Generate Twilio token
     console.log('Generating Twilio token...')
+    const { jwt: { AccessToken } } = twilio;
+    
     const token = new AccessToken(
       settings.twilio_account_sid,
       settings.twilio_auth_token,
