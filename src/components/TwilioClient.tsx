@@ -15,6 +15,10 @@ export function TwilioClient() {
   useEffect(() => {
     const setupDevice = async () => {
       try {
+        // Request microphone permission first
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
+
         // Get Twilio token from our edge function
         const { data, error } = await supabase.functions.invoke('get-twilio-token', {
           method: 'POST'
@@ -33,6 +37,8 @@ export function TwilioClient() {
         const newDevice = new Device(data.token, {
           edge: 'sydney',
           allowIncomingWhileBusy: true,
+          codecPreferences: ['opus', 'pcmu'],
+          debug: true // Enable debug mode for development
         });
 
         // Set up device event handlers
@@ -66,6 +72,26 @@ export function TwilioClient() {
               description: "The incoming call was canceled",
             });
           });
+
+          // Add error handling for the call
+          call.on('error', (error) => {
+            console.error('Call error:', error);
+            toast({
+              title: "Call Error",
+              description: error.message || "An error occurred during the call",
+              variant: "destructive",
+            });
+          });
+        });
+
+        // Add device error handling
+        newDevice.on('error', (error) => {
+          console.error('Device error:', error);
+          toast({
+            title: "Device Error",
+            description: error.message || "An error occurred with the call device",
+            variant: "destructive",
+          });
         });
 
         setDevice(newDevice);
@@ -77,7 +103,7 @@ export function TwilioClient() {
         console.error('Error setting up Twilio device:', error);
         toast({
           title: "Error",
-          description: "Failed to set up call handling",
+          description: error instanceof Error ? error.message : "Failed to set up call handling",
           variant: "destructive",
         });
       }

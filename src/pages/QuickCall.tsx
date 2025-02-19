@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useInitiateCall } from "@/hooks/useInitiateCall";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,18 +9,70 @@ import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from "@/hooks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CallWindow } from "@/components/CallWindow";
-import { PhoneCall } from "lucide-react";
+import { PhoneCall, Mic } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const QuickCall = () => {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [callWindowOpen, setCallWindowOpen] = useState(false);
   const [currentCallId, setCurrentCallId] = useState<string>();
+  const [hasMicrophonePermission, setHasMicrophonePermission] = useState<boolean | null>(null);
   const { settings, loading: settingsLoading } = useSettings();
   const { initiateCall, isLoading, hangUp } = useInitiateCall();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const checkMicrophonePermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+        setHasMicrophonePermission(true);
+      } catch (error) {
+        console.error('Microphone permission error:', error);
+        setHasMicrophonePermission(false);
+        toast({
+          title: "Microphone Access Required",
+          description: "Please enable microphone access to make calls.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    checkMicrophonePermission();
+  }, [toast]);
+
+  const handleRequestMicrophoneAccess = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      setHasMicrophonePermission(true);
+      toast({
+        title: "Microphone Access Granted",
+        description: "You can now make calls.",
+      });
+    } catch (error) {
+      console.error('Failed to get microphone permission:', error);
+      toast({
+        title: "Access Denied",
+        description: "Microphone access is required for making calls.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!hasMicrophonePermission) {
+      toast({
+        title: "Microphone Required",
+        description: "Please enable microphone access before making a call.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { success, callId } = await initiateCall({
       phone,
       notes
@@ -63,6 +115,17 @@ const QuickCall = () => {
                 Please configure your Twilio settings in the Settings page before making calls.
               </AlertDescription>
             </Alert>
+          ) : hasMicrophonePermission === false ? (
+            <Alert variant="destructive">
+              <AlertTitle>Microphone Access Required</AlertTitle>
+              <AlertDescription className="space-y-4">
+                <p>Please enable microphone access to make calls.</p>
+                <Button onClick={handleRequestMicrophoneAccess} className="flex items-center gap-2">
+                  <Mic className="h-4 w-4" />
+                  Enable Microphone
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -87,7 +150,7 @@ const QuickCall = () => {
               </div>
               <Button 
                 type="submit" 
-                disabled={isLoading || !isTwilioConfigured}
+                disabled={isLoading || !isTwilioConfigured || !hasMicrophonePermission}
                 className="w-full flex items-center justify-center gap-2"
               >
                 <PhoneCall className="h-4 w-4" />
