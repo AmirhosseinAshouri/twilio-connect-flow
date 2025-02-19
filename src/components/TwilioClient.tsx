@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device } from "@twilio/voice-sdk";
+import { Device, Codec } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -33,11 +33,11 @@ export function TwilioClient() {
           throw new Error('No token received');
         }
 
-        // Create new device with correct options
+        // Create new device with correct options and codec types
         const newDevice = new Device(data.token, {
           edge: 'sydney',
           allowIncomingWhileBusy: true,
-          codecPreferences: ['opus', 'pcmu'],
+          codecPreferences: [Codec.Opus, Codec.PCMU],
           debug: true // Enable debug mode for development
         });
 
