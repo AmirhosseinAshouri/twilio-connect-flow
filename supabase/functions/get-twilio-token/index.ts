@@ -1,10 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-// Import Twilio JWT helper directly
-import { jwt } from 'npm:twilio'
-const { AccessToken } = jwt;
+import { create, verify } from 'https://deno.land/x/djwt@v2.8/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,30 +70,39 @@ serve(async (req) => {
       throw new Error('Incomplete Twilio settings')
     }
 
-    // Generate Twilio token
-    console.log('Generating Twilio token...')
-    const token = new AccessToken(
-      settings.twilio_account_sid,
-      settings.twilio_auth_token,
-      settings.twilio_twiml_app_sid
+    // Generate JWT token for Twilio
+    const now = Math.floor(Date.now() / 1000)
+    const payload = {
+      jti: crypto.randomUUID(),
+      grants: {
+        voice: {
+          incoming: { allow: true },
+          outgoing: { application_sid: settings.twilio_twiml_app_sid }
+        }
+      },
+      sub: user.id,
+      iss: settings.twilio_account_sid,
+      exp: now + 3600,
+      nbf: now,
+      iat: now
+    }
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(settings.twilio_auth_token),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
     )
 
-    token.identity = user.id
-
-    const VoiceGrant = AccessToken.VoiceGrant
-    const grant = new VoiceGrant({
-      outgoingApplicationSid: settings.twilio_twiml_app_sid,
-      incomingAllow: true,
-    })
-
-    token.addGrant(grant)
+    const token = await create({ alg: "HS256", typ: "JWT" }, payload, key)
 
     console.log('Token generated successfully')
 
     // Return success response
     return new Response(
       JSON.stringify({ 
-        token: token.toJwt(),
+        token,
         message: 'Token generated successfully'
       }),
       {
