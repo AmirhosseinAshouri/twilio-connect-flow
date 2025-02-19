@@ -16,9 +16,12 @@ export function TwilioClient() {
     const setupDevice = async () => {
       try {
         // Get Twilio token from our edge function
-        const { data, error } = await supabase.functions.invoke('get-twilio-token');
+        const { data, error } = await supabase.functions.invoke('get-twilio-token', {
+          method: 'POST'
+        });
         
         if (error) {
+          console.error('Error getting token:', error);
           throw error;
         }
 
