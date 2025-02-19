@@ -36,8 +36,7 @@ export function TwilioClient() {
         // Create new device with correct options
         const newDevice = new Device(data.token, {
           edge: 'sydney',
-          allowIncomingWhileBusy: true,
-          enableIceRestart: true // Enable ICE restart for better connection stability
+          allowIncomingWhileBusy: true
         });
 
         // Register the device
