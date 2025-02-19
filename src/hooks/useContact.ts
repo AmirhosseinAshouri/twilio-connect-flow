@@ -26,9 +26,19 @@ export function useContact(id: string | undefined) {
           .from("contacts")
           .select("*")
           .eq("id", id)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
+
+        if (!data) {
+          setContact(null);
+          toast({
+            title: "Contact not found",
+            description: "The requested contact could not be found.",
+            variant: "destructive",
+          });
+          return;
+        }
 
         setContact(data);
       } catch (err) {
@@ -53,9 +63,13 @@ export function useContact(id: string | undefined) {
         .update(updatedContact)
         .eq("id", id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+
+      if (!data) {
+        throw new Error("Contact not found");
+      }
 
       setContact(data);
       toast({

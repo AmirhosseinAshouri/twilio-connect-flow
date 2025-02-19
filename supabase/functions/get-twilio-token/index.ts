@@ -1,7 +1,10 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import twilio from 'https://esm.sh/twilio@4.19.0'
+
+// Import Twilio JWT helper directly
+import { jwt } from 'npm:twilio'
+const { AccessToken } = jwt;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,21 +62,19 @@ serve(async (req) => {
       .from('settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (settingsError || !settings) {
+    if (settingsError) {
       console.error('Settings error:', settingsError)
       throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_twiml_app_sid) {
+    if (!settings?.twilio_account_sid || !settings?.twilio_auth_token || !settings?.twilio_twiml_app_sid) {
       throw new Error('Incomplete Twilio settings')
     }
 
     // Generate Twilio token
     console.log('Generating Twilio token...')
-    const { jwt: { AccessToken } } = twilio;
-    
     const token = new AccessToken(
       settings.twilio_account_sid,
       settings.twilio_auth_token,
