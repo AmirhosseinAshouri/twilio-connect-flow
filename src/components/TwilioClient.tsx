@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device, Codec } from "@twilio/voice-sdk";
+import { Device } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -33,13 +33,16 @@ export function TwilioClient() {
           throw new Error('No token received');
         }
 
-        // Create new device with correct options and codec types
+        // Create new device with correct options
         const newDevice = new Device(data.token, {
           edge: 'sydney',
           allowIncomingWhileBusy: true,
-          codecPreferences: [Codec.Opus, Codec.PCMU],
-          debug: true // Enable debug mode for development
+          enableIceRestart: true // Enable ICE restart for better connection stability
         });
+
+        // Register the device
+        await newDevice.register();
+        console.log('Device registered successfully');
 
         // Set up device event handlers
         newDevice.on('incoming', (call) => {
@@ -92,6 +95,19 @@ export function TwilioClient() {
             description: error.message || "An error occurred with the call device",
             variant: "destructive",
           });
+        });
+
+        // Add device registration state handling
+        newDevice.on('registered', () => {
+          console.log('Device registered with Twilio');
+          toast({
+            title: "Device Ready",
+            description: "Your device is ready to receive calls",
+          });
+        });
+
+        newDevice.on('unregistered', () => {
+          console.log('Device unregistered from Twilio');
         });
 
         setDevice(newDevice);
