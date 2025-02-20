@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
 import { useLeads } from "@/hooks/useLeads";
 import { useCalls } from "@/hooks/useCalls";
-import { DollarSign, Phone, Users, AtSign, Calendar } from "lucide-react";
+import { DollarSign, Phone, Users, AtSign, Calendar, CheckSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types";
@@ -17,41 +17,64 @@ export default function Dashboard() {
   const { contacts } = useContacts();
   const { leads, updateLead } = useLeads();
   const { calls } = useCalls();
-  const [mentionedLeads, setMentionedLeads] = useState<Lead[]>([]);
+  const [assignedNotes, setAssignedNotes] = useState<(Note & { lead: Lead })[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   useEffect(() => {
-    const fetchMentionedLeads = async () => {
+    const fetchAssignedNotes = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: mentions } = await supabase
-        .from('mentions')
-        .select('deal_id')
-        .eq('mentioned_user_id', user.id);
-      if (mentions && mentions.length > 0) {
-        const dealIds = mentions.map(mention => mention.deal_id);
-        const { data: leadsData } = await supabase
-          .from('deals')
-          .select('*')
-          .in('id', dealIds)
-          .order('updated_at', { ascending: false });
-        if (leadsData) {
-          setMentionedLeads(leadsData as Lead[]);
-        }
+
+      const { data: notes, error } = await supabase
+        .from('notes')
+        .select(`
+          *,
+          lead:deals(*)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching notes:', error);
+        return;
+      }
+
+      if (notes) {
+        setAssignedNotes(notes.map(note => ({
+          ...note,
+          lead: note.lead as Lead
+        })));
       }
     };
-    fetchMentionedLeads();
+
+    fetchAssignedNotes();
   }, []);
 
   const handleLeadUpdate = (updatedLead: Lead) => {
     updateLead(updatedLead);
     setSelectedLead(null);
-    setMentionedLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
   };
 
   const formatDueDate = (dueDate: string | undefined) => {
     if (!dueDate) return "No due date";
     return format(new Date(dueDate), 'MMM d, yyyy HH:mm');
+  };
+
+  const handleNoteCompletion = async (noteId: string, completed: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .update({ completed })
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      setAssignedNotes(prev => prev.map(note =>
+        note.id === noteId ? { ...note, completed } : note
+      ));
+    } catch (error) {
+      console.error('Error updating note:', error);
+    }
   };
 
   return (
@@ -90,39 +113,44 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {mentionedLeads.length > 0 && (
+      {assignedNotes.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <AtSign className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Leads You're Mentioned In</h2>
+            <CheckSquare className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Your Notes</h2>
           </div>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Last Updated</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Lead</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mentionedLeads.map(lead => (
+                {assignedNotes.map(note => (
                   <TableRow 
-                    key={lead.id} 
+                    key={note.id} 
                     className="cursor-pointer hover:bg-muted/50" 
-                    onClick={() => setSelectedLead(lead)}
+                    onClick={() => setSelectedLead(note.lead)}
                   >
-                    <TableCell className="font-medium">{lead.title}</TableCell>
-                    <TableCell>{lead.company}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDueDate(lead.due_date)}
-                      </div>
+                    <TableCell className="font-medium">{note.content}</TableCell>
+                    <TableCell>{note.lead.title}</TableCell>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={note.completed}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleNoteCompletion(note.id, e.target.checked);
+                        }}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
                     </TableCell>
                     <TableCell>
-                      {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
                     </TableCell>
                   </TableRow>
                 ))}
