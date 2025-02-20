@@ -233,11 +233,11 @@ export function TwilioClient() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="fixed bottom-4 right-4 z-50">
       {!isInitialized && settings?.twilio_account_sid && (
         <Button 
           onClick={setupDevice}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 shadow-lg"
         >
           <Phone className="h-4 w-4" />
           Initialize Phone System
