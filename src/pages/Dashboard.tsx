@@ -11,8 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/LeadForm";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
+import { Note } from "@/types/note";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
@@ -20,7 +19,6 @@ export default function Dashboard() {
   const { calls } = useCalls();
   const [mentionedLeads, setMentionedLeads] = useState<Lead[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const fetchMentionedLeads = async () => {
@@ -54,32 +52,6 @@ export default function Dashboard() {
   const formatDueDate = (dueDate: string | undefined) => {
     if (!dueDate) return "No due date";
     return format(new Date(dueDate), 'MMM d, yyyy HH:mm');
-  };
-
-  const handleCheckboxChange = async (leadId: string, checked: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('deals')
-        .update({ completed: checked })
-        .eq('id', leadId);
-
-      if (error) throw error;
-
-      setMentionedLeads(prev => prev.map(lead => 
-        lead.id === leadId ? { ...lead, completed: checked } : lead
-      ));
-
-      toast({
-        title: checked ? "Lead marked as completed" : "Lead marked as incomplete",
-        description: "The lead status has been updated successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error updating lead status",
-        description: "There was an error updating the lead status. Please try again.",
-        variant: "destructive",
-      });
-    }
   };
 
   return (
@@ -128,9 +100,8 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]"></TableHead>
                   <TableHead>Title</TableHead>
-                  <TableHead>Last Note</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead>Last Updated</TableHead>
                 </TableRow>
@@ -140,26 +111,10 @@ export default function Dashboard() {
                   <TableRow 
                     key={lead.id} 
                     className="cursor-pointer hover:bg-muted/50" 
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest('.checkbox-cell')) {
-                        return;
-                      }
-                      setSelectedLead(lead);
-                    }}
+                    onClick={() => setSelectedLead(lead)}
                   >
-                    <TableCell className="checkbox-cell" onClick={e => e.stopPropagation()}>
-                      <Checkbox
-                        checked={lead.completed || false}
-                        onCheckedChange={(checked) => handleCheckboxChange(lead.id, checked as boolean)}
-                        className="rounded-full data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
-                      />
-                    </TableCell>
                     <TableCell className="font-medium">{lead.title}</TableCell>
-                    <TableCell>
-                      <div className="max-w-md truncate">
-                        {lead.notes || "No notes yet"}
-                      </div>
-                    </TableCell>
+                    <TableCell>{lead.company}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />

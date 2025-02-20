@@ -9,11 +9,9 @@ export interface Lead {
   user_id: string;
   assigned_to?: string;
   contact_id?: string;
-  notes?: string;
   due_date?: string;
   created_at: string;
   updated_at: string;
-  completed: boolean;
 }
 
 export type LeadFormValues = Omit<Lead, 'id' | 'user_id' | 'created_at'>;
