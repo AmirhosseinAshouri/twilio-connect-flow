@@ -4,28 +4,31 @@ import { twiml } from "twilio";
 
 export async function GET(req: Request) {
   const response = new twiml.VoiceResponse();
+  console.log('----------------------------------------');
   console.log('TwiML GET request received');
+  console.log('Request Headers:', Object.fromEntries(req.headers.entries()));
+  console.log('Request URL:', req.url);
   
   // Get the To parameter from the URL if it exists
   const url = new URL(req.url);
   const to = url.searchParams.get('To');
+  const from = req.headers.get('From');
+  console.log('Call details - To:', to, 'From:', from);
 
   if (to) {
-    console.log('Outbound call to:', to);
-    // This is an outbound call
+    console.log('[OUTBOUND] Initiating outbound call to:', to);
     response.dial(to);
   } else {
-    console.log('Inbound call - connecting to client');
-    // For inbound calls, first add a greeting
+    console.log('[INBOUND] Processing incoming call from:', from);
     response.say({ voice: 'alice' }, 'Incoming call. Please wait while we connect you.');
     
-    // Then set up the dial with all required parameters
+    console.log('Setting up dial parameters');
     const dial = response.dial({
       answerOnBridge: true,
-      callerId: req.headers.get('From') || undefined
+      callerId: from || undefined
     });
     
-    // Add the client with specific identity
+    console.log('Connecting to client with identity: user-current');
     dial.client({
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/status`
@@ -33,7 +36,8 @@ export async function GET(req: Request) {
   }
 
   const twimlResponse = response.toString();
-  console.log('TwiML response:', twimlResponse);
+  console.log('Generated TwiML:', twimlResponse);
+  console.log('----------------------------------------');
 
   return new Response(twimlResponse, { 
     headers: { 
@@ -47,28 +51,35 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const response = new twiml.VoiceResponse();
+  console.log('----------------------------------------');
   console.log('TwiML POST request received');
   
   // Get form data from the request
   const formData = await req.formData();
   const to = formData.get('To');
+  const from = formData.get('From');
+  
+  console.log('POST Request Form Data:', {
+    To: to,
+    From: from,
+    Direction: formData.get('Direction'),
+    CallSid: formData.get('CallSid')
+  });
 
   if (to) {
-    console.log('Outbound call to:', to);
-    // This is an outbound call
+    console.log('[OUTBOUND] Initiating outbound call to:', to);
     response.dial(to?.toString());
   } else {
-    console.log('Inbound call - connecting to client');
-    // For inbound calls, first add a greeting
+    console.log('[INBOUND] Processing incoming call from:', from);
     response.say({ voice: 'alice' }, 'Incoming call. Please wait while we connect you.');
     
-    // Then set up the dial with all required parameters
+    console.log('Setting up dial parameters');
     const dial = response.dial({
       answerOnBridge: true,
-      callerId: formData.get('From')?.toString() || undefined
+      callerId: from?.toString() || undefined
     });
     
-    // Add the client with specific identity
+    console.log('Connecting to client with identity: user-current');
     dial.client({
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallback: `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/status`
@@ -76,7 +87,8 @@ export async function POST(req: Request) {
   }
 
   const twimlResponse = response.toString();
-  console.log('TwiML response:', twimlResponse);
+  console.log('Generated TwiML:', twimlResponse);
+  console.log('----------------------------------------');
 
   return new Response(twimlResponse, { 
     headers: { 

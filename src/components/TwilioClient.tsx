@@ -20,15 +20,18 @@ export function TwilioClient() {
 
   // Initialize audio context lazily on the first user interaction
   const initializeAudioContext = async () => {
+    console.log('Initializing audio context...');
     if (!audioContext) {
       const context = new (window.AudioContext || (window as any).webkitAudioContext)();
       await context.resume();
       setAudioContext(context);
+      console.log('New audio context created and resumed');
       return context;
     }
     
     if (audioContext.state === 'suspended') {
       await audioContext.resume();
+      console.log('Existing audio context resumed from suspended state');
     }
     return audioContext;
   };
@@ -37,20 +40,26 @@ export function TwilioClient() {
   useEffect(() => {
     return () => {
       if (audioContext && audioContext.state !== 'closed') {
+        console.log('Cleaning up audio context');
         audioContext.close();
       }
     };
   }, [audioContext]);
 
   const setupDevice = useCallback(async () => {
+    console.log('----------------------------------------');
+    console.log('Setting up Twilio device...');
     try {
       // Initialize audio context first
       await initializeAudioContext();
 
+      console.log('Requesting microphone permission...');
       // Request microphone permission
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
+      stream.getTracks().forEach(track => track.stop());
+      console.log('Microphone permission granted');
 
+      console.log('Fetching Twilio token...');
       // Get Twilio token from our edge function
       const { data, error } = await supabase.functions.invoke('get-twilio-token');
       
@@ -63,7 +72,7 @@ export function TwilioClient() {
         throw new Error('No token received');
       }
 
-      console.log('Received token from edge function');
+      console.log('Token received successfully');
 
       // Destroy existing device if any
       if (device) {
@@ -71,6 +80,7 @@ export function TwilioClient() {
         device.destroy();
       }
 
+      console.log('Creating new Twilio Device instance...');
       // Create new device with correct options
       const codecPreferences: CodecPreferences = ['opus', 'pcmu'];
       const newDevice = new Device(data.token, {
@@ -81,12 +91,21 @@ export function TwilioClient() {
       });
 
       // Set up device event handlers before registration
+      console.log('Setting up device event handlers...');
+      
       newDevice.on('incoming', (call) => {
-        console.log('Incoming call received', call);
+        console.log('----------------------------------------');
+        console.log('INCOMING CALL RECEIVED:', {
+          from: call.parameters.From,
+          to: call.parameters.To,
+          callSid: call.parameters.CallSid,
+          direction: call.parameters.Direction
+        });
+
         // Force React to re-render by creating a new state update
         setIncomingCall(prevCall => {
           if (prevCall) {
-            // If there's an existing call, reject it
+            console.log('Rejecting previous call as new call is incoming');
             prevCall.reject();
           }
           return call;
@@ -99,8 +118,7 @@ export function TwilioClient() {
 
         // Set up call event handlers
         call.on('accept', async () => {
-          console.log('Call accepted');
-          // Initialize audio context when call is accepted
+          console.log('Call accepted - initializing audio');
           await initializeAudioContext();
           toast({
             title: "Call Connected",
@@ -118,7 +136,7 @@ export function TwilioClient() {
         });
 
         call.on('cancel', () => {
-          console.log('Call canceled');
+          console.log('Call canceled by caller');
           setIncomingCall(null);
           toast({
             title: "Call Canceled",
@@ -135,6 +153,8 @@ export function TwilioClient() {
             variant: "destructive",
           });
         });
+
+        console.log('Call event handlers set up successfully');
       });
 
       newDevice.on('error', (error) => {
@@ -147,7 +167,7 @@ export function TwilioClient() {
       });
 
       newDevice.on('registered', () => {
-        console.log('Device registered with Twilio');
+        console.log('Device successfully registered with Twilio');
         setIsInitialized(true);
         toast({
           title: "Device Ready",
@@ -161,13 +181,16 @@ export function TwilioClient() {
       });
 
       // Register the device after setting up handlers
-      console.log('Registering device...');
+      console.log('Registering device with Twilio...');
       await newDevice.register();
-      console.log('Device registered successfully');
+      console.log('Device registration completed');
 
       setDevice(newDevice);
+      console.log('Device setup completed successfully');
+      console.log('----------------------------------------');
+
     } catch (error) {
-      console.error('Error setting up Twilio device:', error);
+      console.error('Error in device setup:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to set up call handling",
@@ -179,12 +202,13 @@ export function TwilioClient() {
   // Auto-initialize when settings are available
   useEffect(() => {
     if (settings?.twilio_account_sid && !isInitialized) {
+      console.log('Settings detected, initializing device...');
       setupDevice();
     }
     
-    // Cleanup function
     return () => {
       if (device) {
+        console.log('Cleaning up device...');
         device.destroy();
         setDevice(null);
         setIsInitialized(false);
@@ -194,7 +218,7 @@ export function TwilioClient() {
 
   const handleAcceptCall = async () => {
     if (incomingCall) {
-      // Initialize audio context on call accept
+      console.log('Accepting incoming call...');
       await initializeAudioContext();
       incomingCall.accept();
     }
@@ -202,6 +226,7 @@ export function TwilioClient() {
 
   const handleRejectCall = () => {
     if (incomingCall) {
+      console.log('Rejecting incoming call...');
       incomingCall.reject();
       setIncomingCall(null);
     }
