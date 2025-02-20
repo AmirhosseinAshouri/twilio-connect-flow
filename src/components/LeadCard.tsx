@@ -9,6 +9,7 @@ import { Lead } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Note } from "@/types/note";
 
 interface LeadCardProps {
   lead: Lead;
@@ -19,6 +20,7 @@ interface LeadCardProps {
 export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
   const { contact } = useContact(lead.contact_id);
   const [assignedUser, setAssignedUser] = useState<{ full_name: string } | null>(null);
+  const [latestNote, setLatestNote] = useState<Note | null>(null);
   
   useEffect(() => {
     const fetchAssignedUser = async () => {
@@ -38,8 +40,23 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
       }
     };
 
+    const fetchLatestNote = async () => {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('deal_id', lead.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && data) {
+        setLatestNote(data);
+      }
+    };
+
     fetchAssignedUser();
-  }, [lead.assigned_to]);
+    fetchLatestNote();
+  }, [lead.assigned_to, lead.id]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
@@ -71,11 +88,11 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="space-y-2">
-                {lead.notes && (
+                {latestNote && (
                   <div className="flex items-start space-x-2">
                     <MessageSquare className="h-3 w-3 mt-1 text-muted-foreground flex-shrink-0" />
                     <div className="text-xs text-muted-foreground line-clamp-2">
-                      {lead.notes}
+                      {latestNote.content}
                     </div>
                   </div>
                 )}
