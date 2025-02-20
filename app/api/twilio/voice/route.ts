@@ -8,12 +8,14 @@ export async function GET(req: Request) {
   console.log('TwiML GET request received');
   console.log('Request Headers:', Object.fromEntries(req.headers.entries()));
   console.log('Request URL:', req.url);
+  console.log('Search Params:', new URL(req.url).searchParams);
   
   // Get the To parameter from the URL if it exists
   const url = new URL(req.url);
   const to = url.searchParams.get('To');
-  const from = req.headers.get('From');
+  const from = url.searchParams.get('From') || req.headers.get('From');
   console.log('Call details - To:', to, 'From:', from);
+  console.log('All URL parameters:', Object.fromEntries(url.searchParams.entries()));
 
   if (to) {
     console.log('[OUTBOUND] Initiating outbound call to:', to);
@@ -56,6 +58,8 @@ export async function POST(req: Request) {
   
   // Get form data from the request
   const formData = await req.formData();
+  console.log('All form data entries:', Object.fromEntries(formData.entries()));
+  
   const to = formData.get('To');
   const from = formData.get('From');
   
@@ -63,7 +67,8 @@ export async function POST(req: Request) {
     To: to,
     From: from,
     Direction: formData.get('Direction'),
-    CallSid: formData.get('CallSid')
+    CallSid: formData.get('CallSid'),
+    AccountSid: formData.get('AccountSid')
   });
 
   if (to) {
