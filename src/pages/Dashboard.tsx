@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/LeadForm";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const { calls } = useCalls();
   const [mentionedLeads, setMentionedLeads] = useState<Lead[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [checkedLeads, setCheckedLeads] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchMentionedLeads = async () => {
@@ -51,6 +53,13 @@ export default function Dashboard() {
   const formatDueDate = (dueDate: string | undefined) => {
     if (!dueDate) return "No due date";
     return format(new Date(dueDate), 'MMM d, yyyy HH:mm');
+  };
+
+  const handleCheckboxChange = (leadId: string, checked: boolean) => {
+    setCheckedLeads(prev => ({
+      ...prev,
+      [leadId]: checked
+    }));
   };
 
   return (
@@ -99,6 +108,7 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Last Note</TableHead>
                   <TableHead>Due Date</TableHead>
@@ -110,8 +120,21 @@ export default function Dashboard() {
                   <TableRow 
                     key={lead.id} 
                     className="cursor-pointer hover:bg-muted/50" 
-                    onClick={() => setSelectedLead(lead)}
+                    onClick={(e) => {
+                      // Prevent row click when clicking checkbox
+                      if ((e.target as HTMLElement).closest('.checkbox-cell')) {
+                        return;
+                      }
+                      setSelectedLead(lead);
+                    }}
                   >
+                    <TableCell className="checkbox-cell" onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        checked={checkedLeads[lead.id] || false}
+                        onCheckedChange={(checked) => handleCheckboxChange(lead.id, checked as boolean)}
+                        className="rounded-full data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{lead.title}</TableCell>
                     <TableCell>
                       <div className="max-w-md truncate">
