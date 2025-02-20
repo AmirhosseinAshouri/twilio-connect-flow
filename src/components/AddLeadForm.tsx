@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,12 @@ import { DealStageSelector } from "./DealStageSelector";
 import { dealFormSchema, DealFormValues } from "@/schemas/dealForm";
 import { Contact } from "@/types";
 
-interface AddDealFormProps {
+interface AddLeadFormProps {
   onSubmit: (values: DealFormValues) => void;
   onCancel: () => void;
 }
 
-export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
+export function AddLeadForm({ onSubmit, onCancel }: AddLeadFormProps) {
   const form = useForm<DealFormValues>({
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
@@ -93,7 +94,7 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
               <FormLabel>Notes</FormLabel>
               <FormControl>
                 <Textarea 
-                  placeholder="Add notes about this deal..."
+                  placeholder="Add notes about this lead..."
                   className="min-h-[100px]"
                   {...field} 
                 />
@@ -109,7 +110,7 @@ export function AddDealForm({ onSubmit, onCancel }: AddDealFormProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">Add Deal</Button>
+          <Button type="submit">Add Lead</Button>
         </div>
       </form>
     </Form>

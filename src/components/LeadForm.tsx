@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { Deal, Contact } from "@/types";
+import { Lead, Contact } from "@/types";
 import { DealNotesSection } from "./DealNotesSection";
 import { DealAssignedToSection } from "./DealAssignedToSection";
 import { DealBasicInfoSection } from "./DealBasicInfoSection";
@@ -22,9 +22,9 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface DealFormProps {
-  deal: Deal;
-  onSubmit: (values: Deal) => void;
+interface LeadFormProps {
+  lead: Lead;
+  onSubmit: (values: Lead) => void;
 }
 
 interface Note {
@@ -33,18 +33,18 @@ interface Note {
   user_name?: string;
 }
 
-export function DealForm({ deal, onSubmit }: DealFormProps) {
+export function LeadForm({ lead, onSubmit }: LeadFormProps) {
   const [notes, setNotes] = useState<Note[]>([]);
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: deal.title || "",
-      company: deal.company || "",
+      title: lead.title || "",
+      company: lead.company || "",
       notes: "",
-      assigned_to: deal.assigned_to || undefined,
-      contact_id: deal.contact_id || "",
+      assigned_to: lead.assigned_to || undefined,
+      contact_id: lead.contact_id || "",
     },
   });
 
@@ -53,7 +53,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
       const { data: notesData, error } = await supabase
         .from('deals')
         .select('notes, created_at')
-        .eq('id', deal.id)
+        .eq('id', lead.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -75,20 +75,18 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
     };
 
     fetchNotes();
-  }, [deal.id, toast]);
+  }, [lead.id, toast]);
 
   const handleSubmit = async (values: FormValues) => {
-    // Create the updated deal object with all fields
-    const updatedDeal = {
-      ...deal,
+    const updatedLead = {
+      ...lead,
       title: values.title,
       company: values.company,
       contact_id: values.contact_id,
-      assigned_to: values.assigned_to || null, // Ensure we handle null case
-      notes: values.notes || deal.notes, // Keep existing notes if no new note
+      assigned_to: values.assigned_to || null,
+      notes: values.notes || lead.notes,
     };
 
-    // Process mentions if there are new notes
     if (values.notes) {
       const mentionRegex = /@(\w+)/g;
       const mentions = values.notes.match(mentionRegex) || [];
@@ -104,7 +102,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
 
           if (userData) {
             await supabase.from('mentions').insert({
-              deal_id: deal.id,
+              lead_id: lead.id,
               user_id: (await supabase.auth.getUser()).data.user?.id,
               mentioned_user_id: userData.id,
             });
@@ -114,18 +112,15 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
         await Promise.all(mentionPromises);
       }
 
-      // Add new note to the list
       setNotes(prev => [{
         content: values.notes || "",
         created_at: new Date().toISOString(),
       }, ...prev]);
 
-      // Clear notes field after submission
       form.setValue('notes', '');
     }
 
-    // Submit the updated deal
-    onSubmit(updatedDeal);
+    onSubmit(updatedLead);
   };
 
   const handleContactSelect = (contact: Contact) => {
@@ -140,7 +135,7 @@ export function DealForm({ deal, onSubmit }: DealFormProps) {
         <DealBasicInfoSection 
           form={form} 
           onContactSelect={handleContactSelect} 
-          isEditing={Boolean(deal.id)} 
+          isEditing={Boolean(lead.id)} 
         />
         <DealNotesSection form={form} notes={notes} />
         <DealAssignedToSection form={form} />

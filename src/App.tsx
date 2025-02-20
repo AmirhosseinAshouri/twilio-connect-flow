@@ -9,7 +9,7 @@ import ContactDetail from "@/pages/ContactDetail";
 import QuickCall from "@/pages/QuickCall";
 import Settings from "@/pages/Settings";
 import Communications from "@/pages/Communications";
-import Deals from "@/pages/Deals";
+import Leads from "@/pages/Leads";
 import SignIn from "@/pages/SignIn";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,7 +53,7 @@ const App = () => {
                   <Route path="/quick-call" element={<QuickCall />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/communications" element={<Communications />} />
-                  <Route path="/deals" element={<Deals />} />
+                  <Route path="/leads" element={<Leads />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </main>

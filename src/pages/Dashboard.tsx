@@ -1,30 +1,32 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
-import { useDeals } from "@/hooks/useDeals";
+import { useLeads } from "@/hooks/useLeads";
 import { useCalls } from "@/hooks/useCalls";
 import { DollarSign, Phone, Users, AtSign } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Deal } from "@/types";
+import { Lead } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DealForm } from "@/components/DealForm";
+import { LeadForm } from "@/components/LeadForm";
+
 export default function Dashboard() {
   const {
     contacts
   } = useContacts();
   const {
-    deals,
-    updateDeal
-  } = useDeals();
+    leads,
+    updateLead
+  } = useLeads();
   const {
     calls
   } = useCalls();
-  const [mentionedDeals, setMentionedDeals] = useState<Deal[]>([]);
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [mentionedLeads, setMentionedLeads] = useState<Lead[]>([]);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
   useEffect(() => {
-    const fetchMentionedDeals = async () => {
+    const fetchMentionedLeads = async () => {
       const {
         data: {
           user
@@ -33,27 +35,28 @@ export default function Dashboard() {
       if (!user) return;
       const {
         data: mentions
-      } = await supabase.from('mentions').select('deal_id').eq('mentioned_user_id', user.id);
+      } = await supabase.from('mentions').select('lead_id').eq('mentioned_user_id', user.id);
       if (mentions && mentions.length > 0) {
-        const dealIds = mentions.map(mention => mention.deal_id);
+        const leadIds = mentions.map(mention => mention.lead_id);
         const {
-          data: dealsData
-        } = await supabase.from('deals').select('*').in('id', dealIds).order('updated_at', {
+          data: leadsData
+        } = await supabase.from('leads').select('*').in('id', leadIds).order('updated_at', {
           ascending: false
         });
-        if (dealsData) {
-          setMentionedDeals(dealsData as Deal[]);
+        if (leadsData) {
+          setMentionedLeads(leadsData as Lead[]);
         }
       }
     };
-    fetchMentionedDeals();
+    fetchMentionedLeads();
   }, []);
-  const handleDealUpdate = (updatedDeal: Deal) => {
-    updateDeal(updatedDeal);
-    setSelectedDeal(null);
-    // Update the mentioned deals list
-    setMentionedDeals(prev => prev.map(deal => deal.id === updatedDeal.id ? updatedDeal : deal));
+
+  const handleLeadUpdate = (updatedLead: Lead) => {
+    updateLead(updatedLead);
+    setSelectedLead(null);
+    setMentionedLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
   };
+
   return <div className="p-8 space-y-8">
       <h1 className="text-3xl font-bold mb-8 mx-[8px] my-[36px]">Dashboard</h1>
 
@@ -70,11 +73,11 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{deals?.length || 0}</div>
+            <div className="text-2xl font-bold">{leads?.length || 0}</div>
           </CardContent>
         </Card>
 
@@ -89,10 +92,10 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {mentionedDeals.length > 0 && <div className="space-y-4">
+      {mentionedLeads.length > 0 && <div className="space-y-4">
           <div className="flex items-center gap-2">
             <AtSign className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Deals You're Mentioned In</h2>
+            <h2 className="text-xl font-semibold">Leads You're Mentioned In</h2>
           </div>
           <div className="rounded-md border">
             <Table>
@@ -104,15 +107,15 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mentionedDeals.map(deal => <TableRow key={deal.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedDeal(deal)}>
-                    <TableCell className="font-medium">{deal.title}</TableCell>
+                {mentionedLeads.map(lead => <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedLead(lead)}>
+                    <TableCell className="font-medium">{lead.title}</TableCell>
                     <TableCell>
                       <div className="max-w-md truncate">
-                        {deal.notes || "No notes yet"}
+                        {lead.notes || "No notes yet"}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {formatDistanceToNow(new Date(deal.updated_at), {
+                      {formatDistanceToNow(new Date(lead.updated_at), {
                   addSuffix: true
                 })}
                     </TableCell>
@@ -122,12 +125,12 @@ export default function Dashboard() {
           </div>
         </div>}
 
-      <Dialog open={!!selectedDeal} onOpenChange={open => !open && setSelectedDeal(null)}>
+      <Dialog open={!!selectedLead} onOpenChange={open => !open && setSelectedLead(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Deal</DialogTitle>
+            <DialogTitle>Edit Lead</DialogTitle>
           </DialogHeader>
-          {selectedDeal && <DealForm deal={selectedDeal} onSubmit={handleDealUpdate} />}
+          {selectedLead && <LeadForm lead={selectedLead} onSubmit={handleLeadUpdate} />}
         </DialogContent>
       </Dialog>
     </div>;
