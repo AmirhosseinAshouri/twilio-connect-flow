@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   } else {
     // This is an inbound call - connect to client
     const dial = response.dial();
-    dial.client('client'); // 'client' is the identity we set in the token
+    dial.client({}, 'user-current'); // Match the identity set in token generation
   }
 
   return new Response(response.toString(), { 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   } else {
     // This is an inbound call - connect to client
     const dial = response.dial();
-    dial.client('client');
+    dial.client({}, 'user-current'); // Match the identity set in token generation
   }
 
   return new Response(response.toString(), { 

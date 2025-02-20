@@ -58,8 +58,8 @@ serve(async (req) => {
     const AccessToken = twilio.jwt.AccessToken
     const VoiceGrant = AccessToken.VoiceGrant
 
-    // Create a unique identity for this user
-    const identity = `user-${user.id}`
+    // Create a unique identity that matches what we use in TwiML
+    const identity = 'user-current'
 
     const token = new AccessToken(
       settings.twilio_account_sid,
