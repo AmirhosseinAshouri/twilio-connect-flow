@@ -19,7 +19,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 const menuItems = [
   { title: "Dashboard", icon: Home, path: "/" },
   { title: "Contacts", icon: Users, path: "/contacts" },
-  { title: "Deals", icon: PieChart, path: "/deals" },
+  { title: "Leads", icon: PieChart, path: "/leads" },
   { title: "Communications", icon: PhoneCall, path: "/communications" },
   { title: "Quick Call", icon: PhoneCall, path: "/quick-call" },
   { title: "Settings", icon: Settings, path: "/settings" },

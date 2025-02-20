@@ -1,25 +1,26 @@
+
 import { Droppable, Draggable } from "@hello-pangea/dnd";
-import { DealCard } from "./DealCard";
-import { Deal } from "@/types";
+import { LeadCard } from "./LeadCard";
+import { Lead } from "@/types";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-interface DealColumnProps {
+interface LeadColumnProps {
   column: {
     id: string;
     title: string;
     color: string;
   };
-  deals: Deal[];
-  onUpdateDeal: (deal: Deal) => void;
+  leads: Lead[];
+  onUpdateLead: (lead: Lead) => void;
 }
 
-export function DealColumn({ column, deals, onUpdateDeal }: DealColumnProps) {
+export function LeadColumn({ column, leads, onUpdateLead }: LeadColumnProps) {
   return (
     <div key={column.id} className="space-y-4 h-full">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-lg">{column.title}</h2>
         <span className="text-sm text-muted-foreground">
-          {deals.length} deals
+          {leads.length} leads
         </span>
       </div>
       <ErrorBoundary>
@@ -30,12 +31,12 @@ export function DealColumn({ column, deals, onUpdateDeal }: DealColumnProps) {
               ref={provided.innerRef}
               className={`${column.color} p-4 rounded-lg h-[calc(100vh-200px)] overflow-y-auto transition-colors`}
             >
-              {deals.map((deal, index) => (
-                <Draggable key={deal.id} draggableId={deal.id} index={index}>
+              {leads.map((lead, index) => (
+                <Draggable key={lead.id} draggableId={lead.id} index={index}>
                   {(provided) => (
-                    <DealCard
-                      deal={deal}
-                      onUpdate={onUpdateDeal}
+                    <LeadCard
+                      lead={lead}
+                      onUpdate={onUpdateLead}
                       provided={provided}
                     />
                   )}

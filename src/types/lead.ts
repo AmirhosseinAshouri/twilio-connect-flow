@@ -1,10 +1,11 @@
-export type DealStage = "qualify" | "cold" | "warm" | "hot";
 
-export interface Deal {
+export type LeadStage = "qualify" | "cold" | "warm" | "hot";
+
+export interface Lead {
   id: string;
   title: string;
   company: string;
-  stage: DealStage;
+  stage: LeadStage;
   user_id: string;
   assigned_to?: string;
   contact_id?: string;
@@ -13,11 +14,11 @@ export interface Deal {
   updated_at: string;
 }
 
-export type DealFormValues = Omit<Deal, 'id' | 'user_id' | 'created_at'>;
+export type LeadFormValues = Omit<Lead, 'id' | 'user_id' | 'created_at'>;
 
 export interface Mention {
   id: string;
-  deal_id: string;
+  lead_id: string;
   user_id: string;
   mentioned_user_id: string;
   created_at: string;

@@ -2,27 +2,27 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, UserCircle, MessageSquare, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DealForm } from "./DealForm";
+import { LeadForm } from "./LeadForm";
 import { useContact } from "@/hooks";
 import { Link } from "react-router-dom";
-import { Deal } from "@/types";
+import { Lead } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface DealCardProps {
-  deal: Deal;
-  onUpdate: (updatedDeal: Deal) => void;
+interface LeadCardProps {
+  lead: Lead;
+  onUpdate: (updatedLead: Lead) => void;
   provided: any;
 }
 
-export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
-  const { contact } = useContact(deal.contact_id);
+export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
+  const { contact } = useContact(lead.contact_id);
   const [assignedUser, setAssignedUser] = useState<{ full_name: string } | null>(null);
   
   useEffect(() => {
     const fetchAssignedUser = async () => {
-      if (!deal.assigned_to) {
+      if (!lead.assigned_to) {
         setAssignedUser(null);
         return;
       }
@@ -30,7 +30,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
       const { data, error } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('id', deal.assigned_to)
+        .eq('id', lead.assigned_to)
         .single();
       
       if (!error && data) {
@@ -39,7 +39,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
     };
 
     fetchAssignedUser();
-  }, [deal.assigned_to]);
+  }, [lead.assigned_to]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
@@ -63,19 +63,19 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
           <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
             <CardHeader className="p-4">
               <CardTitle className="flex justify-between items-center flex-wrap gap-2">
-                <span className="text-base font-medium">{deal.title}</span>
+                <span className="text-base font-medium">{lead.title}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {deal.company}
+                  {lead.company}
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="space-y-2">
-                {deal.notes && (
+                {lead.notes && (
                   <div className="flex items-start space-x-2">
                     <MessageSquare className="h-3 w-3 mt-1 text-muted-foreground flex-shrink-0" />
                     <div className="text-xs text-muted-foreground line-clamp-2">
-                      {deal.notes}
+                      {lead.notes}
                     </div>
                   </div>
                 )}
@@ -85,7 +85,7 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
                   </span>
                   <span className="text-xs font-medium flex items-center">
                     <Calendar className="h-3 w-3 mr-1" />
-                    {formatDate(deal.created_at)}
+                    {formatDate(lead.created_at)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -118,9 +118,9 @@ export function DealCard({ deal, onUpdate, provided }: DealCardProps) {
         </DialogTrigger>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Deal</DialogTitle>
+            <DialogTitle>Edit Lead</DialogTitle>
           </DialogHeader>
-          <DealForm deal={deal} onSubmit={onUpdate} />
+          <LeadForm lead={lead} onSubmit={onUpdate} />
         </DialogContent>
       </Dialog>
     </div>

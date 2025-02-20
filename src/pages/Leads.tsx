@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { DragDropContext } from "@hello-pangea/dnd";
@@ -9,45 +10,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { AddDealForm } from "@/components/AddDealForm";
-import { DealColumn } from "@/components/DealColumn";
-import { useDeals } from "@/hooks/useDeals";
-import { Deal, DealStage } from "@/types";
+import { AddLeadForm } from "@/components/AddLeadForm";
+import { LeadColumn } from "@/components/LeadColumn";
+import { useLeads } from "@/hooks/useLeads";
+import { Lead, LeadStage } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const stageColumns: { id: DealStage; title: string; color: string }[] = [
+const stageColumns: { id: LeadStage; title: string; color: string }[] = [
   { id: "qualify", title: "Qualify", color: "bg-gray-100" },
   { id: "cold", title: "Cold", color: "bg-blue-50" },
   { id: "warm", title: "Warm", color: "bg-orange-50" },
   { id: "hot", title: "Hot", color: "bg-red-50" },
 ];
 
-const Deals = () => {
-  const [isAddDealOpen, setIsAddDealOpen] = useState(false);
-  const { deals, setDeals, updateDeal } = useDeals();
+const Leads = () => {
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const { leads, setLeads, updateLead } = useLeads();
   const { toast } = useToast();
 
-  const handleAddDeal = async (values: Omit<Deal, "id" | "created_at" | "updated_at">) => {
+  const handleAddLead = async (values: Omit<Lead, "id" | "created_at" | "updated_at">) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const newDeal = {
+    const newLead = {
       ...values,
       user_id: user.id,
-      stage: "qualify" as DealStage,
+      stage: "qualify" as LeadStage,
       contact_id: values.contact_id,
     };
 
     const { data, error } = await supabase
       .from("deals")
-      .insert(newDeal)
+      .insert(newLead)
       .select()
       .single();
 
     if (error) {
       toast({
-        title: "Error adding deal",
+        title: "Error adding lead",
         description: error.message,
         variant: "destructive",
       });
@@ -55,9 +56,9 @@ const Deals = () => {
     }
 
     if (data) {
-      setIsAddDealOpen(false);
+      setIsAddLeadOpen(false);
       toast({
-        title: "Deal Added",
+        title: "Lead Added",
         description: `${data.title} has been added successfully.`,
       });
     }
@@ -75,12 +76,12 @@ const Deals = () => {
       return;
     }
 
-    const deal = deals.find((d) => d.id === draggableId);
-    if (!deal) return;
+    const lead = leads.find((l) => l.id === draggableId);
+    if (!lead) return;
 
-    const updatedDeal = { ...deal, stage: destination.droppableId as DealStage };
-    setDeals(currentDeals =>
-      currentDeals.map(d => d.id === draggableId ? updatedDeal : d)
+    const updatedLead = { ...lead, stage: destination.droppableId as LeadStage };
+    setLeads(currentLeads =>
+      currentLeads.map(l => l.id === draggableId ? updatedLead : l)
     );
 
     const { error } = await supabase
@@ -89,12 +90,12 @@ const Deals = () => {
       .eq("id", draggableId);
 
     if (error) {
-      setDeals(currentDeals =>
-        currentDeals.map(d => d.id === draggableId ? deal : d)
+      setLeads(currentLeads =>
+        currentLeads.map(l => l.id === draggableId ? lead : l)
       );
       
       toast({
-        title: "Error updating deal",
+        title: "Error updating lead",
         description: error.message,
         variant: "destructive",
       });
@@ -106,20 +107,20 @@ const Deals = () => {
     <div className="p-8 bg-background min-h-screen">
       <div className="max-w-[1600px] mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Deals</h1>
-          <Dialog open={isAddDealOpen} onOpenChange={setIsAddDealOpen}>
+          <h1 className="text-3xl font-bold">Leads</h1>
+          <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Deal
+                <Plus className="mr-2 h-4 w-4" /> Add Lead
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Deal</DialogTitle>
+                <DialogTitle>Add New Lead</DialogTitle>
               </DialogHeader>
-              <AddDealForm
-                onSubmit={handleAddDeal}
-                onCancel={() => setIsAddDealOpen(false)}
+              <AddLeadForm
+                onSubmit={handleAddLead}
+                onCancel={() => setIsAddLeadOpen(false)}
               />
             </DialogContent>
           </Dialog>
@@ -128,11 +129,11 @@ const Deals = () => {
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stageColumns.map((column) => (
-              <DealColumn
+              <LeadColumn
                 key={column.id}
                 column={column}
-                deals={deals.filter((d) => d.stage === column.id)}
-                onUpdateDeal={updateDeal}
+                leads={leads.filter((l) => l.stage === column.id)}
+                onUpdateLead={updateLead}
               />
             ))}
           </div>
@@ -140,6 +141,6 @@ const Deals = () => {
       </div>
     </div>
   );
-};
+}
 
-export default Deals;
+export default Leads;

@@ -1,3 +1,4 @@
+
 export * from './contact';
-export * from './deal';
+export * from './lead';
 export * from './communication';
