@@ -145,6 +145,7 @@ export type Database = {
           company: string
           contact_id: string
           created_at: string
+          due_date: string | null
           id: string
           notes: string | null
           stage: string
@@ -157,6 +158,7 @@ export type Database = {
           company: string
           contact_id: string
           created_at?: string
+          due_date?: string | null
           id?: string
           notes?: string | null
           stage?: string
@@ -169,6 +171,7 @@ export type Database = {
           company?: string
           contact_id?: string
           created_at?: string
+          due_date?: string | null
           id?: string
           notes?: string | null
           stage?: string
