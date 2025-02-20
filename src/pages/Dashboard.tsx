@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
 import { useLeads } from "@/hooks/useLeads";
@@ -35,12 +36,12 @@ export default function Dashboard() {
       if (!user) return;
       const {
         data: mentions
-      } = await supabase.from('mentions').select('lead_id').eq('mentioned_user_id', user.id);
+      } = await supabase.from('mentions').select('deal_id').eq('mentioned_user_id', user.id);
       if (mentions && mentions.length > 0) {
-        const leadIds = mentions.map(mention => mention.lead_id);
+        const dealIds = mentions.map(mention => mention.deal_id);
         const {
           data: leadsData
-        } = await supabase.from('leads').select('*').in('id', leadIds).order('updated_at', {
+        } = await supabase.from('deals').select('*').in('id', dealIds).order('updated_at', {
           ascending: false
         });
         if (leadsData) {

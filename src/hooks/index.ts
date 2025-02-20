@@ -1,6 +1,7 @@
+
 export * from './useContacts';
 export * from './useCalls';
-export * from './useDeals';
+export * from './useLeads';
 export * from './useSettings';
 export * from './useContact';
 export * from './useCommunications';
