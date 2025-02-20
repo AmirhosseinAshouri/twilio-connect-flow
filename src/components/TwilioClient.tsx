@@ -60,7 +60,7 @@ export function TwilioClient() {
 
         // Create new device with correct options
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
+          codecPreferences: ['OPUS', 'PCMU'],
           edge: ['sydney', 'ashburn'],
           maxCallSignalingTimeoutMs: 30000
         });
