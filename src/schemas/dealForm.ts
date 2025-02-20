@@ -1,3 +1,4 @@
+
 import * as z from "zod";
 
 export const dealFormSchema = z.object({
@@ -5,6 +6,7 @@ export const dealFormSchema = z.object({
   company: z.string().min(1, "Company is required"),
   stage: z.string(),
   notes: z.string().optional(),
+  due_date: z.string().optional(),
   contact_id: z.string().min(1, "Contact is required"),
 });
 

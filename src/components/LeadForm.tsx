@@ -1,4 +1,3 @@
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -16,6 +15,7 @@ const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   company: z.string().min(1, "Company is required"),
   notes: z.string().optional(),
+  due_date: z.string().optional(),
   assigned_to: z.string().optional(),
   contact_id: z.string(),
 });
@@ -43,6 +43,7 @@ export function LeadForm({ lead, onSubmit }: LeadFormProps) {
       title: lead.title || "",
       company: lead.company || "",
       notes: "",
+      due_date: lead.due_date || "",
       assigned_to: lead.assigned_to || undefined,
       contact_id: lead.contact_id || "",
     },
@@ -84,6 +85,7 @@ export function LeadForm({ lead, onSubmit }: LeadFormProps) {
       company: values.company,
       contact_id: values.contact_id,
       assigned_to: values.assigned_to || null,
+      due_date: values.due_date || null,
       notes: values.notes || lead.notes,
     };
 

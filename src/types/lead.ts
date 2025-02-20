@@ -10,6 +10,7 @@ export interface Lead {
   assigned_to?: string;
   contact_id?: string;
   notes?: string;
+  due_date?: string;
   created_at: string;
   updated_at: string;
 }

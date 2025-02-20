@@ -1,15 +1,21 @@
-import { FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
-import { DealNotesList } from "./DealNotesList";
-import { MentionsInput } from "./MentionsInput";
-import { Button } from "./ui/button";
-import { Save } from "lucide-react";
+
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
+import { Textarea } from "./ui/textarea";
+import { Input } from "./ui/input";
+import { format } from "date-fns";
+
+interface Note {
+  content: string;
+  created_at: string;
+  user_name?: string;
+}
 
 interface DealNotesSectionProps {
   form: any;
-  notes: any[];
+  notes?: Note[];
 }
 
-export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
+export function DealNotesSection({ form, notes = [] }: DealNotesSectionProps) {
   return (
     <div className="space-y-4">
       <FormField
@@ -18,26 +24,55 @@ export function DealNotesSection({ form, notes }: DealNotesSectionProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Add Note</FormLabel>
-            <MentionsInput
-              value={field.value || ""}
-              onChange={field.onChange}
-              placeholder="Add a note... Use @ to mention users"
-              className="min-h-[100px]"
-            />
+            <FormControl>
+              <Textarea 
+                placeholder="Add a note..."
+                className="min-h-[100px] resize-none"
+                {...field}
+              />
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
 
-      <Button type="submit" className="w-full flex items-center gap-2">
-        <Save className="h-4 w-4" />
-        Save Note
-      </Button>
+      <FormField
+        control={form.control}
+        name="due_date"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Due Date</FormLabel>
+            <FormControl>
+              <Input
+                type="datetime-local"
+                {...field}
+                value={field.value || ''}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Notes History</h3>
-        <DealNotesList notes={notes} />
-      </div>
+      {notes.length > 0 && (
+        <div className="space-y-4 mt-6">
+          <h3 className="font-medium">Previous Notes</h3>
+          <div className="space-y-4">
+            {notes.map((note, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-lg bg-muted"
+              >
+                <p className="whitespace-pre-wrap">{note.content}</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {note.user_name ? `${note.user_name} - ` : ''}
+                  {format(new Date(note.created_at), 'MMM d, yyyy HH:mm')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
