@@ -39,7 +39,7 @@ serve(async (req) => {
     // Get user's Twilio settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
-      .select('twilio_account_sid, twilio_auth_token, twilio_twiml_app_sid')
+      .select('twilio_account_sid, twilio_twiml_app_sid')
       .eq('user_id', user.id)
       .single()
 
@@ -48,7 +48,7 @@ serve(async (req) => {
       throw new Error('Failed to fetch Twilio settings')
     }
 
-    if (!settings.twilio_account_sid || !settings.twilio_auth_token) {
+    if (!settings.twilio_account_sid) {
       throw new Error('Incomplete Twilio settings')
     }
 
@@ -63,8 +63,8 @@ serve(async (req) => {
 
     const token = new AccessToken(
       settings.twilio_account_sid,
-      settings.twilio_auth_token,
-      settings.twilio_twiml_app_sid,
+      Deno.env.get('twilio_api_key')!,
+      Deno.env.get('twilio_api_secret')!,
       { identity }
     )
 

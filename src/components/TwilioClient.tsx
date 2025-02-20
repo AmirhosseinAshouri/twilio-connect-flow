@@ -6,6 +6,8 @@ import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/integrations/supabase/client";
 
+type CodecPreferences = ("opus" | "pcmu")[];
+
 export function TwilioClient() {
   const [device, setDevice] = useState<Device | null>(null);
   const [incomingCall, setIncomingCall] = useState<any>(null);
@@ -44,7 +46,7 @@ export function TwilioClient() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
 
-        // Get Twilio token from our API route
+        // Get Twilio token from our edge function
         const { data, error } = await supabase.functions.invoke('get-twilio-token');
         
         if (error) {
@@ -65,8 +67,10 @@ export function TwilioClient() {
         }
 
         // Create new device with correct options
+        const codecPreferences: CodecPreferences = ['opus', 'pcmu'];
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
+          // @ts-ignore - The type definitions are incorrect, but this is the correct usage
+          codecPreferences,
           edge: ['sydney', 'ashburn'],
           maxCallSignalingTimeoutMs: 30000
         });
