@@ -17,6 +17,9 @@ export function TwilioClient() {
   const { toast } = useToast();
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 2000; // 2 seconds
 
   // Initialize audio context lazily on the first user interaction
   const initializeAudioContext = async () => {
@@ -45,6 +48,25 @@ export function TwilioClient() {
       }
     };
   }, [audioContext]);
+
+  const handleWebSocketError = useCallback(async () => {
+    console.log('WebSocket connection failed, attempt:', retryCount + 1);
+    if (retryCount < MAX_RETRIES) {
+      setRetryCount(prev => prev + 1);
+      setTimeout(() => {
+        console.log('Retrying connection...');
+        setupDevice();
+      }, RETRY_DELAY);
+    } else {
+      toast({
+        title: "Connection Error",
+        description: "Failed to establish connection. Please try again later.",
+        variant: "destructive",
+      });
+      setIsInitialized(false);
+      setRetryCount(0);
+    }
+  }, [retryCount, toast]);
 
   const setupDevice = useCallback(async () => {
     console.log('----------------------------------------');
@@ -86,8 +108,12 @@ export function TwilioClient() {
       const newDevice = new Device(data.token, {
         // @ts-ignore - The type definitions are incorrect, but this is the correct usage
         codecPreferences,
-        edge: ['sydney', 'ashburn'],
-        maxCallSignalingTimeoutMs: 30000
+        edge: ['sydney', 'ashburn', 'dublin'],
+        maxCallSignalingTimeoutMs: 30000,
+        enableIceRestart: true,
+        closeProtection: true,
+        // Add WebSocket connection error handling
+        wsServer: 'wss://voice-js.sydney.twilio.com/signal',
       });
 
       // Set up device event handlers before registration
@@ -159,16 +185,21 @@ export function TwilioClient() {
 
       newDevice.on('error', (error) => {
         console.error('Device error:', error);
-        toast({
-          title: "Device Error",
-          description: error.message || "An error occurred with the call device",
-          variant: "destructive",
-        });
+        if (error.code === 31005 || error.message.includes('WebSocket')) {
+          handleWebSocketError();
+        } else {
+          toast({
+            title: "Device Error",
+            description: error.message || "An error occurred with the call device",
+            variant: "destructive",
+          });
+        }
       });
 
       newDevice.on('registered', () => {
         console.log('Device successfully registered with Twilio');
         setIsInitialized(true);
+        setRetryCount(0);
         toast({
           title: "Device Ready",
           description: "Your device is ready to receive calls",
@@ -191,13 +222,9 @@ export function TwilioClient() {
 
     } catch (error) {
       console.error('Error in device setup:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to set up call handling",
-        variant: "destructive",
-      });
+      handleWebSocketError();
     }
-  }, [device, audioContext, toast]);
+  }, [device, audioContext, toast, handleWebSocketError]);
 
   // Auto-initialize when settings are available
   useEffect(() => {
