@@ -163,6 +163,13 @@ export function TwilioClient() {
     }
   };
 
+  // Auto-initialize when settings are available
+  useEffect(() => {
+    if (settings?.twilio_account_sid && !isInitialized) {
+      setupDevice();
+    }
+  }, [settings?.twilio_account_sid]);
+
   const handleAcceptCall = async () => {
     if (incomingCall) {
       // Initialize audio context on call accept
