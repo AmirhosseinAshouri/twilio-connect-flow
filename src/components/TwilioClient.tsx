@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device, Codec } from "@twilio/voice-sdk";
+import { Device } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -13,27 +13,33 @@ export function TwilioClient() {
   const { toast } = useToast();
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
-  // Initialize audio context on component mount
-  useEffect(() => {
-    const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-    setAudioContext(context);
+  // Initialize audio context lazily on the first user interaction
+  const initializeAudioContext = async () => {
+    if (!audioContext) {
+      const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+      await context.resume();
+      setAudioContext(context);
+      return context;
+    }
+    
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+    return audioContext;
+  };
 
-    // Cleanup
+  // Cleanup audio context on unmount
+  useEffect(() => {
     return () => {
-      if (context.state !== 'closed') {
-        context.close();
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
       }
     };
-  }, []);
+  }, [audioContext]);
 
   useEffect(() => {
     const setupDevice = async () => {
       try {
-        // Ensure audio context is resumed after user interaction
-        if (audioContext && audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-
         // Request microphone permission first
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
@@ -60,7 +66,7 @@ export function TwilioClient() {
 
         // Create new device with correct options
         const newDevice = new Device(data.token, {
-          codecPreferences: [Codec.Opus, Codec.PCMU],
+          codecPreferences: ['OPUS', 'PCMU'],
           edge: ['sydney', 'ashburn'],
           maxCallSignalingTimeoutMs: 30000
         });
@@ -76,8 +82,10 @@ export function TwilioClient() {
           setIncomingCall(call);
 
           // Set up call event handlers
-          call.on('accept', () => {
+          call.on('accept', async () => {
             console.log('Call accepted');
+            // Initialize audio context when call is accepted
+            await initializeAudioContext();
             toast({
               title: "Call Connected",
               description: "You are now connected to the caller",
@@ -157,10 +165,8 @@ export function TwilioClient() {
 
   const handleAcceptCall = async () => {
     if (incomingCall) {
-      // Resume audio context on user interaction
-      if (audioContext && audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
+      // Initialize audio context on call accept
+      await initializeAudioContext();
       incomingCall.accept();
     }
   };
