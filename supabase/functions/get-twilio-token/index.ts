@@ -58,11 +58,14 @@ serve(async (req) => {
     const AccessToken = twilio.jwt.AccessToken
     const VoiceGrant = AccessToken.VoiceGrant
 
+    // Create a unique identity for this user
+    const identity = `user-${user.id}`
+
     const token = new AccessToken(
       settings.twilio_account_sid,
       settings.twilio_auth_token,
       settings.twilio_twiml_app_sid,
-      { identity: user.id }
+      { identity }
     )
 
     // Create a Voice grant and add it to the token
@@ -74,7 +77,7 @@ serve(async (req) => {
     // Add the grant to the token
     token.addGrant(voiceGrant)
 
-    console.log('Token generated successfully')
+    console.log('Token generated successfully for identity:', identity)
 
     return new Response(
       JSON.stringify({ token: token.toJwt() }),
