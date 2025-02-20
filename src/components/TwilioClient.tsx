@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device, Codec } from "@twilio/voice-sdk";
+import { Device } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -60,10 +60,9 @@ export function TwilioClient() {
 
         // Create new device with correct options
         const newDevice = new Device(data.token, {
-          codecPreferences: [Codec.Opus, Codec.Pcmu],
+          codecPreferences: ['opus', 'pcmu'],
           edge: ['sydney', 'ashburn'],
-          maxCallSignalingTimeoutMs: 30000,
-          enableIceRestart: true
+          maxCallSignalingTimeoutMs: 30000
         });
 
         // Register the device
