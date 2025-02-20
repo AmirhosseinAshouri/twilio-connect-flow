@@ -43,11 +43,11 @@ export async function GET(req: Request) {
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
 
-    // Create an access token
+    // Create an access token using API Key and Secret
     const token = new AccessToken(
       settings.twilio_account_sid,
-      settings.twilio_auth_token,
-      settings.twilio_twiml_app_sid || settings.twilio_account_sid, // fallback to account SID if no TwiML app SID
+      process.env.twilio_api_key!,
+      process.env.twilio_api_secret!,
       { identity: session.user.id }
     );
 

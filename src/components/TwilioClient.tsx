@@ -44,7 +44,7 @@ export function TwilioClient() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
 
-        // Get Twilio token from our edge function
+        // Get Twilio token from our API route
         const { data, error } = await supabase.functions.invoke('get-twilio-token');
         
         if (error) {
