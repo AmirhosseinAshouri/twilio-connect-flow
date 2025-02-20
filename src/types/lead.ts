@@ -13,6 +13,7 @@ export interface Lead {
   due_date?: string;
   created_at: string;
   updated_at: string;
+  completed: boolean;
 }
 
 export type LeadFormValues = Omit<Lead, 'id' | 'user_id' | 'created_at'>;

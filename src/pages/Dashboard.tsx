@@ -12,6 +12,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/LeadForm";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
@@ -19,7 +20,7 @@ export default function Dashboard() {
   const { calls } = useCalls();
   const [mentionedLeads, setMentionedLeads] = useState<Lead[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [checkedLeads, setCheckedLeads] = useState<Record<string, boolean>>({});
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchMentionedLeads = async () => {
@@ -55,11 +56,30 @@ export default function Dashboard() {
     return format(new Date(dueDate), 'MMM d, yyyy HH:mm');
   };
 
-  const handleCheckboxChange = (leadId: string, checked: boolean) => {
-    setCheckedLeads(prev => ({
-      ...prev,
-      [leadId]: checked
-    }));
+  const handleCheckboxChange = async (leadId: string, checked: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('deals')
+        .update({ completed: checked })
+        .eq('id', leadId);
+
+      if (error) throw error;
+
+      setMentionedLeads(prev => prev.map(lead => 
+        lead.id === leadId ? { ...lead, completed: checked } : lead
+      ));
+
+      toast({
+        title: checked ? "Lead marked as completed" : "Lead marked as incomplete",
+        description: "The lead status has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error updating lead status",
+        description: "There was an error updating the lead status. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -121,7 +141,6 @@ export default function Dashboard() {
                     key={lead.id} 
                     className="cursor-pointer hover:bg-muted/50" 
                     onClick={(e) => {
-                      // Prevent row click when clicking checkbox
                       if ((e.target as HTMLElement).closest('.checkbox-cell')) {
                         return;
                       }
@@ -130,7 +149,7 @@ export default function Dashboard() {
                   >
                     <TableCell className="checkbox-cell" onClick={e => e.stopPropagation()}>
                       <Checkbox
-                        checked={checkedLeads[lead.id] || false}
+                        checked={lead.completed || false}
                         onCheckedChange={(checked) => handleCheckboxChange(lead.id, checked as boolean)}
                         className="rounded-full data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500"
                       />

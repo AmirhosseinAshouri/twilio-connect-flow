@@ -143,6 +143,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           company: string
+          completed: boolean | null
           contact_id: string
           created_at: string
           due_date: string | null
@@ -156,6 +157,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           company: string
+          completed?: boolean | null
           contact_id: string
           created_at?: string
           due_date?: string | null
@@ -169,6 +171,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           company?: string
+          completed?: boolean | null
           contact_id?: string
           created_at?: string
           due_date?: string | null
