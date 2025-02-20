@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Device } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
@@ -42,7 +42,7 @@ export function TwilioClient() {
     };
   }, [audioContext]);
 
-  const setupDevice = async () => {
+  const setupDevice = useCallback(async () => {
     try {
       // Initialize audio context first
       await initializeAudioContext();
@@ -87,7 +87,7 @@ export function TwilioClient() {
 
       // Set up device event handlers
       newDevice.on('incoming', (call) => {
-        console.log('Incoming call received');
+        console.log('Incoming call received', call);
         setIncomingCall(call);
 
         // Set up call event handlers
@@ -161,14 +161,23 @@ export function TwilioClient() {
         variant: "destructive",
       });
     }
-  };
+  }, [device, audioContext, toast]);
 
   // Auto-initialize when settings are available
   useEffect(() => {
     if (settings?.twilio_account_sid && !isInitialized) {
       setupDevice();
     }
-  }, [settings?.twilio_account_sid]);
+    
+    // Cleanup function
+    return () => {
+      if (device) {
+        device.destroy();
+        setDevice(null);
+        setIsInitialized(false);
+      }
+    };
+  }, [settings?.twilio_account_sid, setupDevice, device, isInitialized]);
 
   const handleAcceptCall = async () => {
     if (incomingCall) {
