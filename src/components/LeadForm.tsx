@@ -49,35 +49,6 @@ export function LeadForm({ lead, onSubmit }: LeadFormProps) {
     },
   });
 
-  useEffect(() => {
-    const fetchNotes = async () => {
-      const { data: notesData, error } = await supabase
-        .from('deals')
-        .select('notes, created_at')
-        .eq('id', lead.id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        toast({
-          title: "Error fetching notes",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (notesData && notesData[0]?.notes) {
-        const notesList = notesData.map(note => ({
-          content: note.notes || "",
-          created_at: note.created_at,
-        }));
-        setNotes(notesList);
-      }
-    };
-
-    fetchNotes();
-  }, [lead.id, toast]);
-
   const handleSubmit = async (values: FormValues) => {
     const updatedLead = {
       ...lead,
@@ -86,40 +57,61 @@ export function LeadForm({ lead, onSubmit }: LeadFormProps) {
       contact_id: values.contact_id,
       assigned_to: values.assigned_to || null,
       due_date: values.due_date || null,
-      notes: values.notes || lead.notes,
     };
 
     if (values.notes) {
-      const mentionRegex = /@(\w+)/g;
-      const mentions = values.notes.match(mentionRegex) || [];
-      
-      if (mentions.length > 0) {
-        const mentionPromises = mentions.map(async (mention) => {
-          const username = mention.slice(1);
-          const { data: userData } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('full_name', username)
-            .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("No user found");
 
-          if (userData) {
-            await supabase.from('mentions').insert({
-              lead_id: lead.id,
-              user_id: (await supabase.auth.getUser()).data.user?.id,
-              mentioned_user_id: userData.id,
-            });
-          }
+        const mentionRegex = /@(\w+)/g;
+        const mentions = values.notes.match(mentionRegex) || [];
+        
+        const { error: noteError } = await supabase
+          .from('notes')
+          .insert({
+            deal_id: lead.id,
+            content: values.notes,
+            user_id: user.id,
+          });
+
+        if (noteError) throw noteError;
+
+        if (mentions.length > 0) {
+          const mentionPromises = mentions.map(async (mention) => {
+            const username = mention.slice(1);
+            const { data: userData } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('full_name', username)
+              .single();
+
+            if (userData) {
+              await supabase.from('mentions').insert({
+                deal_id: lead.id,
+                user_id: user.id,
+                mentioned_user_id: userData.id,
+              });
+            }
+          });
+
+          await Promise.all(mentionPromises);
+        }
+
+        form.setValue('notes', '');
+        
+        toast({
+          title: "Note added",
+          description: "The note has been added successfully.",
         });
-
-        await Promise.all(mentionPromises);
+      } catch (error) {
+        toast({
+          title: "Error adding note",
+          description: "There was an error adding the note. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
-
-      setNotes(prev => [{
-        content: values.notes || "",
-        created_at: new Date().toISOString(),
-      }, ...prev]);
-
-      form.setValue('notes', '');
     }
 
     onSubmit(updatedLead);
@@ -139,7 +131,7 @@ export function LeadForm({ lead, onSubmit }: LeadFormProps) {
           onContactSelect={handleContactSelect} 
           isEditing={Boolean(lead.id)} 
         />
-        <DealNotesSection form={form} notes={notes} />
+        <DealNotesSection form={form} dealId={lead.id} />
         <DealAssignedToSection form={form} />
         <Button type="submit" className="w-full">
           Save Changes

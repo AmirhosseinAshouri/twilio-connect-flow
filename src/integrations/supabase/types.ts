@@ -143,12 +143,10 @@ export type Database = {
         Row: {
           assigned_to: string | null
           company: string
-          completed: boolean | null
           contact_id: string
           created_at: string
           due_date: string | null
           id: string
-          notes: string | null
           stage: string
           title: string
           updated_at: string
@@ -157,12 +155,10 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           company: string
-          completed?: boolean | null
           contact_id: string
           created_at?: string
           due_date?: string | null
           id?: string
-          notes?: string | null
           stage?: string
           title: string
           updated_at?: string
@@ -171,12 +167,10 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           company?: string
-          completed?: boolean | null
           contact_id?: string
           created_at?: string
           due_date?: string | null
           id?: string
-          notes?: string | null
           stage?: string
           title?: string
           updated_at?: string
@@ -209,6 +203,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "mentions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          completed: boolean | null
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_deal_id_fkey"
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
