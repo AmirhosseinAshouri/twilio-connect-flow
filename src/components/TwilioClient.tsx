@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { Device } from "@twilio/voice-sdk";
+import { Device, Codec } from "@twilio/voice-sdk";
 import { useToast } from "@/hooks/use-toast";
 import { IncomingCallDialog } from "./IncomingCallDialog";
 import { useSettings } from "@/hooks/useSettings";
@@ -11,10 +11,29 @@ export function TwilioClient() {
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const { settings } = useSettings();
   const { toast } = useToast();
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+
+  // Initialize audio context on component mount
+  useEffect(() => {
+    const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+    setAudioContext(context);
+
+    // Cleanup
+    return () => {
+      if (context.state !== 'closed') {
+        context.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const setupDevice = async () => {
       try {
+        // Ensure audio context is resumed after user interaction
+        if (audioContext && audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
         // Request microphone permission first
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
@@ -41,7 +60,7 @@ export function TwilioClient() {
 
         // Create new device with correct options
         const newDevice = new Device(data.token, {
-          codecPreferences: ['opus', 'pcmu'],
+          codecPreferences: [Codec.Opus, Codec.Pcmu],
           edge: ['sydney', 'ashburn'],
           maxCallSignalingTimeoutMs: 30000,
           enableIceRestart: true
@@ -137,8 +156,12 @@ export function TwilioClient() {
     };
   }, [settings?.twilio_account_sid]);
 
-  const handleAcceptCall = () => {
+  const handleAcceptCall = async () => {
     if (incomingCall) {
+      // Resume audio context on user interaction
+      if (audioContext && audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       incomingCall.accept();
     }
   };
