@@ -20,9 +20,7 @@ export function TwilioClient() {
         stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
 
         // Get Twilio token from our edge function
-        const { data, error } = await supabase.functions.invoke('get-twilio-token', {
-          method: 'POST'
-        });
+        const { data, error } = await supabase.functions.invoke('get-twilio-token');
         
         if (error) {
           console.error('Error getting token:', error);
@@ -33,13 +31,24 @@ export function TwilioClient() {
           throw new Error('No token received');
         }
 
+        console.log('Received token from edge function');
+
+        // Destroy existing device if any
+        if (device) {
+          console.log('Destroying existing device');
+          device.destroy();
+        }
+
         // Create new device with correct options
         const newDevice = new Device(data.token, {
-          edge: 'sydney',
-          allowIncomingWhileBusy: true
+          codecPreferences: ['opus', 'pcmu'],
+          edge: ['sydney', 'ashburn'],
+          maxCallSignalingTimeoutMs: 30000,
+          enableIceRestart: true
         });
 
         // Register the device
+        console.log('Registering device...');
         await newDevice.register();
         console.log('Device registered successfully');
 
@@ -75,7 +84,6 @@ export function TwilioClient() {
             });
           });
 
-          // Add error handling for the call
           call.on('error', (error) => {
             console.error('Call error:', error);
             toast({
@@ -86,7 +94,6 @@ export function TwilioClient() {
           });
         });
 
-        // Add device error handling
         newDevice.on('error', (error) => {
           console.error('Device error:', error);
           toast({
@@ -96,7 +103,6 @@ export function TwilioClient() {
           });
         });
 
-        // Add device registration state handling
         newDevice.on('registered', () => {
           console.log('Device registered with Twilio');
           toast({
@@ -110,10 +116,6 @@ export function TwilioClient() {
         });
 
         setDevice(newDevice);
-
-        return () => {
-          newDevice.destroy();
-        };
       } catch (error) {
         console.error('Error setting up Twilio device:', error);
         toast({
