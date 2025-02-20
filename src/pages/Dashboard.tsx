@@ -3,47 +3,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
 import { useLeads } from "@/hooks/useLeads";
 import { useCalls } from "@/hooks/useCalls";
-import { DollarSign, Phone, Users, AtSign } from "lucide-react";
+import { DollarSign, Phone, Users, AtSign, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/LeadForm";
 
 export default function Dashboard() {
-  const {
-    contacts
-  } = useContacts();
-  const {
-    leads,
-    updateLead
-  } = useLeads();
-  const {
-    calls
-  } = useCalls();
+  const { contacts } = useContacts();
+  const { leads, updateLead } = useLeads();
+  const { calls } = useCalls();
   const [mentionedLeads, setMentionedLeads] = useState<Lead[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     const fetchMentionedLeads = async () => {
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const {
-        data: mentions
-      } = await supabase.from('mentions').select('deal_id').eq('mentioned_user_id', user.id);
+      const { data: mentions } = await supabase
+        .from('mentions')
+        .select('deal_id')
+        .eq('mentioned_user_id', user.id);
       if (mentions && mentions.length > 0) {
         const dealIds = mentions.map(mention => mention.deal_id);
-        const {
-          data: leadsData
-        } = await supabase.from('deals').select('*').in('id', dealIds).order('updated_at', {
-          ascending: false
-        });
+        const { data: leadsData } = await supabase
+          .from('deals')
+          .select('*')
+          .in('id', dealIds)
+          .order('updated_at', { ascending: false });
         if (leadsData) {
           setMentionedLeads(leadsData as Lead[]);
         }
@@ -58,7 +48,13 @@ export default function Dashboard() {
     setMentionedLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
   };
 
-  return <div className="p-8 space-y-8">
+  const formatDueDate = (dueDate: string | undefined) => {
+    if (!dueDate) return "No due date";
+    return format(new Date(dueDate), 'MMM d, yyyy HH:mm');
+  };
+
+  return (
+    <div className="p-8 space-y-8">
       <h1 className="text-3xl font-bold mb-8 mx-[8px] my-[36px]">Dashboard</h1>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -93,7 +89,8 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {mentionedLeads.length > 0 && <div className="space-y-4">
+      {mentionedLeads.length > 0 && (
+        <div className="space-y-4">
           <div className="flex items-center gap-2">
             <AtSign className="h-5 w-5" />
             <h2 className="text-xl font-semibold">Leads You're Mentioned In</h2>
@@ -104,27 +101,39 @@ export default function Dashboard() {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Last Note</TableHead>
+                  <TableHead>Due Date</TableHead>
                   <TableHead>Last Updated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mentionedLeads.map(lead => <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedLead(lead)}>
+                {mentionedLeads.map(lead => (
+                  <TableRow 
+                    key={lead.id} 
+                    className="cursor-pointer hover:bg-muted/50" 
+                    onClick={() => setSelectedLead(lead)}
+                  >
                     <TableCell className="font-medium">{lead.title}</TableCell>
                     <TableCell>
                       <div className="max-w-md truncate">
                         {lead.notes || "No notes yet"}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {formatDistanceToNow(new Date(lead.updated_at), {
-                  addSuffix: true
-                })}
+                    <TableCell className="whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        {formatDueDate(lead.due_date)}
+                      </div>
                     </TableCell>
-                  </TableRow>)}
+                    <TableCell>
+                      {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
-        </div>}
+        </div>
+      )}
 
       <Dialog open={!!selectedLead} onOpenChange={open => !open && setSelectedLead(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -134,5 +143,6 @@ export default function Dashboard() {
           {selectedLead && <LeadForm lead={selectedLead} onSubmit={handleLeadUpdate} />}
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 }
