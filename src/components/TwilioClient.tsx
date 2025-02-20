@@ -80,15 +80,22 @@ export function TwilioClient() {
         maxCallSignalingTimeoutMs: 30000
       });
 
-      // Register the device
-      console.log('Registering device...');
-      await newDevice.register();
-      console.log('Device registered successfully');
-
-      // Set up device event handlers
+      // Set up device event handlers before registration
       newDevice.on('incoming', (call) => {
         console.log('Incoming call received', call);
-        setIncomingCall(call);
+        // Force React to re-render by creating a new state update
+        setIncomingCall(prevCall => {
+          if (prevCall) {
+            // If there's an existing call, reject it
+            prevCall.reject();
+          }
+          return call;
+        });
+
+        toast({
+          title: "Incoming Call",
+          description: `Incoming call from ${call.parameters.From || 'Unknown'}`,
+        });
 
         // Set up call event handlers
         call.on('accept', async () => {
@@ -121,6 +128,7 @@ export function TwilioClient() {
 
         call.on('error', (error) => {
           console.error('Call error:', error);
+          setIncomingCall(null);
           toast({
             title: "Call Error",
             description: error.message || "An error occurred during the call",
@@ -151,6 +159,11 @@ export function TwilioClient() {
         console.log('Device unregistered from Twilio');
         setIsInitialized(false);
       });
+
+      // Register the device after setting up handlers
+      console.log('Registering device...');
+      await newDevice.register();
+      console.log('Device registered successfully');
 
       setDevice(newDevice);
     } catch (error) {
