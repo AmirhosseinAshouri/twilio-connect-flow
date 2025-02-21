@@ -1,8 +1,8 @@
 
-import { BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider } from './components/theme-provider';
 import { CRMSidebar } from './components/CRMSidebar';
 import { CRMRouter } from './router';
+import { BrowserRouter as Router } from 'react-router-dom';
 
 const App = () => {
   return (

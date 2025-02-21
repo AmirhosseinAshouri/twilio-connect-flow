@@ -1,14 +1,14 @@
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { PhoneCall } from "lucide-react";
-import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
+import { Sidebar, SidebarBody } from "@/components/ui/sidebar";
 import { CallForm } from "./CallForm";
+import { useSettings } from "@/hooks/useSettings";
 
 export function SidebarCallForm() {
   const [open, setOpen] = useState(false);
-
+  const { settings, loading } = useSettings();
+  
   return (
     <Sidebar open={open} setOpen={setOpen}>
       <SidebarBody className="p-4">
@@ -17,7 +17,15 @@ export function SidebarCallForm() {
             <PhoneCall className="h-5 w-5" />
             <span className="text-sm font-medium">Quick Call</span>
           </div>
-          <CallForm />
+          <CallForm 
+            phone=""
+            notes=""
+            isLoading={loading}
+            settings={settings}
+            onSubmit={() => {}}
+            onPhoneChange={() => {}}
+            onNotesChange={() => {}}
+          />
         </div>
       </SidebarBody>
     </Sidebar>
