@@ -1,90 +1,101 @@
 
-import { Home, Users, PhoneCall, PieChart, Settings, Menu } from "lucide-react";
+import { Home, Users, PhoneCall, PieChart, Settings, LogOut } from "lucide-react";
 import {
   Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarTrigger,
+  SidebarBody,
+  SidebarLink,
 } from "@/components/ui/sidebar";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
-const menuItems = [
-  { title: "Dashboard", icon: Home, path: "/" },
-  { title: "Contacts", icon: Users, path: "/contacts" },
-  { title: "Leads", icon: PieChart, path: "/leads" },
-  { title: "Communications", icon: PhoneCall, path: "/communications" },
-  { title: "Quick Call", icon: PhoneCall, path: "/quick-call" },
-  { title: "Settings", icon: Settings, path: "/settings" },
+const links = [
+  {
+    label: "Dashboard",
+    href: "/",
+    icon: <Home className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+  },
+  {
+    label: "Contacts",
+    href: "/contacts",
+    icon: <Users className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+  },
+  {
+    label: "Leads",
+    href: "/leads",
+    icon: <PieChart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+  },
+  {
+    label: "Communications",
+    href: "/communications",
+    icon: <PhoneCall className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+  },
+  {
+    label: "Quick Call",
+    href: "/quick-call",
+    icon: <PhoneCall className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+  },
+  {
+    label: "Settings",
+    href: "/settings",
+    icon: <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+  },
 ];
 
-const Navigation = () => (
-  <SidebarMenu>
-    {menuItems.map((item) => (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild>
-          <Link to={item.path} className="flex items-center gap-2">
-            <item.icon className="h-5 w-5" />
-            <span>{item.title}</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    ))}
-  </SidebarMenu>
-);
+const Logo = () => {
+  return (
+    <Link
+      to="/"
+      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+    >
+      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="font-medium text-black dark:text-white whitespace-pre"
+      >
+        CRM System
+      </motion.span>
+    </Link>
+  );
+};
+
+const LogoIcon = () => {
+  return (
+    <Link
+      to="/"
+      className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+    >
+      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+    </Link>
+  );
+};
 
 export function CRMSidebar() {
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    return (
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="lg" 
-            className="fixed z-50 h-16 w-16 rounded-full hover:bg-gray-100 left-4 top-4"
-          >
-            <Menu className="h-10 w-10" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-[240px] p-0">
-          <div className="h-full bg-sidebar">
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel className="pt-6">
-                  <span className="text-xl font-bold text-crm-primary">CRM</span>
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <Navigation />
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
+  const [open, setOpen] = useState(false);
+  
   return (
-    <Sidebar>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            <span className="text-xl font-bold text-crm-primary">CRM</span>
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <Navigation />
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+    <Sidebar open={open} setOpen={setOpen}>
+      <SidebarBody className="justify-between gap-10">
+        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+          {open ? <Logo /> : <LogoIcon />}
+          <div className="mt-8 flex flex-col gap-2">
+            {links.map((link, idx) => (
+              <SidebarLink key={idx} link={link} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <SidebarLink
+            link={{
+              label: "Logout",
+              href: "/signin",
+              icon: <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
+            }}
+          />
+        </div>
+      </SidebarBody>
     </Sidebar>
   );
 }
