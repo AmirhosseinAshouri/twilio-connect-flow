@@ -77,11 +77,11 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
     >
       <Dialog>
         <DialogTrigger asChild>
-          <Card className="hover:shadow-lg transition-shadow bg-white cursor-pointer">
+          <Card className="hover:shadow-lg transition-shadow bg-white dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-800/80 cursor-pointer">
             <CardHeader className="p-4">
               <CardTitle className="flex justify-between items-center flex-wrap gap-2">
-                <span className="text-base font-medium">{lead.title}</span>
-                <span className="text-xs font-normal text-muted-foreground">
+                <span className="text-base font-medium dark:text-neutral-200">{lead.title}</span>
+                <span className="text-xs font-normal text-muted-foreground dark:text-neutral-400">
                   {lead.company}
                 </span>
               </CardTitle>
@@ -91,37 +91,37 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
                 {latestNote && (
                   <div className="flex items-start space-x-2">
                     <MessageSquare className="h-3 w-3 mt-1 text-muted-foreground flex-shrink-0" />
-                    <div className="text-xs text-muted-foreground line-clamp-2">
+                    <div className="text-xs text-muted-foreground dark:text-neutral-400 line-clamp-2">
                       {latestNote.content}
                     </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground dark:text-neutral-500">
                     Created
                   </span>
-                  <span className="text-xs font-medium flex items-center">
+                  <span className="text-xs font-medium flex items-center dark:text-neutral-300">
                     <Calendar className="h-3 w-3 mr-1" />
                     {formatDate(lead.created_at)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground dark:text-neutral-500">
                     Assigned To
                   </span>
-                  <span className="text-xs font-medium flex items-center">
+                  <span className="text-xs font-medium flex items-center dark:text-neutral-300">
                     <User className="h-3 w-3 mr-1" />
                     {assignedUser ? assignedUser.full_name : 'Unassigned'}
                   </span>
                 </div>
                 {contact && (
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground dark:text-neutral-500">
                       Contact
                     </span>
                     <Link 
                       to={`/contacts/${contact.id}`}
-                      className="text-xs font-medium flex items-center hover:text-primary"
+                      className="text-xs font-medium flex items-center hover:text-primary dark:text-neutral-300 dark:hover:text-primary"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <UserCircle className="h-3 w-3 mr-1" />
@@ -133,9 +133,9 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
             </CardContent>
           </Card>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-neutral-900 dark:border-neutral-800">
           <DialogHeader>
-            <DialogTitle>Edit Lead</DialogTitle>
+            <DialogTitle className="dark:text-neutral-200">Edit Lead</DialogTitle>
           </DialogHeader>
           <LeadForm lead={lead} onSubmit={onUpdate} />
         </DialogContent>

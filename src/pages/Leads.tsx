@@ -18,10 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const stageColumns: { id: LeadStage; title: string; color: string }[] = [
-  { id: "qualify", title: "Qualify", color: "bg-gray-100" },
-  { id: "cold", title: "Cold", color: "bg-blue-50" },
-  { id: "warm", title: "Warm", color: "bg-orange-50" },
-  { id: "hot", title: "Hot", color: "bg-red-50" },
+  { id: "qualify", title: "Qualify", color: "bg-gray-100 dark:bg-neutral-800/50" },
+  { id: "cold", title: "Cold", color: "bg-blue-50 dark:bg-blue-950/30" },
+  { id: "warm", title: "Warm", color: "bg-orange-50 dark:bg-orange-950/30" },
+  { id: "hot", title: "Hot", color: "bg-red-50 dark:bg-red-950/30" },
 ];
 
 const Leads = () => {
@@ -104,19 +104,19 @@ const Leads = () => {
   };
 
   return (
-    <div className="p-8 bg-background min-h-screen">
+    <div className="p-8 bg-background dark:bg-neutral-900 min-h-screen">
       <div className="max-w-[1600px] mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Leads</h1>
+          <h1 className="text-3xl font-bold text-foreground">Leads</h1>
           <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" /> Add Lead
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="dark:bg-neutral-900 dark:border-neutral-800">
               <DialogHeader>
-                <DialogTitle>Add New Lead</DialogTitle>
+                <DialogTitle className="dark:text-neutral-200">Add New Lead</DialogTitle>
               </DialogHeader>
               <AddLeadForm
                 onSubmit={handleAddLead}
