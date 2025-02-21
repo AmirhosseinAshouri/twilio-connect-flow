@@ -1,72 +1,25 @@
-import { Phone } from "lucide-react";
+
 import { useState } from "react";
-import { useSettings } from "@/hooks";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { PhoneCall } from "lucide-react";
+import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { CallForm } from "./CallForm";
-import { useInitiateCall } from "@/hooks/useInitiateCall";
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-} from "@/components/ui/sidebar";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export function SidebarCallForm() {
-  const [phone, setPhone] = useState("");
-  const [notes, setNotes] = useState("");
-  const { settings, loading: settingsLoading } = useSettings();
-  const { initiateCall, isLoading } = useInitiateCall();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const success = await initiateCall({
-      phone,
-      notes,
-      // contact is now optional, so we can omit it
-    });
-    
-    if (success) {
-      setPhone("");
-      setNotes("");
-    }
-  };
-
-  const isTwilioConfigured = settings?.twilio_account_sid && 
-                            settings?.twilio_auth_token && 
-                            settings?.twilio_phone_number;
+  const [open, setOpen] = useState(false);
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>
-        <div className="flex items-center gap-2">
-          <Phone className="h-4 w-4" />
-          <span>Quick Call</span>
-        </div>
-      </SidebarGroupLabel>
-      <SidebarGroupContent className="px-2">
-        {settingsLoading ? (
-          <div className="flex items-center justify-center p-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+    <Sidebar open={open} setOpen={setOpen}>
+      <SidebarBody className="p-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <PhoneCall className="h-5 w-5" />
+            <span className="text-sm font-medium">Quick Call</span>
           </div>
-        ) : !isTwilioConfigured ? (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Missing Twilio Settings</AlertTitle>
-            <AlertDescription>
-              Configure Twilio settings first.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <CallForm
-            phone={phone}
-            notes={notes}
-            isLoading={isLoading}
-            settings={settings}
-            onPhoneChange={setPhone}
-            onNotesChange={setNotes}
-            onSubmit={handleSubmit}
-          />
-        )}
-      </SidebarGroupContent>
-    </SidebarGroup>
+          <CallForm />
+        </div>
+      </SidebarBody>
+    </Sidebar>
   );
 }

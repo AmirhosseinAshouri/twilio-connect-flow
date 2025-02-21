@@ -4,7 +4,7 @@
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import React, { useState, createContext, useContext } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, HTMLMotionProps } from "framer-motion";
 import { Menu, X } from "lucide-react";
 
 interface Links {
@@ -72,10 +72,14 @@ export const Sidebar = ({
   );
 };
 
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
+type SidebarBodyProps = HTMLMotionProps<"div"> & {
+  className?: string;
+};
+
+export const SidebarBody: React.FC<SidebarBodyProps> = (props) => {
   return (
     <>
-      <DesktopSidebar {...(props as any)} />
+      <DesktopSidebar {...props} />
       <MobileSidebar {...(props as React.ComponentProps<"div">)} />
     </>
   );
@@ -85,7 +89,7 @@ export const DesktopSidebar = ({
   className,
   children,
   ...props
-}: React.ComponentProps<typeof motion.div>) => {
+}: HTMLMotionProps<"div">) => {
   const { open, setOpen, animate } = useSidebar();
   return (
     <motion.div
