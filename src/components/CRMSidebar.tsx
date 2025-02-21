@@ -1,5 +1,5 @@
 
-import { Home, Users, PhoneCall, PieChart, Settings, LogOut } from "lucide-react";
+import { Home, Users, PieChart, Settings, LogOut } from "lucide-react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -22,16 +22,6 @@ const links = [
     label: "Leads",
     href: "/leads",
     icon: <PieChart className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-  },
-  {
-    label: "Communications",
-    href: "/communications",
-    icon: <PhoneCall className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
-  },
-  {
-    label: "Quick Call",
-    href: "/quick-call",
-    icon: <PhoneCall className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />,
   },
   {
     label: "Settings",
