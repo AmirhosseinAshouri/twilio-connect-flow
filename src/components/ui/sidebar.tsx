@@ -72,10 +72,9 @@ export const Sidebar = ({
   );
 };
 
-type SidebarBodyProps = Omit<HTMLMotionProps<"div">, keyof React.HTMLAttributes<HTMLDivElement>> & 
-  React.HTMLAttributes<HTMLDivElement> & {
-    className?: string;
-  };
+type SidebarBodyProps = React.HTMLAttributes<HTMLDivElement> & {
+  className?: string;
+};
 
 export const SidebarBody = React.forwardRef<HTMLDivElement, SidebarBodyProps>(
   (props, ref) => {
@@ -89,7 +88,11 @@ export const SidebarBody = React.forwardRef<HTMLDivElement, SidebarBodyProps>(
 );
 SidebarBody.displayName = "SidebarBody";
 
-export const DesktopSidebar = React.forwardRef<HTMLDivElement, HTMLMotionProps<"div">>(
+interface DesktopSidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
+}
+
+export const DesktopSidebar = React.forwardRef<HTMLDivElement, DesktopSidebarProps>(
   ({ className, children, ...props }, ref) => {
     const { open, setOpen, animate } = useSidebar();
     return (
@@ -113,7 +116,11 @@ export const DesktopSidebar = React.forwardRef<HTMLDivElement, HTMLMotionProps<"
 );
 DesktopSidebar.displayName = "DesktopSidebar";
 
-export const MobileSidebar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+interface MobileSidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
+}
+
+export const MobileSidebar = React.forwardRef<HTMLDivElement, MobileSidebarProps>(
   ({ className, children, ...props }, ref) => {
     const { open, setOpen } = useSidebar();
     return (
