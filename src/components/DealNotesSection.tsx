@@ -1,13 +1,17 @@
 
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
 import { Textarea } from "./ui/textarea";
-import { Input } from "./ui/input";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Note } from "@/types/note";
 import { Checkbox } from "./ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
+import { Calendar } from "./ui/calendar";
+import { CalendarIcon } from "lucide-react";
 
 interface DealNotesSectionProps {
   form: any;
@@ -95,13 +99,39 @@ export function DealNotesSection({ form, dealId }: DealNotesSectionProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>Due Date</FormLabel>
-            <FormControl>
-              <Input
-                type="datetime-local"
-                {...field}
-                value={field.value || ''}
-              />
-            </FormControl>
+            <Popover>
+              <PopoverTrigger asChild>
+                <FormControl>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full pl-3 text-left font-normal",
+                      !field.value && "text-muted-foreground"
+                    )}
+                  >
+                    {field.value ? (
+                      format(new Date(field.value), "PPP")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </FormControl>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={field.value ? new Date(field.value) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      const formattedDate = format(date, "yyyy-MM-dd");
+                      field.onChange(formattedDate);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             <FormMessage />
           </FormItem>
         )}
@@ -129,7 +159,7 @@ export function DealNotesSection({ form, dealId }: DealNotesSectionProps) {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {format(new Date(note.created_at), 'MMM d, yyyy HH:mm')}
+                  {format(new Date(note.created_at), "PPP")}
                 </p>
               </div>
             ))}
