@@ -59,22 +59,22 @@ const Contacts = () => {
   };
 
   const handleRemoveContact = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Prevent row click when clicking delete button
+    e.stopPropagation();
     await removeContact(id);
   };
 
   return (
-    <div className="p-8 bg-background min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Contacts</h1>
+    <div className="p-4 md:p-8 bg-background min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold">Contacts</h1>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Add Contact
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Add New Contact</DialogTitle>
               </DialogHeader>
@@ -102,14 +102,14 @@ const Contacts = () => {
             ))}
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Company</TableHead>
+                  <TableHead className="hidden sm:table-cell">Email</TableHead>
+                  <TableHead className="hidden md:table-cell">Phone</TableHead>
+                  <TableHead className="hidden lg:table-cell">Company</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -120,14 +120,24 @@ const Contacts = () => {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(contact.id)}
                   >
-                    <TableCell className="font-medium">{contact.name}</TableCell>
-                    <TableCell>{contact.email}</TableCell>
-                    <TableCell>{contact.phone}</TableCell>
-                    <TableCell>{contact.company}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <span>{contact.name}</span>
+                        <span className="text-sm text-muted-foreground sm:hidden">
+                          {contact.email}
+                        </span>
+                        <span className="text-sm text-muted-foreground md:hidden">
+                          {contact.phone}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{contact.email}</TableCell>
+                    <TableCell className="hidden md:table-cell">{contact.phone}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{contact.company}</TableCell>
                     <TableCell>
                       <div 
-                        className="flex justify-end gap-2"
-                        onClick={(e) => e.stopPropagation()} // Prevent row click when clicking actions
+                        className="flex justify-end gap-1 sm:gap-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <CallFormDialog contact={contact} variant="ghost" size="icon" />
                         <SendSMSDialog contact={contact} variant="ghost" size="icon" />
