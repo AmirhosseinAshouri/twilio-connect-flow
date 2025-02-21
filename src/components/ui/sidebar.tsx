@@ -4,7 +4,7 @@
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import React, { useState, createContext, useContext } from "react";
-import { AnimatePresence, motion, HTMLMotionProps } from "framer-motion";
+import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 import { Menu, X } from "lucide-react";
 
 interface Links {
@@ -19,9 +19,7 @@ interface SidebarContextProps {
   animate: boolean;
 }
 
-const SidebarContext = createContext<SidebarContextProps | undefined>(
-  undefined
-);
+const SidebarContext = createContext<SidebarContextProps | undefined>(undefined);
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
@@ -88,12 +86,13 @@ export const SidebarBody = React.forwardRef<HTMLDivElement, SidebarBodyProps>(
 );
 SidebarBody.displayName = "SidebarBody";
 
-interface DesktopSidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+interface DesktopSidebarProps {
   className?: string;
+  children?: React.ReactNode;
 }
 
 export const DesktopSidebar = React.forwardRef<HTMLDivElement, DesktopSidebarProps>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, children }, ref) => {
     const { open, setOpen, animate } = useSidebar();
     return (
       <motion.div
@@ -107,7 +106,6 @@ export const DesktopSidebar = React.forwardRef<HTMLDivElement, DesktopSidebarPro
         }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        {...props}
       >
         {children}
       </motion.div>
@@ -116,55 +114,73 @@ export const DesktopSidebar = React.forwardRef<HTMLDivElement, DesktopSidebarPro
 );
 DesktopSidebar.displayName = "DesktopSidebar";
 
-interface MobileSidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+interface MobileSidebarProps {
   className?: string;
+  children?: React.ReactNode;
 }
 
 export const MobileSidebar = React.forwardRef<HTMLDivElement, MobileSidebarProps>(
-  ({ className, children, ...props }, ref) => {
+  ({ className, children }, ref) => {
     const { open, setOpen } = useSidebar();
+    
+    const handleDrag = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (info.offset.x < -50) {
+        setOpen(false);
+      }
+    };
+
     return (
-      <>
+      <div className="md:hidden">
         <div
           ref={ref}
           className={cn(
-            "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full"
+            "fixed top-0 left-0 right-0 h-16 px-4 flex items-center justify-between bg-neutral-100 dark:bg-neutral-800 z-40"
           )}
-          {...props}
         >
-          <div className="flex justify-end z-20 w-full">
+          <div className="flex justify-end w-full">
             <Menu
               className="text-neutral-800 dark:text-neutral-200 cursor-pointer"
               onClick={() => setOpen(!open)}
             />
           </div>
-          <AnimatePresence>
-            {open && (
+        </div>
+        <AnimatePresence>
+          {open && (
+            <>
               <motion.div
-                initial={{ x: "-100%", opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: "-100%", opacity: 0 }}
-                transition={{
-                  duration: 0.3,
-                  ease: "easeInOut",
-                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                onClick={() => setOpen(false)}
+              />
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 20 }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.2}
+                onDragEnd={handleDrag}
                 className={cn(
-                  "fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between",
+                  "fixed top-0 left-0 bottom-0 w-[280px] bg-white dark:bg-neutral-900 p-6 flex flex-col z-50",
                   className
                 )}
               >
-                <div
-                  className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200 cursor-pointer"
-                  onClick={() => setOpen(!open)}
-                >
-                  <X />
+                <div className="flex justify-between items-center mb-6">
+                  <span className="text-lg font-semibold">Menu</span>
+                  <X
+                    className="text-neutral-800 dark:text-neutral-200 cursor-pointer"
+                    onClick={() => setOpen(false)}
+                  />
                 </div>
                 {children}
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
     );
   }
 );
