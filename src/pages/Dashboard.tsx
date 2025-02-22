@@ -131,7 +131,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Tasks</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-6 w-6 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskCounts.today}</div>
@@ -141,7 +141,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Upcoming Tasks</CardTitle>
-            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+            <CalendarClock className="h-6 w-6 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{taskCounts.upcoming}</div>
@@ -152,9 +152,9 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
             {taskCounts.overdue === 0 ? (
-              <Smile className="h-4 w-4 text-green-500" />
+              <Smile className="h-6 w-6 text-green-500" />
             ) : (
-              <Angry className="h-4 w-4 text-red-500" />
+              <Angry className="h-6 w-6 text-red-500" />
             )}
           </CardHeader>
           <CardContent>
