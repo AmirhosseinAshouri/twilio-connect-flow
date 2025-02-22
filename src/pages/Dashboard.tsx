@@ -1,8 +1,9 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
 import { useLeads } from "@/hooks/useLeads";
 import { useCalls } from "@/hooks/useCalls";
-import { DollarSign, Phone, Users, Calendar, CheckSquare, Clock, CalendarClock, CalendarX } from "lucide-react";
+import { Calendar, CheckSquare, CalendarClock, CalendarX, Smile, Angry } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types";
@@ -14,9 +15,7 @@ import { NavBar } from "@/components/ui/tubelight-navbar";
 import { isToday, isPast, isFuture, startOfDay } from "date-fns";
 
 export default function Dashboard() {
-  const { contacts } = useContacts();
   const { leads, updateLead } = useLeads();
-  const { calls } = useCalls();
   const [assignedNotes, setAssignedNotes] = useState<(Note & { lead: Lead })[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState("Today");
@@ -91,6 +90,23 @@ export default function Dashboard() {
     });
   }, [assignedNotes, activeTab]);
 
+  const taskCounts = useMemo(() => {
+    return {
+      today: assignedNotes.filter(note => {
+        if (!note.due_date) return false;
+        return isToday(new Date(note.due_date));
+      }).length,
+      upcoming: assignedNotes.filter(note => {
+        if (!note.due_date) return false;
+        return isFuture(new Date(note.due_date)) && !isToday(new Date(note.due_date));
+      }).length,
+      overdue: assignedNotes.filter(note => {
+        if (!note.due_date) return false;
+        return isPast(new Date(note.due_date)) && !isToday(new Date(note.due_date));
+      }).length
+    };
+  }, [assignedNotes]);
+
   const handleLeadUpdate = (updatedLead: Lead) => {
     updateLead(updatedLead);
     setSelectedLead(null);
@@ -107,21 +123,6 @@ export default function Dashboard() {
     });
   };
 
-  const handleNoteCompletion = async (noteId: string, completed: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('notes')
-        .update({ completed })
-        .eq('id', noteId);
-
-      if (error) throw error;
-
-      setAssignedNotes(prev => prev.filter(note => note.id !== noteId));
-    } catch (error) {
-      console.error('Error updating note:', error);
-    }
-  };
-
   return (
     <div className="p-8 space-y-8">
       <h1 className="text-3xl font-bold mb-8 mx-[8px] my-[36px]">Dashboard</h1>
@@ -129,31 +130,35 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Today's Tasks</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{contacts?.length || 0}</div>
+            <div className="text-2xl font-bold">{taskCounts.today}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Upcoming Tasks</CardTitle>
+            <CalendarClock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{leads?.length || 0}</div>
+            <div className="text-2xl font-bold">{taskCounts.upcoming}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Calls</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
+            {taskCounts.overdue === 0 ? (
+              <Smile className="h-4 w-4 text-green-500" />
+            ) : (
+              <Angry className="h-4 w-4 text-red-500" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{calls?.length || 0}</div>
+            <div className="text-2xl font-bold">{taskCounts.overdue}</div>
           </CardContent>
         </Card>
       </div>
