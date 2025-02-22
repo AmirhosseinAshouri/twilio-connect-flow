@@ -2,6 +2,7 @@
 import { Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Contacts from './pages/Contacts';
+import ContactDetail from './pages/ContactDetail';
 import Leads from './pages/Leads';
 import Communications from './pages/Communications';
 import QuickCall from './pages/QuickCall';
@@ -13,6 +14,7 @@ export function CRMRouter() {
     <Routes>
       <Route path="/" element={<Dashboard />} />
       <Route path="/contacts" element={<Contacts />} />
+      <Route path="/contacts/:id" element={<ContactDetail />} />
       <Route path="/leads" element={<Leads />} />
       <Route path="/communications" element={<Communications />} />
       <Route path="/quick-call" element={<QuickCall />} />
