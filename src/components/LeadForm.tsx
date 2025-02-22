@@ -1,3 +1,4 @@
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -7,7 +8,7 @@ import { Lead, Contact } from "@/types";
 import { DealNotesSection } from "./DealNotesSection";
 import { DealAssignedToSection } from "./DealAssignedToSection";
 import { DealBasicInfoSection } from "./DealBasicInfoSection";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,14 +28,7 @@ interface LeadFormProps {
   onSubmit: (values: Lead) => void;
 }
 
-interface Note {
-  content: string;
-  created_at: string;
-  user_name?: string;
-}
-
 export function LeadForm({ lead, onSubmit }: LeadFormProps) {
-  const [notes, setNotes] = useState<Note[]>([]);
   const { toast } = useToast();
   
   const form = useForm<FormValues>({
@@ -64,41 +58,19 @@ export function LeadForm({ lead, onSubmit }: LeadFormProps) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("No user found");
 
-        const mentionRegex = /@(\w+)/g;
-        const mentions = values.notes.match(mentionRegex) || [];
-        
         const { error: noteError } = await supabase
           .from('notes')
           .insert({
             deal_id: lead.id,
             content: values.notes,
             user_id: user.id,
+            due_date: values.due_date || null, // Explicitly include due_date when creating note
           });
 
         if (noteError) throw noteError;
 
-        if (mentions.length > 0) {
-          const mentionPromises = mentions.map(async (mention) => {
-            const username = mention.slice(1);
-            const { data: userData } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('full_name', username)
-              .single();
-
-            if (userData) {
-              await supabase.from('mentions').insert({
-                deal_id: lead.id,
-                user_id: user.id,
-                mentioned_user_id: userData.id,
-              });
-            }
-          });
-
-          await Promise.all(mentionPromises);
-        }
-
         form.setValue('notes', '');
+        form.setValue('due_date', '');  // Reset the due date field after successful note creation
         
         toast({
           title: "Note added",
