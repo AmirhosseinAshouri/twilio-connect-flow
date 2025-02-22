@@ -6,4 +6,5 @@ export interface Note {
   created_at: string;
   completed: boolean;
   user_id: string;
+  due_date: string | null;
 }
