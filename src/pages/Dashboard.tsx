@@ -3,14 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
 import { useLeads } from "@/hooks/useLeads";
 import { useCalls } from "@/hooks/useCalls";
-import { DollarSign, Phone, Users, AtSign, Calendar, CheckSquare } from "lucide-react";
-import { useEffect, useState } from "react";
+import { DollarSign, Phone, Users, Calendar, CheckSquare, Clock, CalendarClock, CalendarX } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/LeadForm";
 import { Note } from "@/types/note";
+import { NavBar } from "@/components/ui/tubelight-navbar";
+import { isToday, isPast, isFuture, startOfDay } from "date-fns";
 
 export default function Dashboard() {
   const { contacts } = useContacts();
@@ -18,6 +20,13 @@ export default function Dashboard() {
   const { calls } = useCalls();
   const [assignedNotes, setAssignedNotes] = useState<(Note & { lead: Lead })[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [activeTab, setActiveTab] = useState("Today");
+
+  const navItems = [
+    { name: "Today", icon: Calendar },
+    { name: "Upcoming", icon: CalendarClock },
+    { name: "Overdue", icon: CalendarX },
+  ];
 
   useEffect(() => {
     const fetchAssignedNotes = async () => {
@@ -62,6 +71,26 @@ export default function Dashboard() {
 
     fetchAssignedNotes();
   }, []);
+
+  const filteredNotes = useMemo(() => {
+    return assignedNotes.filter(note => {
+      if (!note.due_date) return false;
+      
+      const dueDate = new Date(note.due_date);
+      const today = startOfDay(new Date());
+
+      switch (activeTab) {
+        case "Today":
+          return isToday(dueDate);
+        case "Upcoming":
+          return isFuture(dueDate) && !isToday(dueDate);
+        case "Overdue":
+          return isPast(dueDate) && !isToday(dueDate);
+        default:
+          return true;
+      }
+    });
+  }, [assignedNotes, activeTab]);
 
   const handleLeadUpdate = (updatedLead: Lead) => {
     updateLead(updatedLead);
@@ -132,9 +161,17 @@ export default function Dashboard() {
 
       {assignedNotes.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <CheckSquare className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Pending Tasks</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5" />
+              <h2 className="text-xl font-semibold">Pending Tasks</h2>
+            </div>
+            <NavBar 
+              items={navItems} 
+              activeTab={activeTab} 
+              onTabChange={setActiveTab}
+              className="relative"
+            />
           </div>
           <div className="rounded-md border">
             <Table>
@@ -147,33 +184,41 @@ export default function Dashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignedNotes.map(note => (
-                  <TableRow 
-                    key={note.id} 
-                    className="cursor-pointer hover:bg-muted/50" 
-                    onClick={() => setSelectedLead(note.lead)}
-                  >
-                    <TableCell className="font-medium">{note.content}</TableCell>
-                    <TableCell>{note.lead.title}</TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {formatDueDate(note.due_date)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={note.completed}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleNoteCompletion(note.id, e.target.checked);
-                        }}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
+                {filteredNotes.length > 0 ? (
+                  filteredNotes.map(note => (
+                    <TableRow 
+                      key={note.id} 
+                      className="cursor-pointer hover:bg-muted/50" 
+                      onClick={() => setSelectedLead(note.lead)}
+                    >
+                      <TableCell className="font-medium">{note.content}</TableCell>
+                      <TableCell>{note.lead.title}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          {formatDueDate(note.due_date)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={note.completed}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleNoteCompletion(note.id, e.target.checked);
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-4">
+                      No tasks found for this filter
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>
