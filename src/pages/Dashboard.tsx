@@ -68,9 +68,11 @@ export default function Dashboard() {
     setSelectedLead(null);
   };
 
-  const formatDueDate = (dueDate: string | undefined) => {
+  const formatDueDate = (dueDate: string | null | undefined) => {
     if (!dueDate) return "No due date";
-    return new Date(dueDate).toLocaleDateString('en-US', {
+    const date = new Date(dueDate);
+    if (isNaN(date.getTime())) return "No due date";
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
