@@ -25,6 +25,8 @@ import { CallFormDialog } from "@/components/CallFormDialog";
 import { SendSMSDialog } from "@/components/SendSMSDialog";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 const Contacts = () => {
   const { contacts, loading, addContact, removeContact } = useContacts();
@@ -46,7 +48,8 @@ const Contacts = () => {
       name: values.name || '',
       company: values.company || '',
       email: values.email || '',
-      phone: values.phone || ''
+      phone: values.phone || '',
+      timezone: values.timezone || 'UTC'
     };
     const newContact = await addContact(contactData);
     if (newContact) {
@@ -61,6 +64,15 @@ const Contacts = () => {
   const handleRemoveContact = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     await removeContact(id);
+  };
+
+  const getCurrentTime = (timezone: string) => {
+    try {
+      return formatInTimeZone(new Date(), timezone || 'UTC', 'h:mm a');
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'Invalid timezone';
+    }
   };
 
   return (
@@ -110,6 +122,7 @@ const Contacts = () => {
                   <TableHead className="hidden sm:table-cell">Email</TableHead>
                   <TableHead className="hidden md:table-cell">Phone</TableHead>
                   <TableHead className="hidden lg:table-cell">Company</TableHead>
+                  <TableHead>Local Time</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -134,6 +147,7 @@ const Contacts = () => {
                     <TableCell className="hidden sm:table-cell">{contact.email}</TableCell>
                     <TableCell className="hidden md:table-cell">{contact.phone}</TableCell>
                     <TableCell className="hidden lg:table-cell">{contact.company}</TableCell>
+                    <TableCell>{getCurrentTime(contact.timezone)}</TableCell>
                     <TableCell>
                       <div 
                         className="flex justify-end gap-1 sm:gap-2"

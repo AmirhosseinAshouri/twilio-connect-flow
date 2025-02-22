@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const timezones = Intl.supportedValuesOf('timeZone');
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -22,6 +25,7 @@ const formSchema = z.object({
   job_title: z.string().optional(),
   birth_date: z.string().optional(),
   notes: z.string().optional(),
+  timezone: z.string().default('UTC'),
 });
 
 export type ContactFormValues = z.infer<typeof formSchema>;
@@ -42,6 +46,7 @@ export function ContactForm({ onSubmit, defaultValues }: ContactFormProps) {
       job_title: "",
       birth_date: "",
       notes: "",
+      timezone: "UTC",
       ...defaultValues,
     },
   });
@@ -97,6 +102,30 @@ export function ContactForm({ onSubmit, defaultValues }: ContactFormProps) {
               <FormControl>
                 <Input placeholder="Acme Inc" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="timezone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Time Zone</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a timezone" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent className="max-h-[200px]">
+                  {timezones.map((timezone) => (
+                    <SelectItem key={timezone} value={timezone}>
+                      {timezone}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

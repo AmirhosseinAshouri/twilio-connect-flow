@@ -1,3 +1,4 @@
+
 export interface Contact {
   id: string;
   name: string;
@@ -9,6 +10,7 @@ export interface Contact {
   notes?: string;
   user_id: string;
   created_at: string;
+  timezone: string;
 }
 
 export type ContactFormValues = Omit<Contact, 'id' | 'user_id' | 'created_at'>;
