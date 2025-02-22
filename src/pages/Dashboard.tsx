@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { formatDistanceToNow, format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LeadForm } from "@/components/LeadForm";
 import { Note } from "@/types/note";
@@ -32,7 +31,8 @@ export default function Dashboard() {
           lead:deals(*)
         `)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('completed', false)
+        .order('due_date', { ascending: true });
 
       if (error) {
         console.error('Error fetching notes:', error);
@@ -57,7 +57,11 @@ export default function Dashboard() {
 
   const formatDueDate = (dueDate: string | undefined) => {
     if (!dueDate) return "No due date";
-    return format(new Date(dueDate), 'MMM d, yyyy HH:mm');
+    return new Date(dueDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const handleNoteCompletion = async (noteId: string, completed: boolean) => {
@@ -69,9 +73,7 @@ export default function Dashboard() {
 
       if (error) throw error;
 
-      setAssignedNotes(prev => prev.map(note =>
-        note.id === noteId ? { ...note, completed } : note
-      ));
+      setAssignedNotes(prev => prev.filter(note => note.id !== noteId));
     } catch (error) {
       console.error('Error updating note:', error);
     }
@@ -117,16 +119,16 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <CheckSquare className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Your Notes</h2>
+            <h2 className="text-xl font-semibold">Pending Tasks</h2>
           </div>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Note</TableHead>
+                  <TableHead>Task</TableHead>
                   <TableHead>Lead</TableHead>
+                  <TableHead>Due Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -139,6 +141,12 @@ export default function Dashboard() {
                     <TableCell className="font-medium">{note.content}</TableCell>
                     <TableCell>{note.lead.title}</TableCell>
                     <TableCell>
+                      <span className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        {formatDueDate(note.due_date)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <input
                         type="checkbox"
                         checked={note.completed}
@@ -148,9 +156,6 @@ export default function Dashboard() {
                         }}
                         className="h-4 w-4 rounded border-gray-300"
                       />
-                    </TableCell>
-                    <TableCell>
-                      {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
                     </TableCell>
                   </TableRow>
                 ))}
