@@ -46,10 +46,17 @@ export default function Dashboard() {
       }
 
       if (notes) {
-        setAssignedNotes(notes.map(note => ({
-          ...note,
+        const notesWithLead = notes.map(note => ({
+          id: note.id,
+          deal_id: note.deal_id,
+          content: note.content,
+          created_at: note.created_at,
+          completed: note.completed,
+          user_id: note.user_id,
+          due_date: note.due_date,
           lead: note.lead as Lead
-        })));
+        }));
+        setAssignedNotes(notesWithLead);
       }
     };
 

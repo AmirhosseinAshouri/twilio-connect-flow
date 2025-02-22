@@ -49,7 +49,7 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
         .single();
 
       if (!error && data) {
-        setLatestNote(data as Note);
+        setLatestNote(data);
       }
     };
 

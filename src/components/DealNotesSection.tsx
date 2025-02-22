@@ -1,3 +1,4 @@
+
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
 import { Textarea } from "./ui/textarea";
 import { format } from "date-fns";
@@ -39,7 +40,7 @@ export function DealNotesSection({ form, dealId }: DealNotesSectionProps) {
       }
 
       if (data) {
-        setNotes(data as Note[]);
+        setNotes(data);
       }
     };
 
