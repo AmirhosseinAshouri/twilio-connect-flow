@@ -161,18 +161,18 @@ export default function Dashboard() {
 
       {assignedNotes.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <div className="flex items-center gap-2">
               <CheckSquare className="h-5 w-5" />
               <h2 className="text-xl font-semibold">Pending Tasks</h2>
             </div>
-            <NavBar 
-              items={navItems} 
-              activeTab={activeTab} 
-              onTabChange={setActiveTab}
-              className="relative"
-            />
           </div>
+          <NavBar 
+            items={navItems} 
+            activeTab={activeTab} 
+            onTabChange={setActiveTab}
+            className="relative mb-4"
+          />
           <div className="rounded-md border">
             <Table>
               <TableHeader>
