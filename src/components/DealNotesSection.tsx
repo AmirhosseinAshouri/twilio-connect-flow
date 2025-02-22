@@ -40,7 +40,12 @@ export function DealNotesSection({ form, dealId }: DealNotesSectionProps) {
       }
 
       if (data) {
-        setNotes(data);
+        // Ensure each note has at least a null due_date field
+        const notesWithDueDate = data.map(note => ({
+          ...note,
+          due_date: note.due_date || null
+        }));
+        setNotes(notesWithDueDate);
       }
     };
 

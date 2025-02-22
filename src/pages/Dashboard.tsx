@@ -42,6 +42,7 @@ export default function Dashboard() {
       if (notes) {
         setAssignedNotes(notes.map(note => ({
           ...note,
+          due_date: note.due_date || null,
           lead: note.lead as Lead
         })));
       }

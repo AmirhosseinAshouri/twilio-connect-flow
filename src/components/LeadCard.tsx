@@ -50,7 +50,10 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
         .single();
 
       if (!error && data) {
-        setLatestNote(data);
+        setLatestNote({
+          ...data,
+          due_date: data.due_date || null
+        });
       }
     };
 
