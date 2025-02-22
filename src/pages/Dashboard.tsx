@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useContacts } from "@/hooks/useContacts";
 import { useLeads } from "@/hooks/useLeads";
@@ -200,15 +199,9 @@ export default function Dashboard() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={note.completed}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleNoteCompletion(note.id, e.target.checked);
-                          }}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
+                        <span className="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
+                          To Do
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))
