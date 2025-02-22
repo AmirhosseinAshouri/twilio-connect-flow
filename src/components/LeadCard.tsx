@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, UserCircle, MessageSquare, Calendar } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -43,17 +42,14 @@ export function LeadCard({ lead, onUpdate, provided }: LeadCardProps) {
     const fetchLatestNote = async () => {
       const { data, error } = await supabase
         .from('notes')
-        .select('*')
+        .select('id, deal_id, content, created_at, completed, user_id, due_date')
         .eq('deal_id', lead.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
       if (!error && data) {
-        setLatestNote({
-          ...data,
-          due_date: data.due_date || null
-        });
+        setLatestNote(data as Note);
       }
     };
 

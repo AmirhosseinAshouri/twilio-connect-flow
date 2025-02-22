@@ -1,4 +1,3 @@
-
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "./ui/form";
 import { Textarea } from "./ui/textarea";
 import { format } from "date-fns";
@@ -26,7 +25,7 @@ export function DealNotesSection({ form, dealId }: DealNotesSectionProps) {
     const fetchNotes = async () => {
       const { data, error } = await supabase
         .from('notes')
-        .select('*')
+        .select('id, deal_id, content, created_at, completed, user_id, due_date')
         .eq('deal_id', dealId)
         .order('created_at', { ascending: false });
 
@@ -40,12 +39,7 @@ export function DealNotesSection({ form, dealId }: DealNotesSectionProps) {
       }
 
       if (data) {
-        // Ensure each note has at least a null due_date field
-        const notesWithDueDate = data.map(note => ({
-          ...note,
-          due_date: note.due_date || null
-        }));
-        setNotes(notesWithDueDate);
+        setNotes(data as Note[]);
       }
     };
 

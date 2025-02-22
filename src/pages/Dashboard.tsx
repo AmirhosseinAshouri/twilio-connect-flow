@@ -27,7 +27,13 @@ export default function Dashboard() {
       const { data: notes, error } = await supabase
         .from('notes')
         .select(`
-          *,
+          id,
+          deal_id,
+          content,
+          created_at,
+          completed,
+          user_id,
+          due_date,
           lead:deals(*)
         `)
         .eq('user_id', user.id)
@@ -42,7 +48,6 @@ export default function Dashboard() {
       if (notes) {
         setAssignedNotes(notes.map(note => ({
           ...note,
-          due_date: note.due_date || null,
           lead: note.lead as Lead
         })));
       }
