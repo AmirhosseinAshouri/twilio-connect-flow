@@ -168,6 +168,7 @@ export default function ContactDetail() {
                 job_title: contact.job_title || '',
                 birth_date: contact.birth_date || '',
                 notes: contact.notes || '',
+                timezone: contact.timezone || 'UTC',
               }}
             />
           </DialogContent>
