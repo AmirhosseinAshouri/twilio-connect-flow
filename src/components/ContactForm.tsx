@@ -14,6 +14,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const timezones = [
   "UTC",
@@ -45,6 +47,7 @@ const formSchema = z.object({
   birth_date: z.string().optional(),
   notes: z.string().optional(),
   timezone: z.string().default('UTC'),
+  label: z.enum(['customer', 'lead']).default('customer'),
 });
 
 export type ContactFormValues = z.infer<typeof formSchema>;
@@ -66,6 +69,7 @@ export function ContactForm({ onSubmit, defaultValues }: ContactFormProps) {
       birth_date: "",
       notes: "",
       timezone: "UTC",
+      label: "customer",
       ...defaultValues,
     },
   });
@@ -73,6 +77,33 @@ export function ContactForm({ onSubmit, defaultValues }: ContactFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="label"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel>Contact Type</FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-row space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="customer" id="customer" />
+                    <Label htmlFor="customer">Customer</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="lead" id="lead" />
+                    <Label htmlFor="lead">Lead</Label>
+                  </div>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
         <FormField
           control={form.control}
           name="name"
