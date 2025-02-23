@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -13,6 +13,7 @@ import { ContactForm, ContactFormValues } from "@/components/ContactForm";
 import { Plus, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -25,8 +26,9 @@ import { CallFormDialog } from "@/components/CallFormDialog";
 import { SendSMSDialog } from "@/components/SendSMSDialog";
 import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+import { supabase } from "@/integrations/supabase/client";
+import type { Lead } from "@/types";
 
 // Mapping of timezone regions to flag emojis
 const timezoneFlags: { [key: string]: string } = {
@@ -38,13 +40,65 @@ const timezoneFlags: { [key: string]: string } = {
   'UTC': '🌍',
 };
 
+interface ContactWithLead extends Contact {
+  leadInfo?: {
+    stage: string;
+  };
+}
+
 const Contacts = () => {
   const { contacts, loading, addContact, removeContact } = useContacts();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [contactsWithLeads, setContactsWithLeads] = useState<ContactWithLead[]>([]);
   const navigate = useNavigate();
 
-  const filteredContacts = contacts.filter(contact => {
+  useEffect(() => {
+    const fetchLeadsForContacts = async () => {
+      try {
+        const { data: leads } = await supabase
+          .from('deals')
+          .select('contact_id, stage');
+
+        const contactsMap = new Map(contacts.map(contact => [contact.id, { ...contact }]));
+        
+        leads?.forEach((lead: Lead) => {
+          if (contactsMap.has(lead.contact_id)) {
+            const contact = contactsMap.get(lead.contact_id);
+            if (contact) {
+              contact.leadInfo = { stage: lead.stage };
+            }
+          }
+        });
+
+        setContactsWithLeads(Array.from(contactsMap.values()));
+      } catch (error) {
+        console.error('Error fetching leads:', error);
+      }
+    };
+
+    if (contacts.length > 0) {
+      fetchLeadsForContacts();
+    }
+  }, [contacts]);
+
+  const getContactLabel = (contact: ContactWithLead) => {
+    if (contact.leadInfo) {
+      const stage = contact.leadInfo.stage.charAt(0).toUpperCase() + contact.leadInfo.stage.slice(1);
+      return (
+        <Badge variant="secondary" className="ml-2">
+          Lead - {stage}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="ml-2">
+        Customer
+      </Badge>
+    );
+  };
+
+  const filteredContacts = contactsWithLeads.filter(contact => {
     const searchLower = searchQuery.toLowerCase();
     return (
       contact.name.toLowerCase().includes(searchLower) ||
@@ -152,7 +206,10 @@ const Contacts = () => {
                   >
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
-                        <span>{contact.name}</span>
+                        <div className="flex items-center">
+                          <span>{contact.name}</span>
+                          {getContactLabel(contact)}
+                        </div>
                         <span className="text-sm text-muted-foreground sm:hidden">
                           {contact.email}
                         </span>
