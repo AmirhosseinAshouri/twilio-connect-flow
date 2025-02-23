@@ -1,5 +1,5 @@
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect } from "react";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -10,50 +10,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
-import { Plus, Search, Trash2, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { CallFormDialog } from "@/components/CallFormDialog";
-import { SendSMSDialog } from "@/components/SendSMSDialog";
-import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useNavigate } from "react-router-dom";
-import { formatInTimeZone } from "date-fns-tz";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { Lead, Contact } from "@/types";
-
-// Mapping of timezone regions to flag emojis
-const timezoneFlags: { [key: string]: string } = {
-  'America': '🇺🇸',
-  'Europe': '🇪🇺',
-  'Asia': '🇯🇵',
-  'Australia': '🇦🇺',
-  'Pacific': '🌏',
-  'UTC': '🌍',
-};
-
-interface ContactWithLead extends Contact {
-  leadInfo?: {
-    stage: string;
-  };
-  note?: string;
-}
+import { ContactsTable } from "@/components/ContactsTable";
+import { useContactColumns } from "@/hooks/useContactColumns";
+import type { ContactWithLead } from "@/types/contact";
 
 const Contacts = () => {
   const { contacts, loading, addContact, removeContact } = useContacts();
@@ -62,7 +26,19 @@ const Contacts = () => {
   const [contactsWithLeads, setContactsWithLeads] = useState<ContactWithLead[]>([]);
   const navigate = useNavigate();
 
-  // Move filteredContacts definition before its usage
+  const handleRowClick = (id: string) => {
+    navigate(`/contacts/${id}`);
+  };
+
+  const handleRemoveContact = async (id: string) => {
+    await removeContact(id);
+  };
+
+  const columns = useContactColumns({
+    onRemove: handleRemoveContact,
+    onRowClick: handleRowClick,
+  });
+
   const filteredContacts = contactsWithLeads.filter(contact => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -70,82 +46,6 @@ const Contacts = () => {
       (contact.email?.toLowerCase() || '').includes(searchLower) ||
       (contact.company?.toLowerCase() || '').includes(searchLower)
     );
-  });
-
-  const columns: ColumnDef<ContactWithLead>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? "indeterminate" : false)}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-    },
-    {
-      header: "Name",
-      accessorKey: "name",
-      cell: ({ row }) => (
-        <div className="font-medium flex items-center gap-2">
-          {row.getValue("name")}
-          {getContactLabel(row.original)}
-        </div>
-      ),
-    },
-    {
-      header: "Email",
-      accessorKey: "email",
-    },
-    {
-      header: "Phone",
-      accessorKey: "phone",
-    },
-    {
-      header: "Company",
-      accessorKey: "company",
-    },
-    {
-      header: "Local Time",
-      accessorKey: "timezone",
-      cell: ({ row }) => getCurrentTime(row.getValue("timezone")),
-    },
-    {
-      id: "actions",
-      cell: ({ row }) => (
-        <div className="flex justify-end gap-1 sm:gap-2">
-          <CallFormDialog contact={row.original} variant="ghost" size="icon" />
-          <SendSMSDialog contact={row.original} variant="ghost" size="icon" />
-          <SendEmailDialog contact={row.original} variant="ghost" size="icon" />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemoveContact(e, row.original.id);
-            }}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  const table = useReactTable({
-    data: filteredContacts,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getRowCanExpand: (row) => Boolean(row.original.note),
-    getExpandedRowModel: getExpandedRowModel(),
   });
 
   useEffect(() => {
@@ -180,22 +80,6 @@ const Contacts = () => {
     }
   }, [contacts]);
 
-  const getContactLabel = (contact: ContactWithLead) => {
-    if (contact.leadInfo) {
-      const stage = contact.leadInfo.stage.charAt(0).toUpperCase() + contact.leadInfo.stage.slice(1);
-      return (
-        <Badge variant="secondary" className="ml-2">
-          Lead - {stage}
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="outline" className="ml-2">
-        Customer
-      </Badge>
-    );
-  };
-
   const handleAddContact = async (values: ContactFormValues) => {
     const contactData = {
       name: values.name || '',
@@ -207,31 +91,6 @@ const Contacts = () => {
     const newContact = await addContact(contactData);
     if (newContact) {
       setOpen(false);
-    }
-  };
-
-  const handleRowClick = (id: string) => {
-    navigate(`/contacts/${id}`);
-  };
-
-  const handleRemoveContact = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    await removeContact(id);
-  };
-
-  const getTimezoneFlag = (timezone: string) => {
-    const region = timezone.split('/')[0];
-    return timezoneFlags[region] || '🌍';
-  };
-
-  const getCurrentTime = (timezone: string) => {
-    try {
-      const time = formatInTimeZone(new Date(), timezone || 'UTC', 'h:mm a');
-      const flag = getTimezoneFlag(timezone);
-      return `${flag} ${time}`;
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return '🌍 Invalid timezone';
     }
   };
 
@@ -274,59 +133,7 @@ const Contacts = () => {
             ))}
           </div>
         ) : (
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <Fragment key={row.id}>
-                      <TableRow 
-                        data-state={row.getIsSelected() && "selected"}
-                        onClick={() => handleRowClick(row.original.id)}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                      {row.getIsExpanded() && row.original.note && (
-                        <TableRow>
-                          <TableCell colSpan={row.getVisibleCells().length}>
-                            <div className="flex items-start py-2 text-primary/80">
-                              <span className="me-3 mt-0.5 flex w-7 shrink-0 justify-center" aria-hidden="true">
-                                <Info className="opacity-60" size={16} strokeWidth={2} />
-                              </span>
-                              <p className="text-sm">{row.original.note}</p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <ContactsTable data={filteredContacts} columns={columns} />
         )}
       </div>
     </div>

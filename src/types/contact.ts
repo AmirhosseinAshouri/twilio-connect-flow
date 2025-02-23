@@ -13,4 +13,11 @@ export interface Contact {
   timezone: string;
 }
 
+export interface ContactWithLead extends Contact {
+  leadInfo?: {
+    stage: string;
+  };
+  note?: string;
+}
+
 export type ContactFormValues = Omit<Contact, 'id' | 'user_id' | 'created_at'>;
