@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { Device } from "twilio";
+import { Twilio } from "https://esm.sh/twilio@4.19.0"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,8 +18,8 @@ serve(async (req) => {
 
     switch (action) {
       case 'getToken':
-        // Generate token for the Twilio Device
-        const AccessToken = Device.jwt.AccessToken;
+        // Import access token classes from Twilio helper library
+        const { jwt: { AccessToken } } = Twilio;
         const VoiceGrant = AccessToken.VoiceGrant;
 
         // Create an access token
@@ -48,12 +48,12 @@ serve(async (req) => {
           throw new Error('Phone number is required');
         }
 
-        const twilioClient = Device(
+        const client = new Twilio(
           Deno.env.get('TWILIO_ACCOUNT_SID') || '',
           Deno.env.get('TWILIO_AUTH_TOKEN') || ''
         );
 
-        const call = await twilioClient.calls.create({
+        const call = await client.calls.create({
           url: `${Deno.env.get('PUBLIC_URL')}/api/twilio/voice`,
           to: toNumber,
           from: Deno.env.get('TWILIO_PHONE_NUMBER'),

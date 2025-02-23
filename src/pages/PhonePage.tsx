@@ -33,8 +33,9 @@ const PhonePage: React.FC = () => {
       if (error) throw error;
 
       const twilioDevice = new Device(data.token, {
-        enableIceRestart: true,
-        debug: true
+        debug: true,
+        answerOnBridge: true,
+        allowIncomingWhileBusy: true
       });
 
       setupDeviceListeners(twilioDevice);
