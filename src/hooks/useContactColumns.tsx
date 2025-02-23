@@ -29,13 +29,13 @@ export const useContactColumns = ({ onRemove, onRowClick }: UseContactColumnsPro
     if (contact.leadInfo) {
       const stage = contact.leadInfo.stage.charAt(0).toUpperCase() + contact.leadInfo.stage.slice(1);
       return (
-        <Badge variant="secondary" className="ml-2">
+        <Badge variant="secondary">
           Lead - {stage}
         </Badge>
       );
     }
     return (
-      <Badge variant="outline" className="ml-2">
+      <Badge variant="outline">
         Customer
       </Badge>
     );
@@ -79,11 +79,15 @@ export const useContactColumns = ({ onRemove, onRowClick }: UseContactColumnsPro
       header: "Name",
       accessorKey: "name",
       cell: ({ row }) => (
-        <div className="font-medium flex items-center gap-2" onClick={() => onRowClick(row.original.id)}>
+        <div className="font-medium" onClick={() => onRowClick(row.original.id)}>
           {row.getValue("name")}
-          {getContactLabel(row.original)}
         </div>
       ),
+    },
+    {
+      header: "Type",
+      id: "type",
+      cell: ({ row }) => getContactLabel(row.original),
     },
     {
       header: "Email",
