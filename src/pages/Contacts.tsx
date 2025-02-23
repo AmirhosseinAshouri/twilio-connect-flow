@@ -1,3 +1,4 @@
+
 import { useState, useEffect, Fragment } from "react";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,14 +62,22 @@ const Contacts = () => {
   const [contactsWithLeads, setContactsWithLeads] = useState<ContactWithLead[]>([]);
   const navigate = useNavigate();
 
+  // Move filteredContacts definition before its usage
+  const filteredContacts = contactsWithLeads.filter(contact => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      contact.name.toLowerCase().includes(searchLower) ||
+      (contact.email?.toLowerCase() || '').includes(searchLower) ||
+      (contact.company?.toLowerCase() || '').includes(searchLower)
+    );
+  });
+
   const columns: ColumnDef<ContactWithLead>[] = [
     {
       id: "select",
       header: ({ table }) => (
         <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
+          checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() ? "indeterminate" : false)}
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
         />
@@ -186,15 +195,6 @@ const Contacts = () => {
       </Badge>
     );
   };
-
-  const filteredContacts = contactsWithLeads.filter(contact => {
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      contact.name.toLowerCase().includes(searchLower) ||
-      (contact.email?.toLowerCase() || '').includes(searchLower) ||
-      (contact.company?.toLowerCase() || '').includes(searchLower)
-    );
-  });
 
   const handleAddContact = async (values: ContactFormValues) => {
     const contactData = {
