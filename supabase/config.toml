@@ -1,36 +1,5 @@
 
 project_id = "fbwxtooicqpqotherube"
 
-[api]
-enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-
-[db]
-port = 54322
-shadow_port = 54320
-
-[studio]
-enabled = true
-port = 54323
-
-[inbucket]
-enabled = true
-port = 54324
-
-[storage]
-enabled = true
-
-[auth]
-enabled = true
-
-[analytics]
-enabled = true
-port = 54327
-
-[realtime]
-enabled = true
-
-[functions]
-[functions.get-twilio-token]
-verify_jwt = true
+[functions.twilio]
+verify_jwt = false
