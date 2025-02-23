@@ -3,6 +3,7 @@ import { ThemeProvider } from './components/theme-provider';
 import { CRMSidebar } from './components/CRMSidebar';
 import { CRMRouter } from './router';
 import { BrowserRouter as Router } from 'react-router-dom';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 const App = () => {
   return (
@@ -14,6 +15,7 @@ const App = () => {
             <CRMRouter />
           </main>
         </div>
+        <SpeedInsights />
       </Router>
     </ThemeProvider>
   );
