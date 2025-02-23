@@ -28,6 +28,16 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
+// Mapping of timezone regions to flag emojis
+const timezoneFlags: { [key: string]: string } = {
+  'America': '🇺🇸',
+  'Europe': '🇪🇺',
+  'Asia': '🇯🇵',
+  'Australia': '🇦🇺',
+  'Pacific': '🌏',
+  'UTC': '🌍',
+};
+
 const Contacts = () => {
   const { contacts, loading, addContact, removeContact } = useContacts();
   const [open, setOpen] = useState(false);
@@ -66,12 +76,19 @@ const Contacts = () => {
     await removeContact(id);
   };
 
+  const getTimezoneFlag = (timezone: string) => {
+    const region = timezone.split('/')[0];
+    return timezoneFlags[region] || '🌍';
+  };
+
   const getCurrentTime = (timezone: string) => {
     try {
-      return formatInTimeZone(new Date(), timezone || 'UTC', 'h:mm a');
+      const time = formatInTimeZone(new Date(), timezone || 'UTC', 'h:mm a');
+      const flag = getTimezoneFlag(timezone);
+      return `${flag} ${time}`;
     } catch (error) {
       console.error('Error formatting time:', error);
-      return 'Invalid timezone';
+      return '🌍 Invalid timezone';
     }
   };
 
