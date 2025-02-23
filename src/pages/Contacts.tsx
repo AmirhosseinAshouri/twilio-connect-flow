@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useContacts } from "@/hooks/useContacts";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -10,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ContactForm, ContactFormValues } from "@/components/ContactForm";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +27,14 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useNavigate } from "react-router-dom";
 import { formatInTimeZone } from "date-fns-tz";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Lead, Contact } from "@/types";
 
 // Mapping of timezone regions to flag emojis
@@ -44,6 +51,7 @@ interface ContactWithLead extends Contact {
   leadInfo?: {
     stage: string;
   };
+  note?: string;
 }
 
 const Contacts = () => {
@@ -52,6 +60,84 @@ const Contacts = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [contactsWithLeads, setContactsWithLeads] = useState<ContactWithLead[]>([]);
   const navigate = useNavigate();
+
+  const columns: ColumnDef<ContactWithLead>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+    },
+    {
+      header: "Name",
+      accessorKey: "name",
+      cell: ({ row }) => (
+        <div className="font-medium flex items-center gap-2">
+          {row.getValue("name")}
+          {getContactLabel(row.original)}
+        </div>
+      ),
+    },
+    {
+      header: "Email",
+      accessorKey: "email",
+    },
+    {
+      header: "Phone",
+      accessorKey: "phone",
+    },
+    {
+      header: "Company",
+      accessorKey: "company",
+    },
+    {
+      header: "Local Time",
+      accessorKey: "timezone",
+      cell: ({ row }) => getCurrentTime(row.getValue("timezone")),
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-1 sm:gap-2">
+          <CallFormDialog contact={row.original} variant="ghost" size="icon" />
+          <SendSMSDialog contact={row.original} variant="ghost" size="icon" />
+          <SendEmailDialog contact={row.original} variant="ghost" size="icon" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemoveContact(e, row.original.id);
+            }}
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  const table = useReactTable({
+    data: filteredContacts,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowCanExpand: (row) => Boolean(row.original.note),
+    getExpandedRowModel: getExpandedRowModel(),
+  });
 
   useEffect(() => {
     const fetchLeadsForContacts = async () => {
@@ -191,60 +277,53 @@ const Contacts = () => {
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Email</TableHead>
-                  <TableHead className="hidden md:table-cell">Phone</TableHead>
-                  <TableHead className="hidden lg:table-cell">Company</TableHead>
-                  <TableHead>Local Time</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredContacts.map((contact) => (
-                  <TableRow 
-                    key={contact.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleRowClick(contact.id)}
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <div className="flex items-center">
-                          <span>{contact.name}</span>
-                          {getContactLabel(contact)}
-                        </div>
-                        <span className="text-sm text-muted-foreground sm:hidden">
-                          {contact.email}
-                        </span>
-                        <span className="text-sm text-muted-foreground md:hidden">
-                          {contact.phone}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{contact.email}</TableCell>
-                    <TableCell className="hidden md:table-cell">{contact.phone}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{contact.company}</TableCell>
-                    <TableCell>{getCurrentTime(contact.timezone)}</TableCell>
-                    <TableCell>
-                      <div 
-                        className="flex justify-end gap-1 sm:gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <CallFormDialog contact={contact} variant="ghost" size="icon" />
-                        <SendSMSDialog contact={contact} variant="ghost" size="icon" />
-                        <SendEmailDialog contact={contact} variant="ghost" size="icon" />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleRemoveContact(e, contact.id)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <Fragment key={row.id}>
+                      <TableRow 
+                        data-state={row.getIsSelected() && "selected"}
+                        onClick={() => handleRowClick(row.original.id)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      {row.getIsExpanded() && row.original.note && (
+                        <TableRow>
+                          <TableCell colSpan={row.getVisibleCells().length}>
+                            <div className="flex items-start py-2 text-primary/80">
+                              <span className="me-3 mt-0.5 flex w-7 shrink-0 justify-center" aria-hidden="true">
+                                <Info className="opacity-60" size={16} strokeWidth={2} />
+                              </span>
+                              <p className="text-sm">{row.original.note}</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
