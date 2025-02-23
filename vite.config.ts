@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -24,6 +25,16 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: false,
       }
+    },
+    middleware: (app) => {
+      // Handle SPA routing - serve index.html for all routes
+      app.use('*', (req, res, next) => {
+        if (req.url.startsWith('/api')) {
+          next();
+        } else {
+          next();
+        }
+      });
     }
   },
   plugins: [
@@ -45,6 +56,19 @@ export default defineConfig(({ mode }) => ({
         server.middlewares.use(app);
       },
     },
+    {
+      name: 'handle-client-routing',
+      configureServer(server: ViteDevServer) {
+        server.middlewares.use((req, res, next) => {
+          // If the request is not for an API route or a static file
+          if (!req.url?.startsWith('/api') && !req.url?.match(/\.(js|css|ico|png|jpg|jpeg|svg|gif)$/)) {
+            // Rewrite to index.html
+            req.url = '/';
+          }
+          next();
+        });
+      },
+    }
   ].filter(Boolean),
   resolve: {
     alias: {
