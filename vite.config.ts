@@ -3,10 +3,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express } from 'express';
 import { setupApiServer } from './src/server';
 import type { ViteDevServer } from 'vite';
 import cors from 'cors';
+import type { IncomingMessage, ServerResponse } from 'http';
+import type { Connect } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -28,7 +30,7 @@ export default defineConfig(({ mode }) => ({
     },
     middleware: (app: Express) => {
       // Handle SPA routing - serve index.html for all routes
-      app.use('*', (req: Request, res: Response, next: NextFunction) => {
+      app.use('*', (req, res, next) => {
         if (req.url.startsWith('/api')) {
           next();
         } else {
@@ -59,7 +61,11 @@ export default defineConfig(({ mode }) => ({
     {
       name: 'handle-client-routing',
       configureServer(server: ViteDevServer) {
-        server.middlewares.use((req: Request, res: Response, next: NextFunction) => {
+        server.middlewares.use((
+          req: Connect.IncomingMessage,
+          res: ServerResponse,
+          next: Connect.NextFunction
+        ) => {
           // If the request is not for an API route or a static file
           if (!req.url?.startsWith('/api') && !req.url?.match(/\.(js|css|ico|png|jpg|jpeg|svg|gif)$/)) {
             // Rewrite to index.html
