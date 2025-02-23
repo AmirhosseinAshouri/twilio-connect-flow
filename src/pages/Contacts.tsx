@@ -28,7 +28,7 @@ import { SendEmailDialog } from "@/components/SendEmailDialog";
 import { useNavigate } from "react-router-dom";
 import { formatInTimeZone } from "date-fns-tz";
 import { supabase } from "@/integrations/supabase/client";
-import type { Lead } from "@/types";
+import type { Lead, Contact } from "@/types";
 
 // Mapping of timezone regions to flag emojis
 const timezoneFlags: { [key: string]: string } = {
@@ -60,18 +60,19 @@ const Contacts = () => {
           .from('deals')
           .select('contact_id, stage');
 
-        const contactsMap = new Map(contacts.map(contact => [contact.id, { ...contact }]));
-        
-        leads?.forEach((lead: Lead) => {
-          if (contactsMap.has(lead.contact_id)) {
-            const contact = contactsMap.get(lead.contact_id);
-            if (contact) {
-              contact.leadInfo = { stage: lead.stage };
-            }
+        const contactsWithLeadInfo: ContactWithLead[] = contacts.map(contact => ({
+          ...contact,
+          leadInfo: undefined
+        }));
+
+        leads?.forEach((lead) => {
+          const contact = contactsWithLeadInfo.find(c => c.id === lead.contact_id);
+          if (contact) {
+            contact.leadInfo = { stage: lead.stage };
           }
         });
 
-        setContactsWithLeads(Array.from(contactsMap.values()));
+        setContactsWithLeads(contactsWithLeadInfo);
       } catch (error) {
         console.error('Error fetching leads:', error);
       }
@@ -79,6 +80,8 @@ const Contacts = () => {
 
     if (contacts.length > 0) {
       fetchLeadsForContacts();
+    } else {
+      setContactsWithLeads([]);
     }
   }, [contacts]);
 
