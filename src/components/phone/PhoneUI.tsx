@@ -5,6 +5,7 @@ import { PhoneStatus } from './PhoneStatus';
 import { PhoneControls } from './PhoneControls';
 import { PhoneTroubleshooting } from './PhoneTroubleshooting';
 import { toast } from "sonner";
+import { Phone } from 'lucide-react';
 
 export const PhoneUI: React.FC = () => {
   const [toNumber, setToNumber] = useState('');
@@ -25,6 +26,7 @@ export const PhoneUI: React.FC = () => {
       // Connect the call's audio stream to the audio element
       call.on('accept', () => {
         if (audioRef.current) {
+          console.log("Call accepted, setting up audio stream");
           audioRef.current.srcObject = call.getRemoteStream();
           audioRef.current.play().catch(error => {
             console.error('Error playing audio:', error);
@@ -52,14 +54,17 @@ export const PhoneUI: React.FC = () => {
   return (
     <div className="p-8">
       <div className="max-w-md mx-auto space-y-6">
-        <h2 className="text-2xl font-bold">Twilio Web Phone</h2>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Phone className="h-6 w-6 text-primary" />
+          Twilio Web Phone
+        </h2>
         
         <PhoneStatus status={callStatus} />
         
         {callStatus.status === 'error' && (
           <button 
             onClick={reinitializeDevice}
-            className="px-4 py-2 text-sm text-white bg-blue-500 rounded-md hover:bg-blue-600"
+            className="w-full px-4 py-2 text-sm text-white bg-primary rounded-md hover:bg-primary/90"
           >
             Reconnect Phone
           </button>
@@ -74,14 +79,16 @@ export const PhoneUI: React.FC = () => {
           callInProgress={!!call}
         />
         
-        {/* Make audio element visible during calls */}
-        <audio 
-          ref={audioRef} 
-          autoPlay 
-          style={{ display: call ? 'block' : 'none' }} 
-          controls={!!call}
-          className={call ? "w-full mt-4" : ""}
-        />
+        {/* Make audio element always visible for debugging */}
+        <div className={`mt-4 ${call ? 'block' : 'hidden'}`}>
+          <p className="text-sm font-medium mb-2">Call Audio:</p>
+          <audio 
+            ref={audioRef} 
+            autoPlay 
+            controls
+            className="w-full border rounded-md" 
+          />
+        </div>
         
         <PhoneTroubleshooting device={device} call={call} callStatus={callStatus} />
       </div>

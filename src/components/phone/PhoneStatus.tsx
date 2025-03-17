@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AlertCircle, CheckCircle, Phone, PhoneOff } from 'lucide-react';
+import { AlertCircle, CheckCircle, Phone, PhoneOff, PhoneCall } from 'lucide-react';
 
 interface CallStatus {
   status: 'idle' | 'ready' | 'calling' | 'inCall' | 'error';
@@ -17,7 +17,7 @@ export const PhoneStatus: React.FC<PhoneStatusProps> = ({ status }) => {
       case 'ready':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'calling':
-        return <Phone className="h-5 w-5 text-blue-500 animate-pulse" />;
+        return <PhoneCall className="h-5 w-5 text-blue-500 animate-pulse" />;
       case 'inCall':
         return <Phone className="h-5 w-5 text-green-500" />;
       case 'error':
@@ -42,14 +42,33 @@ export const PhoneStatus: React.FC<PhoneStatusProps> = ({ status }) => {
     }
   };
 
+  const getStatusText = () => {
+    switch (status.status) {
+      case 'ready':
+        return 'Ready to make calls';
+      case 'calling':
+        return 'Calling...';
+      case 'inCall':
+        return 'In Call';
+      case 'error':
+        return status.message || 'Error';
+      case 'idle':
+        return 'Initializing phone system';
+      default:
+        return 'Not connected';
+    }
+  };
+
   return (
     <div className={`p-4 rounded-lg border ${getStatusColor()} flex items-center gap-3`}>
       {getStatusIcon()}
       <div>
         <p className="text-sm font-medium">
-          Status: <span className="capitalize">{status.status}</span>
-          {status.message && ` - ${status.message}`}
+          {getStatusText()}
         </p>
+        {status.message && status.status !== 'error' && (
+          <p className="text-xs text-gray-500">{status.message}</p>
+        )}
       </div>
     </div>
   );
