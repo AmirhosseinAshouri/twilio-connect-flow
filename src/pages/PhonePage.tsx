@@ -64,8 +64,14 @@ const PhonePage: React.FC = () => {
       // Create device with the token
       const twilioDevice = new Device(data.token, {
         allowIncomingWhileBusy: true,
-        // Log level for debugging
-        logLevel: 'debug' 
+        // Enable debug logs
+        logLevel: 'debug', 
+        // Specify audio constraints for better quality
+        audioConstraints: {
+          autoGainControl: true,
+          echoCancellation: true,
+          noiseSuppression: true
+        }
       });
 
       // Setup device event listeners
@@ -118,6 +124,8 @@ const PhonePage: React.FC = () => {
     twilioDevice.on('unregistered', () => {
       console.log('Device unregistered from Twilio');
     });
+
+    console.log('All device event listeners set up');
   };
 
   const handleIncomingCall = (incomingCall: any) => {
@@ -167,6 +175,7 @@ const PhonePage: React.FC = () => {
       if (audioRef.current) {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         await ctx.resume();
+        console.log("Audio context resumed");
       }
       
       // Tell the server about the call (optional, for logging)
@@ -175,17 +184,23 @@ const PhonePage: React.FC = () => {
       });
       
       // Make the outbound call using the browser-based Twilio Device
-      console.log("Connecting via device.connect()...");
+      console.log("Connecting via device.connect() with params:", { To: toNumber, From: 'browser-user' });
+      
+      // Check if device is ready
+      if (device.state !== "registered") {
+        console.warn("Device not in registered state:", device.state);
+        toast.warning("Phone system not fully connected. Trying anyway...");
+      }
+      
+      // Connect with call parameters
       const outgoingCall = await device.connect({
         params: {
           To: toNumber,
-          // You can add additional parameters here that will be 
-          // available in your TwiML when the call is connected
           From: 'browser-user'
         }
       });
       
-      console.log("Call connected:", outgoingCall);
+      console.log("Call object created:", outgoingCall);
       setCall(outgoingCall);
       
       // Set up event handlers for the call
@@ -211,6 +226,8 @@ const PhonePage: React.FC = () => {
         console.log('Call is ringing');
         toast.info("Phone is ringing...");
       });
+      
+      console.log("All call event handlers set up");
       
     } catch (error) {
       console.error('Error making call:', error);
@@ -290,6 +307,7 @@ const PhonePage: React.FC = () => {
           <p className="font-medium">Troubleshooting Info:</p>
           <ul className="mt-2 space-y-1">
             <li>• Device initialized: {device ? 'Yes' : 'No'}</li>
+            <li>• Device state: {device ? device.state : 'N/A'}</li>
             <li>• Call active: {call ? 'Yes' : 'No'}</li>
             <li>• Current status: {callStatus.status}</li>
           </ul>
