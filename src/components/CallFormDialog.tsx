@@ -59,9 +59,9 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
       if (success && callId) {
         toast.success("Call initiated successfully");
         setOpen(false);
+        console.log("Setting call window open to TRUE for call ID:", callId);
         setCallWindowOpen(true);
         setCurrentCallId(callId);
-        console.log("Call window opened for call ID:", callId);
       } else {
         toast.error("Failed to initiate call");
       }
@@ -79,6 +79,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   };
 
   const handleCallWindowClose = () => {
+    console.log("Closing call window");
     setCallWindowOpen(false);
     setCurrentCallId(undefined);
     setPhone("");
@@ -89,6 +90,8 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
                             settings?.twilio_auth_token && 
                             settings?.twilio_phone_number &&
                             settings?.twilio_twiml_app_sid;
+
+  console.log("Call window state:", { open: callWindowOpen, status, phoneNumber: phone });
 
   return (
     <>
@@ -134,7 +137,6 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         </DialogContent>
       </Dialog>
 
-      {/* Always render CallWindow but control its visibility with the open prop */}
       <CallWindow
         open={callWindowOpen}
         onClose={handleCallWindowClose}

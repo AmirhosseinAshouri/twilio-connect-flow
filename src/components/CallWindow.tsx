@@ -17,9 +17,19 @@ interface CallWindowProps {
 export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: CallWindowProps) {
   const [duration, setDuration] = useState(0);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  
+  // Add a local state to ensure the component always stays mounted after being opened
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    console.log("CallWindow - Current status:", status, "Open:", open);
+    console.log(`CallWindow - Setting visibility to: ${open}, Current status: ${status}`);
+    if (open) {
+      setIsVisible(true);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    console.log(`CallWindow - Current status: ${status}, Open: ${open}, Visible: ${isVisible}`);
     
     if (status === 'in-progress' && !timerInterval) {
       const interval = setInterval(() => {
@@ -40,13 +50,15 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
       setTimeout(() => {
         onClose();
         setDuration(0);
+        // Don't hide immediately, wait for animation
+        setTimeout(() => setIsVisible(false), 300);
       }, 2000);
     }
 
     return () => {
       if (timerInterval) clearInterval(timerInterval);
     };
-  }, [status, timerInterval, onClose, open]);
+  }, [status, timerInterval, onClose, open, isVisible]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -99,11 +111,14 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     }
   };
 
-  if (!open) return null;
+  if (!isVisible) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={(value) => {
+      console.log("Dialog onOpenChange:", value);
+      if (!value) onClose();
+    }}>
+      <DialogContent className="sm:max-w-[425px] fixed bottom-4 right-4 p-0 max-h-[300px] shadow-lg border-2 border-primary">
         <div className="flex flex-col items-center justify-center gap-6 p-6">
           <div className="flex flex-col items-center gap-2">
             <div className={cn(

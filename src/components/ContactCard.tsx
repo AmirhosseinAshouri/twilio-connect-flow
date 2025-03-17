@@ -36,7 +36,7 @@ export function ContactCard({ contact }: ContactCardProps) {
           <CallFormDialog 
             contact={contact} 
             trigger={
-              <Button className="flex-1 bg-green-600 hover:bg-green-700">
+              <Button className="flex-1 bg-green-600 hover:bg-green-700 shadow-sm">
                 <Phone className="h-4 w-4 mr-2" />
                 Call
               </Button>
