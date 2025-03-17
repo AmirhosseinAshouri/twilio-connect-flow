@@ -32,9 +32,9 @@ const PhonePage: React.FC = () => {
 
       if (error) throw error;
 
+      // Create device with only valid options supported by the SDK
       const twilioDevice = new Device(data.token, {
-        debug: true,
-        answerOnBridge: true,
+        codecPreferences: ['opus', 'pcmu'],
         allowIncomingWhileBusy: true
       });
 
