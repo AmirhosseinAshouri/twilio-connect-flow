@@ -175,6 +175,7 @@ const PhonePage: React.FC = () => {
       });
       
       // Make the outbound call using the browser-based Twilio Device
+      console.log("Connecting via device.connect()...");
       const outgoingCall = await device.connect({
         params: {
           To: toNumber,
