@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Device } from '@twilio/voice-sdk';
 import { toast } from "sonner";
@@ -32,9 +31,8 @@ const PhonePage: React.FC = () => {
 
       if (error) throw error;
 
-      // Create device with only valid options supported by the SDK
+      // Create device with valid options that match the type requirements
       const twilioDevice = new Device(data.token, {
-        codecPreferences: ['opus', 'pcmu'],
         allowIncomingWhileBusy: true
       });
 
