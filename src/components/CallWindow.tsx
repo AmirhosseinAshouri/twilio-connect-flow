@@ -2,8 +2,9 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Phone, PhoneOff, Timer } from "lucide-react";
+import { Phone, PhoneOff, Timer, PhoneCall, PhoneForwarded } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CallWindowProps {
   open: boolean;
@@ -18,17 +19,24 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    console.log("CallWindow - Current status:", status, "Open:", open);
+    
     if (status === 'in-progress' && !timerInterval) {
       const interval = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
       setTimerInterval(interval);
+      toast.success("Call connected");
     } else if (status !== 'in-progress' && timerInterval) {
       clearInterval(timerInterval);
       setTimerInterval(null);
     }
 
     if (status === 'completed' || status === 'failed' || status === 'canceled') {
+      const message = status === 'completed' ? "Call ended" : 
+                      status === 'failed' ? "Call failed" : "Call canceled";
+      toast.info(message);
+      
       setTimeout(() => {
         onClose();
         setDuration(0);
@@ -38,7 +46,7 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     return () => {
       if (timerInterval) clearInterval(timerInterval);
     };
-  }, [status, timerInterval, onClose]);
+  }, [status, timerInterval, onClose, open]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -70,6 +78,29 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     }
   };
 
+  const getStatusIcon = () => {
+    switch (status) {
+      case 'initiated':
+      case 'connecting':
+        return <PhoneForwarded className="w-8 h-8 text-blue-500 animate-pulse" />;
+      case 'ringing':
+        return <PhoneCall className="w-8 h-8 text-blue-500 animate-pulse" />;
+      case 'in-progress':
+        return <Phone className="w-8 h-8 text-green-600" />;
+      case 'completed':
+        return <Phone className="w-8 h-8 text-gray-600" />;
+      case 'failed':
+      case 'canceled':
+      case 'busy':
+      case 'no-answer':
+        return <PhoneOff className="w-8 h-8 text-red-500" />;
+      default:
+        return <Phone className="w-8 h-8 text-gray-600" />;
+    }
+  };
+
+  if (!open) return null;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
@@ -77,18 +108,18 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
           <div className="flex flex-col items-center gap-2">
             <div className={cn(
               "w-16 h-16 rounded-full flex items-center justify-center",
-              status === 'in-progress' ? "bg-green-100" : "bg-gray-100"
+              status === 'in-progress' ? "bg-green-100" : 
+              status === 'connecting' || status === 'ringing' ? "bg-blue-100" :
+              status === 'failed' || status === 'busy' || status === 'no-answer' || status === 'canceled' ? "bg-red-100" :
+              "bg-gray-100"
             )}>
-              <Phone className={cn(
-                "w-8 h-8",
-                status === 'in-progress' ? "text-green-600" : "text-gray-600"
-              )} />
+              {getStatusIcon()}
             </div>
             <h2 className="text-lg font-semibold">{phoneNumber}</h2>
           </div>
 
           <div className="flex flex-col items-center gap-2">
-            <p className="text-sm text-muted-foreground">{getStatusDisplay()}</p>
+            <p className="text-sm text-muted-foreground font-medium">{getStatusDisplay()}</p>
             {status === 'in-progress' && (
               <div className="flex items-center gap-2">
                 <Timer className="w-4 h-4 text-muted-foreground" />

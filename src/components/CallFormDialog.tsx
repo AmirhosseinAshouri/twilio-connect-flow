@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CallWindow } from "./CallWindow";
 import { useCallStatus } from "@/hooks/useCallStatus";
+import { toast } from "sonner";
 
 interface CallFormDialogProps {
   contact?: Contact;
@@ -48,22 +49,32 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
       return;
     }
 
-    const { success, callId } = await initiateCall({
-      contact,
-      phone,
-      notes
-    });
-    
-    if (success && callId) {
-      setOpen(false);
-      setCallWindowOpen(true);
-      setCurrentCallId(callId);
+    try {
+      const { success, callId } = await initiateCall({
+        contact,
+        phone,
+        notes
+      });
+      
+      if (success && callId) {
+        toast.success("Call initiated successfully");
+        setOpen(false);
+        setCallWindowOpen(true);
+        setCurrentCallId(callId);
+        console.log("Call window opened for call ID:", callId);
+      } else {
+        toast.error("Failed to initiate call");
+      }
+    } catch (error) {
+      console.error("Error initiating call:", error);
+      toast.error("Error initiating call");
     }
   };
 
   const handleHangUp = async () => {
     if (currentCallId) {
       await hangUp(currentCallId);
+      toast.info("Call ended");
     }
   };
 
@@ -123,6 +134,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         </DialogContent>
       </Dialog>
 
+      {/* CallWindow is rendered regardless of whether it's open or not */}
       <CallWindow
         open={callWindowOpen}
         onClose={handleCallWindowClose}
