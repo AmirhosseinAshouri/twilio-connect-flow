@@ -1,16 +1,51 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTwilioDevice } from './TwilioDeviceProvider';
 import { PhoneStatus } from './PhoneStatus';
 import { PhoneControls } from './PhoneControls';
 import { PhoneTroubleshooting } from './PhoneTroubleshooting';
+import { toast } from "sonner";
 
 export const PhoneUI: React.FC = () => {
   const [toNumber, setToNumber] = useState('');
   const audioRef = useRef<HTMLAudioElement>(null);
-  const { device, call, callStatus, isInitializing, makeCall, hangUp, reinitializeDevice } = useTwilioDevice();
+  const { 
+    device, 
+    call, 
+    callStatus, 
+    isInitializing, 
+    makeCall, 
+    hangUp, 
+    reinitializeDevice 
+  } = useTwilioDevice();
+
+  // Handle automatic audio element setup when call is connected
+  useEffect(() => {
+    if (call && audioRef.current) {
+      // Connect the call's audio stream to the audio element
+      call.on('accept', () => {
+        if (audioRef.current) {
+          audioRef.current.srcObject = call.getRemoteStream();
+          audioRef.current.play().catch(error => {
+            console.error('Error playing audio:', error);
+            toast.error("Failed to play audio. Please check your audio settings.");
+          });
+        }
+      });
+    }
+  }, [call]);
 
   const handleMakeCall = () => {
+    if (!toNumber) {
+      toast.error("Please enter a phone number");
+      return;
+    }
+    
+    if (!device) {
+      toast.error("Twilio device is not initialized");
+      return;
+    }
+    
     makeCall(toNumber);
   };
 
@@ -39,7 +74,14 @@ export const PhoneUI: React.FC = () => {
           callInProgress={!!call}
         />
         
-        <audio ref={audioRef} style={{ display: 'none' }} />
+        {/* Make audio element visible during calls */}
+        <audio 
+          ref={audioRef} 
+          autoPlay 
+          style={{ display: call ? 'block' : 'none' }} 
+          controls={!!call}
+          className={call ? "w-full mt-4" : ""}
+        />
         
         <PhoneTroubleshooting device={device} call={call} callStatus={callStatus} />
       </div>
