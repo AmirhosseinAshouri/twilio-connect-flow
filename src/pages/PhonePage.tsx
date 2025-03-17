@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Device } from '@twilio/voice-sdk';
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ const PhonePage: React.FC = () => {
       console.log("Token received, initializing device...");
 
       try {
+        // Best practice: Request microphone permissions before initializing Device
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Release the stream
         console.log("Microphone permission granted");
@@ -57,9 +59,16 @@ const PhonePage: React.FC = () => {
         throw new Error("Microphone permission denied");
       }
 
+      // Create device with valid options (per Twilio docs)
       const twilioDevice = new Device(data.token, {
         allowIncomingWhileBusy: true,
-        logLevel: 'debug'
+        logLevel: 'debug',
+        // Use Edge property to specify preferred regions (per best practices)
+        edge: ['ashburn', 'sydney', 'roaming'],
+        // Enable ICE restart for better connection recovery
+        enableIceRestart: true,
+        // Increase signaling timeout for better reliability
+        maxCallSignalingTimeoutMs: 30000
       });
 
       setupDeviceListeners(twilioDevice);
@@ -80,6 +89,7 @@ const PhonePage: React.FC = () => {
   };
 
   const setupDeviceListeners = (twilioDevice: Device) => {
+    // Best practice: Add listeners before registration
     twilioDevice.on('registered', () => {
       console.log('Device registered successfully with Twilio');
       setCallStatus({ status: 'ready' });
@@ -103,6 +113,7 @@ const PhonePage: React.FC = () => {
     
     twilioDevice.on('tokenWillExpire', () => {
       console.log('Token will expire soon');
+      // Best practice: Consider refreshing the token here
     });
     
     twilioDevice.on('unregistered', () => {
@@ -154,23 +165,35 @@ const PhonePage: React.FC = () => {
       console.log("Initiating browser call to:", toNumber);
       setCallStatus({ status: 'calling' });
       
+      // Best practice: Ensure audio context is active
       if (audioRef.current) {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         await ctx.resume();
         console.log("Audio context resumed");
       }
       
+      // Notify backend about the call (for tracking)
       await supabase.functions.invoke('twilio', {
         body: { action: 'makeCall', toNumber }
       });
       
       console.log("Connecting via device.connect() with params:", { To: toNumber, From: 'browser-user' });
       
+      // Best practice: Check device state before attempting connection
       if (device.state !== "registered") {
         console.warn("Device not in registered state:", device.state);
         toast.warning("Phone system not fully connected. Trying anyway...");
+        
+        // Best practice: Attempt to register again if not registered
+        try {
+          await device.register();
+          console.log("Device re-registered successfully");
+        } catch (registerError) {
+          console.error("Failed to re-register device:", registerError);
+        }
       }
       
+      // Best practice: Use proper error handling for connect()
       const outgoingCall = await device.connect({
         params: {
           To: toNumber,
@@ -181,6 +204,7 @@ const PhonePage: React.FC = () => {
       console.log("Call object created:", outgoingCall);
       setCall(outgoingCall);
       
+      // Best practice: Set up all event handlers immediately after connect
       outgoingCall.on('accept', () => {
         console.log('Call accepted');
         setCallStatus({ status: 'inCall' });
@@ -201,6 +225,12 @@ const PhonePage: React.FC = () => {
       outgoingCall.on('ringing', () => {
         console.log('Call is ringing');
         toast.info("Phone is ringing...");
+      });
+      
+      // Best practice: Add warning event handler
+      outgoingCall.on('warning', (warning) => {
+        console.warn('Call warning:', warning);
+        toast.warning(`Call warning: ${warning.message || 'Connection issue detected'}`);
       });
       
       console.log("All call event handlers set up");
