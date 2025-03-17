@@ -134,7 +134,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         </DialogContent>
       </Dialog>
 
-      {/* CallWindow is rendered regardless of whether it's open or not */}
+      {/* Always render CallWindow but control its visibility with the open prop */}
       <CallWindow
         open={callWindowOpen}
         onClose={handleCallWindowClose}
