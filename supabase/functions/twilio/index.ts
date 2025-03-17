@@ -23,12 +23,12 @@ serve(async (req) => {
         const { jwt: { AccessToken } } = Twilio;
         const VoiceGrant = AccessToken.VoiceGrant;
 
-        // Create an access token
+        // Create an access token with the proper identity
         const token = new AccessToken(
           Deno.env.get('TWILIO_ACCOUNT_SID') || '',
           Deno.env.get('TWILIO_API_KEY') || '',
           Deno.env.get('TWILIO_API_SECRET') || '',
-          { identity: 'user-current' }
+          { identity: 'browser-user' } // Set a consistent identity
         );
 
         // Create a Voice grant and add it to the token
@@ -45,18 +45,42 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 
+      case 'getCapabilityToken':
+        // For legacy Twilio Client SDK if needed
+        const client = new Twilio(
+          Deno.env.get('TWILIO_ACCOUNT_SID') || '',
+          Deno.env.get('TWILIO_AUTH_TOKEN') || ''
+        );
+        
+        const capability = new Twilio.jwt.ClientCapability({
+          accountSid: Deno.env.get('TWILIO_ACCOUNT_SID') || '',
+          authToken: Deno.env.get('TWILIO_AUTH_TOKEN') || ''
+        });
+        
+        capability.addScope(new Twilio.jwt.ClientCapability.OutgoingClientScope({
+          applicationSid: Deno.env.get('TWILIO_TWIML_APP_SID') || '',
+          clientName: 'browser-user'
+        }));
+        
+        return new Response(
+          JSON.stringify({ token: capability.toJwt() }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+
       case 'makeCall':
         if (!toNumber) {
           throw new Error('Phone number is required');
         }
 
-        const client = new Twilio(
+        const twilioClient = new Twilio(
           Deno.env.get('TWILIO_ACCOUNT_SID') || '',
           Deno.env.get('TWILIO_AUTH_TOKEN') || ''
         );
 
         console.log(`Making call from ${Deno.env.get('TWILIO_PHONE_NUMBER')} to ${toNumber}`);
-        const call = await client.calls.create({
+        
+        // Create call using Twilio REST API (this creates a call from Twilio to the specified number)
+        const call = await twilioClient.calls.create({
           url: `${Deno.env.get('PUBLIC_URL')}/api/twilio/voice`,
           to: toNumber,
           from: Deno.env.get('TWILIO_PHONE_NUMBER'),
