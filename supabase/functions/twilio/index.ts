@@ -72,23 +72,15 @@ serve(async (req) => {
           throw new Error('Phone number is required');
         }
 
-        const twilioClient = new Twilio(
-          Deno.env.get('TWILIO_ACCOUNT_SID') || '',
-          Deno.env.get('TWILIO_AUTH_TOKEN') || ''
-        );
-
-        console.log(`Making call from ${Deno.env.get('TWILIO_PHONE_NUMBER')} to ${toNumber}`);
+        // For browser-to-phone calls, we don't need to create a call server-side
+        // Instead, we'll return success and let the browser handle the connection
+        console.log(`Browser will initiate call to ${toNumber}`);
         
-        // Create call using Twilio REST API (this creates a call from Twilio to the specified number)
-        const call = await twilioClient.calls.create({
-          url: `${Deno.env.get('PUBLIC_URL')}/api/twilio/voice`,
-          to: toNumber,
-          from: Deno.env.get('TWILIO_PHONE_NUMBER'),
-        });
-
-        console.log(`Call created with SID: ${call.sid}`);
         return new Response(
-          JSON.stringify({ callSid: call.sid }),
+          JSON.stringify({ 
+            success: true, 
+            message: "Call parameters received. The browser will now initiate the call."
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 

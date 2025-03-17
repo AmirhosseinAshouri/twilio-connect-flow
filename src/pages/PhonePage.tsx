@@ -169,6 +169,11 @@ const PhonePage: React.FC = () => {
         await ctx.resume();
       }
       
+      // Tell the server about the call (optional, for logging)
+      await supabase.functions.invoke('twilio', {
+        body: { action: 'makeCall', toNumber }
+      });
+      
       // Make the outbound call using the browser-based Twilio Device
       const outgoingCall = await device.connect({
         params: {
