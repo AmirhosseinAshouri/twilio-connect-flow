@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Device } from '@twilio/voice-sdk';
 import { toast } from "sonner";
@@ -17,11 +16,9 @@ const PhonePage: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   
-  // Initialize device on component mount
   useEffect(() => {
     initializeDevice();
     
-    // Cleanup function to destroy device on unmount
     return () => {
       if (device) {
         console.log("Destroying Twilio device on unmount");
@@ -50,7 +47,6 @@ const PhonePage: React.FC = () => {
       
       console.log("Token received, initializing device...");
 
-      // Request microphone permission before creating the device
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach(track => track.stop()); // Release the stream
@@ -61,23 +57,13 @@ const PhonePage: React.FC = () => {
         throw new Error("Microphone permission denied");
       }
 
-      // Create device with the token
       const twilioDevice = new Device(data.token, {
         allowIncomingWhileBusy: true,
-        // Enable debug logs
-        logLevel: 'debug', 
-        // Specify audio constraints for better quality
-        audioConstraints: {
-          autoGainControl: true,
-          echoCancellation: true,
-          noiseSuppression: true
-        }
+        logLevel: 'debug'
       });
 
-      // Setup device event listeners
       setupDeviceListeners(twilioDevice);
       
-      // Register the device (connect to Twilio)
       console.log("Registering device...");
       await twilioDevice.register();
       
@@ -115,10 +101,8 @@ const PhonePage: React.FC = () => {
     twilioDevice.on('incoming', handleIncomingCall);
     twilioDevice.on('disconnect', handleDisconnect);
     
-    // Additional debug event listeners
     twilioDevice.on('tokenWillExpire', () => {
       console.log('Token will expire soon');
-      // You could refresh the token here
     });
     
     twilioDevice.on('unregistered', () => {
@@ -143,7 +127,6 @@ const PhonePage: React.FC = () => {
     incomingCall.on('cancel', handleDisconnect);
     incomingCall.on('reject', handleDisconnect);
 
-    // Auto accept incoming calls
     incomingCall.accept().catch((error: Error) => {
       console.error('Error accepting call:', error);
       toast.error("Failed to accept incoming call");
@@ -171,28 +154,23 @@ const PhonePage: React.FC = () => {
       console.log("Initiating browser call to:", toNumber);
       setCallStatus({ status: 'calling' });
       
-      // Check if audio context needs to be resumed (may be required on some browsers)
       if (audioRef.current) {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         await ctx.resume();
         console.log("Audio context resumed");
       }
       
-      // Tell the server about the call (optional, for logging)
       await supabase.functions.invoke('twilio', {
         body: { action: 'makeCall', toNumber }
       });
       
-      // Make the outbound call using the browser-based Twilio Device
       console.log("Connecting via device.connect() with params:", { To: toNumber, From: 'browser-user' });
       
-      // Check if device is ready
       if (device.state !== "registered") {
         console.warn("Device not in registered state:", device.state);
         toast.warning("Phone system not fully connected. Trying anyway...");
       }
       
-      // Connect with call parameters
       const outgoingCall = await device.connect({
         params: {
           To: toNumber,
@@ -203,7 +181,6 @@ const PhonePage: React.FC = () => {
       console.log("Call object created:", outgoingCall);
       setCall(outgoingCall);
       
-      // Set up event handlers for the call
       outgoingCall.on('accept', () => {
         console.log('Call accepted');
         setCallStatus({ status: 'inCall' });
@@ -221,7 +198,6 @@ const PhonePage: React.FC = () => {
         toast.error(`Call error: ${error.message}`);
       });
       
-      // Additional call event monitoring
       outgoingCall.on('ringing', () => {
         console.log('Call is ringing');
         toast.info("Phone is ringing...");
@@ -299,10 +275,8 @@ const PhonePage: React.FC = () => {
           </div>
         </div>
         
-        {/* Hidden audio element for browser audio context initialization */}
         <audio ref={audioRef} style={{ display: 'none' }} />
         
-        {/* Debug info section */}
         <div className="mt-6 p-4 border rounded-md bg-muted text-xs">
           <p className="font-medium">Troubleshooting Info:</p>
           <ul className="mt-2 space-y-1">
