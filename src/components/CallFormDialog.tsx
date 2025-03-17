@@ -60,8 +60,14 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         toast.success("Call initiated successfully");
         setOpen(false);
         console.log("Setting call window open to TRUE for call ID:", callId);
-        setCallWindowOpen(true);
+        
+        // Set the call ID first, then open the window
         setCurrentCallId(callId);
+        // Force this to run after the current execution context
+        setTimeout(() => {
+          setCallWindowOpen(true);
+          console.log("Call window should now be visible");
+        }, 0);
       } else {
         toast.error("Failed to initiate call");
       }
@@ -81,9 +87,12 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const handleCallWindowClose = () => {
     console.log("Closing call window");
     setCallWindowOpen(false);
-    setCurrentCallId(undefined);
-    setPhone("");
-    setNotes("");
+    // Wait a bit before resetting the call ID to avoid UI flicker
+    setTimeout(() => {
+      setCurrentCallId(undefined);
+      setPhone("");
+      setNotes("");
+    }, 300);
   };
 
   const isTwilioConfigured = settings?.twilio_account_sid && 
@@ -91,7 +100,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
                             settings?.twilio_phone_number &&
                             settings?.twilio_twiml_app_sid;
 
-  console.log("Call window state:", { open: callWindowOpen, status, phoneNumber: phone });
+  console.log("Call window state:", { open: callWindowOpen, status, phoneNumber: phone, callId: currentCallId });
 
   return (
     <>
