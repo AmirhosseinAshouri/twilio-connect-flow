@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Device } from '@twilio/voice-sdk';
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ const PhonePage: React.FC = () => {
   const [call, setCall] = useState<any>(null);
   const [callStatus, setCallStatus] = useState<CallStatus>({ status: 'idle' });
   const [toNumber, setToNumber] = useState('');
+  const [isInitializing, setIsInitializing] = useState(false);
 
   useEffect(() => {
     initializeDevice();
@@ -25,6 +27,7 @@ const PhonePage: React.FC = () => {
 
   const initializeDevice = async () => {
     try {
+      setIsInitializing(true);
       const { data, error } = await supabase.functions.invoke('twilio', {
         body: { action: 'getToken' }
       });
@@ -43,6 +46,8 @@ const PhonePage: React.FC = () => {
       console.error('Device initialization error:', error);
       toast.error("Failed to initialize phone device");
       setCallStatus({ status: 'error', message: 'Device initialization failed' });
+    } finally {
+      setIsInitializing(false);
     }
   };
 
@@ -90,17 +95,48 @@ const PhonePage: React.FC = () => {
   };
 
   const makeCall = async () => {
-    if (!device || !toNumber) return;
+    if (!device || !toNumber || callStatus.status === 'inCall' || callStatus.status === 'calling') {
+      console.log("Cannot make call:", { 
+        deviceExists: !!device, 
+        toNumber, 
+        currentStatus: callStatus.status 
+      });
+      return;
+    }
 
     try {
-      const { data, error } = await supabase.functions.invoke('twilio', {
-        body: { action: 'makeCall', toNumber }
-      });
-
-      if (error) throw error;
-
+      console.log("Initiating call to:", toNumber);
       setCallStatus({ status: 'calling' });
-      toast.success("Call initiated");
+      
+      // Make the outbound call using the Twilio Device
+      const outgoingCall = await device.connect({
+        params: {
+          To: toNumber
+        }
+      });
+      
+      console.log("Call connected:", outgoingCall);
+      setCall(outgoingCall);
+      
+      // Set up event handlers for the call
+      outgoingCall.on('accept', () => {
+        console.log('Call accepted');
+        setCallStatus({ status: 'inCall' });
+        toast.success("Call connected");
+      });
+      
+      outgoingCall.on('disconnect', () => {
+        console.log('Call disconnected');
+        handleDisconnect();
+        toast.info("Call ended");
+      });
+      
+      outgoingCall.on('error', (error) => {
+        console.error('Call error:', error);
+        setCallStatus({ status: 'error', message: error.message });
+        toast.error(`Call error: ${error.message}`);
+      });
+      
     } catch (error) {
       console.error('Error making call:', error);
       toast.error("Failed to make call");
@@ -110,6 +146,7 @@ const PhonePage: React.FC = () => {
 
   const hangUp = () => {
     if (call) {
+      console.log("Hanging up call");
       call.disconnect();
       handleDisconnect();
     }
@@ -132,15 +169,15 @@ const PhonePage: React.FC = () => {
             value={toNumber}
             onChange={(e) => setToNumber(e.target.value)}
             className="w-full p-2 border rounded-md"
-            disabled={callStatus.status === 'inCall'}
+            disabled={callStatus.status === 'inCall' || callStatus.status === 'calling'}
           />
           <div className="flex gap-4">
             <button 
               onClick={makeCall}
-              disabled={!device || callStatus.status === 'inCall'}
+              disabled={!device || callStatus.status === 'inCall' || callStatus.status === 'calling' || isInitializing || !toNumber}
               className="flex-1 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50"
             >
-              Call
+              {callStatus.status === 'calling' ? 'Connecting...' : 'Call'}
             </button>
             <button 
               onClick={hangUp}

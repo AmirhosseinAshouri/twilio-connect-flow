@@ -15,6 +15,7 @@ serve(async (req) => {
 
   try {
     const { action, toNumber } = await req.json()
+    console.log(`Processing ${action} request`, toNumber ? { toNumber } : '');
 
     switch (action) {
       case 'getToken':
@@ -37,6 +38,7 @@ serve(async (req) => {
         });
 
         token.addGrant(voiceGrant);
+        console.log('Generated token successfully');
 
         return new Response(
           JSON.stringify({ token: token.toJwt() }),
@@ -53,12 +55,14 @@ serve(async (req) => {
           Deno.env.get('TWILIO_AUTH_TOKEN') || ''
         );
 
+        console.log(`Making call from ${Deno.env.get('TWILIO_PHONE_NUMBER')} to ${toNumber}`);
         const call = await client.calls.create({
           url: `${Deno.env.get('PUBLIC_URL')}/api/twilio/voice`,
           to: toNumber,
           from: Deno.env.get('TWILIO_PHONE_NUMBER'),
         });
 
+        console.log(`Call created with SID: ${call.sid}`);
         return new Response(
           JSON.stringify({ callSid: call.sid }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
