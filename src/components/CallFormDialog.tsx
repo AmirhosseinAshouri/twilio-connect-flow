@@ -39,11 +39,15 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const { status } = useCallStatus(currentCallId);
   const navigate = useNavigate();
 
-  // Ensure call window is visible when currentCallId is set
+  // When currentCallId is set, ensure callWindowOpen is true
   useEffect(() => {
     if (currentCallId) {
       console.log("Call ID is set, ensuring call window is open:", currentCallId);
-      setCallWindowOpen(true);
+      // Set a timer to ensure React has time to update state properly
+      setTimeout(() => {
+        setCallWindowOpen(true);
+        console.log("Call window should now be visible:", { callId: currentCallId, open: true });
+      }, 200);
     }
   }, [currentCallId]);
 
@@ -67,14 +71,9 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
       if (success && callId) {
         toast.success("Call initiated successfully");
         setOpen(false);
-        console.log("Setting call window open to TRUE for call ID:", callId);
         
-        // Set the call ID and open the window with a slight delay to ensure proper rendering
+        // First set the call ID, then the effect will handle opening the window
         setCurrentCallId(callId);
-        setTimeout(() => {
-          setCallWindowOpen(true);
-          console.log("Call window should now be visible:", { callId, open: true });
-        }, 100);
       } else {
         toast.error("Failed to initiate call");
       }
@@ -153,7 +152,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         </DialogContent>
       </Dialog>
 
-      {/* Always render CallWindow but control visibility with the open prop */}
+      {/* Render CallWindow unconditionally but control visibility with the open prop */}
       <CallWindow
         open={callWindowOpen}
         onClose={handleCallWindowClose}

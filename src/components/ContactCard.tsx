@@ -36,7 +36,7 @@ export function ContactCard({ contact }: ContactCardProps) {
           <CallFormDialog 
             contact={contact} 
             trigger={
-              <Button className="flex-1 bg-green-600 hover:bg-green-700 shadow-md font-medium">
+              <Button variant="custom" className="flex-1 bg-green-600 hover:bg-green-700 shadow-md font-medium">
                 <Phone className="h-4 w-4 mr-2" />
                 Call
               </Button>
@@ -45,7 +45,7 @@ export function ContactCard({ contact }: ContactCardProps) {
           <SendSMSDialog 
             contact={contact} 
             trigger={
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 shadow-md font-medium">
+              <Button variant="custom" className="flex-1 bg-blue-600 hover:bg-blue-700 shadow-md font-medium">
                 <MessageSquare className="h-4 w-4 mr-2" />
                 SMS
               </Button>
@@ -54,7 +54,7 @@ export function ContactCard({ contact }: ContactCardProps) {
           <SendEmailDialog 
             contact={contact} 
             trigger={
-              <Button className="flex-1 bg-purple-600 hover:bg-purple-700 shadow-md font-medium">
+              <Button variant="custom" className="flex-1 bg-purple-600 hover:bg-purple-700 shadow-md font-medium">
                 <Mail className="h-4 w-4 mr-2" />
                 Email
               </Button>

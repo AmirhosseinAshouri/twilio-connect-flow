@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
   // Ensure component is visible when open is true
   const [isVisible, setIsVisible] = useState(false);
 
-  // Set visibility based on open prop
+  // Set visibility based on open prop with a delay to allow animation
   useEffect(() => {
     console.log(`CallWindow - Setting visibility based on open prop:`, { 
       open, 
@@ -31,6 +30,11 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     
     if (open) {
       setIsVisible(true);
+    } else {
+      // When closing, we'll keep visibility true briefly to allow animation
+      setTimeout(() => {
+        setIsVisible(false);
+      }, 300);
     }
   }, [open, status, phoneNumber]);
 
@@ -56,9 +60,6 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
       
       setTimeout(() => {
         onClose();
-        setDuration(0);
-        // Don't hide immediately, wait for animation
-        setTimeout(() => setIsVisible(false), 300);
       }, 2000);
     }
 
@@ -118,7 +119,7 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     }
   };
 
-  // Don't render anything if not visible
+  // Even if not open, we render it but with forceMount to allow animation
   if (!open && !isVisible) {
     console.log("CallWindow - Not rendering: not open and not visible");
     return null;
@@ -130,7 +131,7 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     <Dialog open={open} onOpenChange={(value) => {
       console.log("Dialog onOpenChange:", value);
       if (!value) onClose();
-    }}>
+    }} modal={false}>
       <DialogContent className="sm:max-w-[425px] fixed bottom-4 right-4 p-0 max-h-[300px] shadow-lg border-2 border-primary">
         <div className="flex flex-col items-center justify-center gap-6 p-6">
           <div className="flex flex-col items-center gap-2">
