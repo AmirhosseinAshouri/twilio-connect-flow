@@ -42,8 +42,24 @@ export function ContactCard({ contact }: ContactCardProps) {
               </Button>
             }
           />
-          <SendSMSDialog contact={contact} />
-          <SendEmailDialog contact={contact} />
+          <SendSMSDialog 
+            contact={contact} 
+            trigger={
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700 shadow-md font-medium">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                SMS
+              </Button>
+            }
+          />
+          <SendEmailDialog 
+            contact={contact} 
+            trigger={
+              <Button className="flex-1 bg-purple-600 hover:bg-purple-700 shadow-md font-medium">
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </Button>
+            }
+          />
         </div>
       </CardContent>
     </Card>

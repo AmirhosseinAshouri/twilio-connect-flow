@@ -18,16 +18,23 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
   const [duration, setDuration] = useState(0);
   const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
   
-  // Add a local state to ensure the component always stays mounted after being opened
+  // Ensure component is visible when open is true
   const [isVisible, setIsVisible] = useState(false);
 
+  // Set visibility based on open prop
   useEffect(() => {
-    console.log(`CallWindow - Setting visibility to: ${open}, Current status: ${status}`);
+    console.log(`CallWindow - Setting visibility based on open prop:`, { 
+      open, 
+      status, 
+      phoneNumber 
+    });
+    
     if (open) {
       setIsVisible(true);
     }
-  }, [open]);
+  }, [open, status, phoneNumber]);
 
+  // Handle call status changes
   useEffect(() => {
     console.log(`CallWindow - Current status: ${status}, Open: ${open}, Visible: ${isVisible}`);
     
@@ -111,7 +118,13 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
     }
   };
 
-  if (!isVisible) return null;
+  // Don't render anything if not visible
+  if (!open && !isVisible) {
+    console.log("CallWindow - Not rendering: not open and not visible");
+    return null;
+  }
+
+  console.log("CallWindow - Rendering dialog with open:", open);
 
   return (
     <Dialog open={open} onOpenChange={(value) => {
@@ -124,7 +137,7 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
             <div className={cn(
               "w-16 h-16 rounded-full flex items-center justify-center",
               status === 'in-progress' ? "bg-green-100" : 
-              status === 'connecting' || status === 'ringing' ? "bg-blue-100" :
+              status === 'connecting' || status === 'ringing' || status === 'initiated' ? "bg-blue-100" :
               status === 'failed' || status === 'busy' || status === 'no-answer' || status === 'canceled' ? "bg-red-100" :
               "bg-gray-100"
             )}>
@@ -143,7 +156,7 @@ export function CallWindow({ open, onClose, status, phoneNumber, onHangUp }: Cal
             )}
           </div>
 
-          {(status === 'connecting' || status === 'ringing' || status === 'in-progress') && (
+          {(status === 'connecting' || status === 'ringing' || status === 'in-progress' || status === 'initiated') && (
             <Button
               variant="destructive"
               className="w-12 h-12 rounded-full p-0"

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,14 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const { status } = useCallStatus(currentCallId);
   const navigate = useNavigate();
 
+  // Ensure call window is visible when currentCallId is set
+  useEffect(() => {
+    if (currentCallId) {
+      console.log("Call ID is set, ensuring call window is open:", currentCallId);
+      setCallWindowOpen(true);
+    }
+  }, [currentCallId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -61,13 +69,12 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         setOpen(false);
         console.log("Setting call window open to TRUE for call ID:", callId);
         
-        // Set the call ID first, then open the window
+        // Set the call ID and open the window with a slight delay to ensure proper rendering
         setCurrentCallId(callId);
-        // Force this to run after the current execution context
         setTimeout(() => {
           setCallWindowOpen(true);
-          console.log("Call window should now be visible");
-        }, 0);
+          console.log("Call window should now be visible:", { callId, open: true });
+        }, 100);
       } else {
         toast.error("Failed to initiate call");
       }
@@ -146,10 +153,11 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         </DialogContent>
       </Dialog>
 
+      {/* Always render CallWindow but control visibility with the open prop */}
       <CallWindow
         open={callWindowOpen}
         onClose={handleCallWindowClose}
-        status={status}
+        status={status || 'initiated'}
         phoneNumber={phone}
         onHangUp={handleHangUp}
       />
