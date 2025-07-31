@@ -17,7 +17,7 @@ import { CallForm } from "./CallForm";
 import { useInitiateCall } from "@/hooks/useInitiateCall";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CallWindow } from "./CallWindow";
+import { MobileCallWindow } from "./MobileCallWindow";
 import { useCallStatus } from "@/hooks/useCallStatus";
 import { toast } from "sonner";
 
@@ -36,7 +36,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const [currentCallId, setCurrentCallId] = useState<string>();
   const { settings, loading: settingsLoading } = useSettings();
   const { initiateCall, isLoading, hangUp } = useInitiateCall();
-  const { status } = useCallStatus(currentCallId);
+  const { status, loading: statusLoading } = useCallStatus(currentCallId);
   const navigate = useNavigate();
 
   // When currentCallId is set, ensure callWindowOpen is true
@@ -72,8 +72,10 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         toast.success("Call initiated successfully");
         setOpen(false);
         
-        // First set the call ID, then the effect will handle opening the window
+        // Immediately open call window and set call ID
         setCurrentCallId(callId);
+        setCallWindowOpen(true);
+        console.log("Call initiated, opening window with ID:", callId);
       } else {
         toast.error("Failed to initiate call");
       }
@@ -152,12 +154,13 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         </DialogContent>
       </Dialog>
 
-      {/* Render CallWindow unconditionally but control visibility with the open prop */}
-      <CallWindow
+      {/* Render MobileCallWindow for better call experience */}
+      <MobileCallWindow
         open={callWindowOpen}
         onClose={handleCallWindowClose}
         status={status || 'initiated'}
         phoneNumber={phone}
+        contactName={contact?.name}
         onHangUp={handleHangUp}
       />
     </>
