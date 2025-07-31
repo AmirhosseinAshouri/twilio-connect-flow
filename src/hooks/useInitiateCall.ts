@@ -67,6 +67,12 @@ export function useInitiateCall() {
       });
 
       // Initiate call using edge function
+      console.log('Calling edge function with data:', {
+        callId: callData.id,
+        to: phone,
+        notes,
+      });
+
       const { data, error: functionError } = await supabase.functions.invoke('create-call', {
         body: {
           callId: callData.id,
@@ -78,13 +84,17 @@ export function useInitiateCall() {
         },
       });
 
+      console.log('Edge function response:', { data, error: functionError });
+
       if (functionError) {
         console.error('Edge function error:', functionError);
         throw new Error(functionError.message || 'Failed to initiate call');
       }
 
       if (!data?.success) {
-        throw new Error('Failed to initiate call: Unknown error');
+        const errorMessage = data?.error || 'Failed to initiate call: Unknown error';
+        console.error('Call initiation failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
       console.log('Call initiated successfully:', data);
