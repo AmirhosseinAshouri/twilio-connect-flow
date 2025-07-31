@@ -152,6 +152,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
+        callId: callId,
         sid: twilioData.sid,
         message: 'Call initiated successfully'
       }),
