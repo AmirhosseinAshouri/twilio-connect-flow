@@ -16,55 +16,83 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== CREATE CALL FUNCTION START ===')
+    
+    // Use service role key for better permissions
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
     // Get the JWT token from the request header
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('No authorization header')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('Missing or invalid Authorization header')
+      throw new Error('Missing authorization header')
     }
+
+    const token = authHeader.replace('Bearer ', '')
+    console.log('JWT token received, length:', token.length)
 
     // Get the user from the JWT token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    )
-
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
     if (userError || !user) {
-      throw new Error('Invalid token')
+      console.error('Authentication failed:', userError)
+      throw new Error('Authentication failed')
     }
 
+    console.log('User authenticated successfully:', user.id)
+
     const { callId, to, notes } = await req.json()
-    console.log('Received request:', { callId, to, notes })
+    console.log('Request data:', { callId, to, notes })
+
+    // Validate required fields
+    if (!callId || !to) {
+      console.error('Missing required fields:', { callId, to })
+      throw new Error('Missing required fields: callId and to')
+    }
 
     // Get the user's Twilio settings
-    console.log('Fetching settings for user:', user.id)
+    console.log('Fetching Twilio settings for user:', user.id)
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
       .eq('user_id', user.id)
       .maybeSingle()
 
-    console.log('Settings query result:', { settings, settingsError })
+    console.log('Settings query result:', { 
+      hasSettings: !!settings, 
+      settingsError,
+      accountSid: settings?.twilio_account_sid ? 'present' : 'missing',
+      authToken: settings?.twilio_auth_token ? 'present' : 'missing',
+      phoneNumber: settings?.twilio_phone_number ? 'present' : 'missing'
+    })
 
     if (settingsError) {
-      console.error('Settings error:', settingsError)
+      console.error('Database error fetching settings:', settingsError)
       throw new Error('Failed to fetch Twilio settings')
     }
 
     if (!settings) {
       console.log('No settings found for user:', user.id)
-      throw new Error('Twilio settings not found')
+      throw new Error('Please configure your Twilio settings in the Settings page')
     }
 
     if (!settings.twilio_account_sid || !settings.twilio_auth_token || !settings.twilio_phone_number) {
-      throw new Error('Incomplete Twilio settings')
+      console.error('Incomplete Twilio settings for user:', user.id)
+      throw new Error('Please complete your Twilio settings configuration')
     }
 
-    const twimlUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twiml?To=${encodeURIComponent(to)}&From=${encodeURIComponent(settings.twilio_phone_number)}`
+    // Create TwiML URL - simplified without query params
+    const twimlUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twiml`
     const statusCallbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/call-status`
+
+    console.log('Making Twilio API call...', {
+      from: settings.twilio_phone_number,
+      to: to,
+      twimlUrl,
+      statusCallbackUrl
+    })
 
     // Make request to Twilio API directly
     const twilioResponse = await fetch(
@@ -80,51 +108,69 @@ serve(async (req) => {
           From: settings.twilio_phone_number,
           Url: twimlUrl,
           StatusCallback: statusCallbackUrl,
-          StatusCallbackEvent: JSON.stringify(['completed']),
+          StatusCallbackEvent: 'initiated,ringing,answered,completed',
         }).toString(),
       }
     )
 
+    console.log('Twilio API response status:', twilioResponse.status)
+    const twilioResponseText = await twilioResponse.text()
+    console.log('Twilio API response:', twilioResponseText)
+
     if (!twilioResponse.ok) {
-      const twilioError = await twilioResponse.json()
-      console.error('Twilio API error:', twilioError)
-      throw new Error(`Twilio API error: ${twilioError.message || 'Unknown error'}`)
+      console.error('Twilio API call failed:', twilioResponse.status, twilioResponseText)
+      throw new Error(`Twilio API error: ${twilioResponseText}`)
     }
 
-    const twilioData = await twilioResponse.json()
-    console.log('Twilio call created:', twilioData)
+    // Parse response - Twilio returns JSON for API calls
+    let twilioData
+    try {
+      twilioData = JSON.parse(twilioResponseText)
+    } catch (parseError) {
+      console.error('Failed to parse Twilio response as JSON:', parseError)
+      throw new Error('Invalid response from Twilio API')
+    }
+
+    console.log('Twilio call created successfully:', twilioData.sid)
 
     // Update call record with Twilio SID
     const { error: updateError } = await supabaseClient
       .from('calls')
       .update({ 
         twilio_sid: twilioData.sid,
-        status: 'initiated'
+        status: 'initiated',
+        start_time: new Date().toISOString()
       })
       .eq('id', callId)
-      .eq('user_id', user.id)
 
     if (updateError) {
-      console.error('Update error:', updateError)
-      throw new Error('Failed to update call record')
+      console.error('Failed to update call record:', updateError)
+      // Don't fail the entire request as the call was initiated successfully
     }
 
+    console.log('=== CREATE CALL FUNCTION SUCCESS ===')
     return new Response(
-      JSON.stringify({ success: true, sid: twilioData.sid }),
+      JSON.stringify({ 
+        success: true, 
+        sid: twilioData.sid,
+        message: 'Call initiated successfully'
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
   } catch (error) {
-    console.error('Error creating call:', error)
+    console.error('=== CREATE CALL FUNCTION ERROR ===')
+    console.error('Error details:', error)
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: error instanceof Error ? error.stack : undefined
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 500,
       }
     )
   }
