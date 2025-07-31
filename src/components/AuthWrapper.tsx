@@ -16,9 +16,23 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   const location = useLocation();
 
   useEffect(() => {
+    let mounted = true;
+
+    // Clean up any stale auth state first
+    const cleanupAuthState = () => {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -29,12 +43,32 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
           if (location.pathname !== '/signin') {
             navigate('/signin', { replace: true });
           }
+        } else if (event === 'SIGNED_IN' && session) {
+          // Redirect to dashboard if on signin page
+          if (location.pathname === '/signin') {
+            navigate('/', { replace: true });
+          }
         }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error('Session error:', error);
+        cleanupAuthState();
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        if (location.pathname !== '/signin') {
+          navigate('/signin', { replace: true });
+        }
+        return;
+      }
+
+      console.log('Initial session check:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -45,7 +79,10 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate, location.pathname]);
 
   // Show loading skeleton while checking auth
