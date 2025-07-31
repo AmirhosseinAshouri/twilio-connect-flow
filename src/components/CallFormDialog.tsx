@@ -71,6 +71,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
       });
       
       console.log('CallFormDialog: Received result from initiateCall:', result);
+      console.log('CallFormDialog: Result structure:', JSON.stringify(result, null, 2));
       
       if (result.success && result.callId) {
         console.log('CallFormDialog: Call successful, setting callId:', result.callId);

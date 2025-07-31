@@ -85,6 +85,7 @@ export function useInitiateCall() {
       });
 
       console.log('Edge function response:', { data, error: functionError });
+      console.log('Edge function response data structure:', JSON.stringify(data, null, 2));
 
       if (functionError) {
         console.error('Edge function error:', functionError);
