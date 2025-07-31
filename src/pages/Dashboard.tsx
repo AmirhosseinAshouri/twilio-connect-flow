@@ -1,8 +1,5 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useContacts } from "@/hooks/useContacts";
-import { useLeads } from "@/hooks/useLeads";
-import { useCalls } from "@/hooks/useCalls";
 import { Calendar, CheckSquare, CalendarClock, CalendarX, Smile, Angry } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,12 +10,17 @@ import { LeadForm } from "@/components/LeadForm";
 import { Note } from "@/types/note";
 import { NavBar } from "@/components/ui/tubelight-navbar";
 import { isToday, isPast, isFuture, startOfDay } from "date-fns";
+import { ErrorState } from "@/components/ErrorState";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { leads, updateLead } = useLeads();
+  console.log('Dashboard: Rendering');
+  
   const [assignedNotes, setAssignedNotes] = useState<(Note & { lead: Lead })[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activeTab, setActiveTab] = useState("Today");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const navItems = [
     { name: "Today", icon: Calendar },
@@ -27,43 +29,65 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
+    console.log('Dashboard: Fetching assigned notes');
+    
     const fetchAssignedNotes = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('Dashboard: No user found');
+          setLoading(false);
+          return;
+        }
 
-      const { data: notes, error } = await supabase
-        .from('notes')
-        .select(`
-          id,
-          deal_id,
-          content,
-          created_at,
-          completed,
-          user_id,
-          due_date,
-          lead:deals(*)
-        `)
-        .eq('user_id', user.id)
-        .eq('completed', false)
-        .order('due_date', { ascending: true });
+        console.log('Dashboard: Fetching notes for user:', user.id);
+        
+        const { data: notes, error } = await supabase
+          .from('notes')
+          .select(`
+            id,
+            deal_id,
+            content,
+            created_at,
+            completed,
+            user_id,
+            due_date,
+            lead:deals(*)
+          `)
+          .eq('user_id', user.id)
+          .eq('completed', false)
+          .order('due_date', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching notes:', error);
-        return;
-      }
+        if (error) {
+          console.error('Dashboard: Error fetching notes:', error);
+          setError(error.message);
+          setLoading(false);
+          return;
+        }
 
-      if (notes) {
-        const notesWithLead = notes.map(note => ({
-          id: note.id,
-          deal_id: note.deal_id,
-          content: note.content,
-          created_at: note.created_at,
-          completed: note.completed,
-          user_id: note.user_id,
-          due_date: note.due_date,
-          lead: note.lead as Lead
-        }));
-        setAssignedNotes(notesWithLead);
+        if (notes) {
+          console.log('Dashboard: Fetched notes:', notes.length);
+          const notesWithLead = notes.map(note => ({
+            id: note.id,
+            deal_id: note.deal_id,
+            content: note.content,
+            created_at: note.created_at,
+            completed: note.completed,
+            user_id: note.user_id,
+            due_date: note.due_date,
+            lead: note.lead as Lead
+          }));
+          setAssignedNotes(notesWithLead);
+        }
+      } catch (err) {
+        console.error('Dashboard: Unexpected error:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -108,7 +132,7 @@ export default function Dashboard() {
   }, [assignedNotes]);
 
   const handleLeadUpdate = (updatedLead: Lead) => {
-    updateLead(updatedLead);
+    console.log('Dashboard: Updating lead:', updatedLead.id);
     setSelectedLead(null);
   };
 
@@ -122,6 +146,37 @@ export default function Dashboard() {
       day: 'numeric'
     });
   };
+
+  // Show loading state
+  if (loading) {
+    console.log('Dashboard: Showing loading state');
+    return (
+      <div className="p-8 space-y-8">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    console.log('Dashboard: Showing error state');
+    return (
+      <div className="p-8">
+        <ErrorState 
+          message={error} 
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
+
+  console.log('Dashboard: Rendering main content');
 
   return (
     <div className="p-8 space-y-8">

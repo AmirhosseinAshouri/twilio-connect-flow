@@ -16,71 +16,42 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   const location = useLocation();
 
   useEffect(() => {
-    let mounted = true;
-
-    // Clean up any stale auth state first
-    const cleanupAuthState = () => {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-    };
-
-    // Set up auth state listener FIRST
+    console.log('AuthWrapper: Setting up auth listener');
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!mounted) return;
-        
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('Auth event:', event, session ? 'has session' : 'no session');
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Handle authentication events
-        if (event === 'SIGNED_OUT' || !session) {
-          // Only redirect to signin if not already there
-          if (location.pathname !== '/signin') {
-            navigate('/signin', { replace: true });
-          }
-        } else if (event === 'SIGNED_IN' && session) {
-          // Redirect to dashboard if on signin page
-          if (location.pathname === '/signin') {
-            navigate('/', { replace: true });
-          }
+        // Simple redirect logic
+        if (session && location.pathname === '/signin') {
+          navigate('/', { replace: true });
+        } else if (!session && location.pathname !== '/signin') {
+          navigate('/signin', { replace: true });
         }
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (!mounted) return;
-      
-      if (error) {
-        console.error('Session error:', error);
-        cleanupAuthState();
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        if (location.pathname !== '/signin') {
-          navigate('/signin', { replace: true });
-        }
-        return;
-      }
-
-      console.log('Initial session check:', session?.user?.email);
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session ? 'exists' : 'none');
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // If no session and not on signin page, redirect
-      if (!session && location.pathname !== '/signin') {
+      // Simple redirect logic
+      if (session && location.pathname === '/signin') {
+        navigate('/', { replace: true });
+      } else if (!session && location.pathname !== '/signin') {
         navigate('/signin', { replace: true });
       }
     });
 
     return () => {
-      mounted = false;
+      console.log('AuthWrapper: Cleaning up');
       subscription.unsubscribe();
     };
   }, [navigate, location.pathname]);
