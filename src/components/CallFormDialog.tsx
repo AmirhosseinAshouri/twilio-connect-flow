@@ -39,6 +39,16 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
   const { status, loading: statusLoading } = useCallStatus(currentCallId);
   const navigate = useNavigate();
 
+  // Add dialog-specific ID for debugging multiple instances
+  const dialogId = `dialog-${contact?.id || 'new'}-${Math.random().toString(36).substr(2, 9)}`;
+
+  // Only log from the open dialog to reduce noise
+  useEffect(() => {
+    if (open) {
+      console.log(`CallFormDialog ${dialogId}: Dialog opened for contact:`, contact?.name, 'phone:', phone);
+    }
+  }, [open, dialogId, contact?.name, phone]);
+
   // When currentCallId is set, ensure callWindowOpen is true
   useEffect(() => {
     if (currentCallId) {
@@ -62,7 +72,7 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
     }
 
     try {
-      console.log('CallFormDialog: About to initiate call with params:', { contact, phone, notes });
+      console.log(`CallFormDialog ${dialogId}: About to initiate call with params:`, { contact, phone, notes });
       
       const result = await initiateCall({
         contact,
@@ -70,8 +80,8 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
         notes
       });
       
-      console.log('CallFormDialog: Received result from initiateCall:', result);
-      console.log('CallFormDialog: Result structure:', JSON.stringify(result, null, 2));
+      console.log(`CallFormDialog ${dialogId}: Received result from initiateCall:`, result);
+      console.log(`CallFormDialog ${dialogId}: Result structure:`, JSON.stringify(result, null, 2));
       
       if (result.success && result.callId) {
         console.log('CallFormDialog: Call successful, setting callId:', result.callId);
@@ -115,7 +125,10 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
                             settings?.twilio_phone_number &&
                             settings?.twilio_twiml_app_sid;
 
-  console.log("Call window state:", { open: callWindowOpen, status, phoneNumber: phone, callId: currentCallId });
+  // Only log from open dialogs to reduce noise
+  if (open || callWindowOpen) {
+    console.log(`CallFormDialog ${dialogId}: Call window state:`, { open: callWindowOpen, status, phoneNumber: phone, callId: currentCallId });
+  }
 
   return (
     <>

@@ -25,6 +25,18 @@ export function CallForm({
   onNotesChange,
   onSubmit
 }: CallFormProps) {
+  // Debug button disabled state
+  const isButtonDisabled = isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token;
+  
+  console.log('CallForm: Button state check:', {
+    isLoading,
+    hasSettings: !!settings,
+    hasPhoneNumber: !!settings?.twilio_phone_number,
+    hasAccountSid: !!settings?.twilio_account_sid,
+    hasAuthToken: !!settings?.twilio_auth_token,
+    isButtonDisabled
+  });
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -49,7 +61,7 @@ export function CallForm({
       </div>
       <Button 
         type="submit" 
-        disabled={isLoading || !settings?.twilio_phone_number || !settings?.twilio_account_sid || !settings?.twilio_auth_token}
+        disabled={isButtonDisabled}
         className="w-full flex items-center justify-center gap-2"
       >
         <PhoneCall className="h-4 w-4" />
