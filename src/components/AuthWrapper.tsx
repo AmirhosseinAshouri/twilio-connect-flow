@@ -9,11 +9,14 @@ interface AuthWrapperProps {
 }
 
 export function AuthWrapper({ children }: AuthWrapperProps) {
+  console.log('AuthWrapper: Component mounting');
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  console.log('AuthWrapper: Current location:', location.pathname);
 
   useEffect(() => {
     console.log('AuthWrapper: Setting up auth listener');
@@ -70,10 +73,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
     );
   }
 
-  // If no session, don't render children (redirect will happen)
-  if (!session || !user) {
-    return null;
-  }
-
+  // Temporarily bypass auth check to test app loading
+  console.log('AuthWrapper: Rendering children, session:', !!session, 'user:', !!user);
   return <>{children}</>;
 }
