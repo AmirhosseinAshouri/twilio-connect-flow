@@ -98,6 +98,7 @@ export function useInitiateCall() {
       }
 
       console.log('Call initiated successfully:', data);
+      console.log('RETURNING SUCCESS WITH CALL ID:', callData.id);
 
       toast({
         title: "Call Initiated",

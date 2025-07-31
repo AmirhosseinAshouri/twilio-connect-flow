@@ -62,21 +62,27 @@ export function CallFormDialog({ contact, trigger, variant, size }: CallFormDial
     }
 
     try {
-      const { success, callId } = await initiateCall({
+      console.log('CallFormDialog: About to initiate call with params:', { contact, phone, notes });
+      
+      const result = await initiateCall({
         contact,
         phone,
         notes
       });
       
-      if (success && callId) {
+      console.log('CallFormDialog: Received result from initiateCall:', result);
+      
+      if (result.success && result.callId) {
+        console.log('CallFormDialog: Call successful, setting callId:', result.callId);
         toast.success("Call initiated successfully");
         setOpen(false);
         
         // Immediately open call window and set call ID
-        setCurrentCallId(callId);
+        setCurrentCallId(result.callId);
         setCallWindowOpen(true);
-        console.log("Call initiated, opening window with ID:", callId);
+        console.log("Call initiated, opening window with ID:", result.callId);
       } else {
+        console.error('CallFormDialog: Call failed or no callId:', result);
         toast.error("Failed to initiate call");
       }
     } catch (error) {
