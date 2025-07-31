@@ -40,11 +40,14 @@ serve(async (req) => {
     console.log('Received request:', { callId, to, notes })
 
     // Get the user's Twilio settings
+    console.log('Fetching settings for user:', user.id)
     const { data: settings, error: settingsError } = await supabaseClient
       .from('settings')
       .select('twilio_account_sid, twilio_auth_token, twilio_phone_number')
       .eq('user_id', user.id)
       .maybeSingle()
+
+    console.log('Settings query result:', { settings, settingsError })
 
     if (settingsError) {
       console.error('Settings error:', settingsError)
@@ -52,6 +55,7 @@ serve(async (req) => {
     }
 
     if (!settings) {
+      console.log('No settings found for user:', user.id)
       throw new Error('Twilio settings not found')
     }
 
