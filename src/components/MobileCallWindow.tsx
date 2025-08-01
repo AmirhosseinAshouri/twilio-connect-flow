@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Phone, PhoneOff, Timer, PhoneCall, PhoneForwarded, Mic, MicOff, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -136,6 +136,12 @@ export function MobileCallWindow({
         "max-w-md w-full h-[600px] p-0 rounded-3xl overflow-hidden border-0 shadow-2xl",
         getBackgroundClass()
       )}>
+        <DialogTitle className="sr-only">
+          Call with {contactName || phoneNumber}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {getStatusDisplay()}. Call status and controls.
+        </DialogDescription>
         {/* Header */}
         <div className="text-center pt-12 pb-8">
           <h3 className="text-sm text-muted-foreground font-medium mb-2">
